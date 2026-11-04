@@ -98,13 +98,18 @@ function boot(saved = null) {
   rules.run('state.lv=7');
   assert.equal(rules.run("wisdom()"),34);
   const physical = (a,d,extra='')=>rules.run(`CombatRules.physicalDamage({attack:${a},defense:${d},roll:.5${extra}})`);
-  assert.equal(physical(20,30),12,'attack below defense can still deal damage');
-  assert.equal(physical(20,10),16,'attack above defense deals damage');
+  assert.equal(physical(20,30),2,'attack below defense can still deal damage');
+  assert.equal(physical(20,10),7,'attack above defense deals damage');
   assert.equal(physical(0,0),0,'zero attack');
-  assert.equal(physical(1,100),0,'no forced minimum damage');
-  assert.equal(physical(20,30,',power:2.4'),30);
-  assert.equal(physical(20,30,',critical:true'),22);
-  assert.equal(physical(20,30,',strong:true,guard:true'),6,'modifiers round once at end');
+  assert.equal(physical(1,100,',roll:0.49'),0,'no forced minimum damage');
+  assert.equal(physical(1,100,',roll:0.5'),1,'glancing hit can damage high defense');
+  assert.equal(physical(20,40,',roll:0'),0);
+  assert.equal(physical(20,40,',roll:0.999'),1);
+  assert.equal(physical(0,100,',roll:0.999'),0);
+  assert.equal(physical(20,30,',roll:0'),2);
+  assert.equal(physical(20,30,',roll:0.999'),2);
+  assert.equal(physical(20,30,',power:2.4'),6);
+  assert.equal(physical(20,30,',strong:true,guard:true'),1,'modifiers round once at end');
   for(let a=0;a<80;a++)for(let d=0;d<80;d++){
     const value=physical(a,d);
     assert.ok(Number.isInteger(value)&&value>=0);
@@ -118,6 +123,14 @@ function boot(saved = null) {
   await physicalBattle.run("combat('attack')");
   assert.equal(physicalBattle.run('10000-state.enemy.hp'),expectedAttack);
   assert.equal(physicalBattle.run('state.hp===maxhp()'),true,'enemy zero attack causes zero damage');
+  for(const roll of [0,.05,.119,.12,.5,.999]){
+    setup(physicalBattle);physicalBattle.run(`Math.random=()=>${roll}`);
+    const expected=physicalBattle.run(`CombatRules.physicalDamage({attack:attack(),defense:20,roll:${roll}})`);
+    await physicalBattle.run("combat('attack')");
+    assert.equal(physicalBattle.run('10000-state.enemy.hp'),expected,'ordinary hit for all rolls');
+    assert.equal(physicalBattle.run("state.log.some(t=>t.includes('会心'))"),false);
+  }
+  physicalBattle.run('Math.random=()=>.5');
   setup(physicalBattle);
   const expectedSlash=physicalBattle.run('CombatRules.physicalDamage({attack:attack(),defense:20,power:2.4,roll:.5})');
   await physicalBattle.run("useSkill('slash')");
@@ -141,6 +154,6 @@ function boot(saved = null) {
   assert.equal(noMP.run('state.enemy.hp'),10000,'insufficient MP prevents cast');
   assert.equal(noMP.run('state.turn'),1);
   assert.equal(migrated.run('wisdom()'),26,'old saves gain derived wisdom without losing level');
-  console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
+  console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, DQ-style base, no critical hits, glancing hits, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
   console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});
