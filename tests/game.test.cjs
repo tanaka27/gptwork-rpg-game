@@ -51,6 +51,17 @@ function boot(saved = null) {
   app.run("moveTo('ash');moveTo('crater');moveTo('dragon');state.kills[2]=4;startBattle(true);state.enemy.hp=1");
   await app.run("combat('attack')");
   assert.equal(app.run('state.cleared.every(Boolean)'),true,'all areas reachable and completable');
+  const screens = boot();
+  screens.run("action('routes')");
+  assert.equal(screens.nodes['screen-map'].hidden,false,'travel opens map screen');
+  assert.equal(screens.nodes['screen-adventure'].hidden,true);
+  screens.run("moveTo('home');action('shop')");
+  assert.equal(screens.nodes['screen-bag'].hidden,false,'shop opens inventory screen');
+  screens.run("moveTo('meadow');startBattle();action('items');Math.random=()=>0;combat('run')");
+  assert.equal(screens.run('state.enemy'),null);
+  assert.equal(screens.nodes.subactions.innerHTML,'','successful escape clears battle menu');
+  screens.run("tab='materials';renderInventory()");
+  assert.ok(!screens.nodes.inventory.innerHTML.includes('55.0000'),'probabilities display clean percentages');
   const loot = boot();
   for (const [roll, count] of [[0,4],[.0199,4],[.02,3],[.0799,3],[.08,2],[.2499,2],[.25,1],[.5499,1],[.55,0],[.99,0]]) {
     assert.equal(loot.run(`rollMaterials(bestiary[0][0],()=>${roll}).length`),count,'probability boundary '+roll);
