@@ -1,0 +1,122 @@
+# 開発・検証・公開手順
+
+最初に[AGENTS.md](../AGENTS.md)を読んでください。**変更に合わせたMarkdownの更新と、GitHubへのpushは必須です。**
+
+## 作業開始
+
+1. `git status --short`、現在のブランチ、`git remote -v` を確認する。他者の変更がある場合は保持する。
+2. [引き継ぎ情報](HANDOFF.md)、[ゲーム仕様](GAME_SPEC.md)、[変更履歴](../CHANGELOG.md)から現在の仕様と検証状況を確認する。
+3. 必要な変更を、関連するソースとドキュメントへ反映する。
+
+```sh
+git status --short
+git branch --show-current
+git remote -v
+```
+
+現行のGitHubリポジトリは `https://github.com/tanaka27/gptwork-rpg-game.git`、共有ブランチは `main` です。npm installやビルドは必要ありません。一時ファイルはGit対象外の `work/` に置きます。
+
+## ローカル起動
+
+通常のローカル環境では次を実行します。
+
+```sh
+python3 -m http.server 8080 --directory dist
+```
+
+`http://localhost:8080` を開きます。`index.html` は `combat.js`、`game.js` の順で読み込みます。CSS/JSの配信更新時はHTMLの `?v=...` を更新し、必要ならブラウザを再読み込みしてください。
+
+Sitesの管理された環境では、一般のローカルサーバー手順よりSitesスキルのプレビュー手順を優先します。これまでの環境は `SITES_MANAGED_LINUX_CONTAINER=1` でしたが、指定のブラウザQA経路が見つからず画面確認を省略しています。次の環境でも同じ制約があると決めつけず、利用可能なツールと最新スキルを確認してください。
+
+## 必須チェック
+
+```sh
+node --check dist/combat.js
+node --check dist/game.js
+node tests/game.test.cjs
+git diff --check
+```
+
+テストはNode.js標準の `fs`、`vm`、`assert` を使い、DOM・localStorage・乱数・待機時間をモックします。
+
+| 検証対象 | 内容 |
+| --- | --- |
+| マップ | 双方向接続、隣接移動、ワープ禁止、戦闘中の移動禁止、解放条件 |
+| 進行 | 全エリアのボス到達と撃破、レベルアップ、街への復帰 |
+| アイテム等 | 購入、装備、宿泊、素材売却 |
+| 素材 | 確率の境界値、素材候補、保存 |
+| セーブ | 旧セーブ移行、位置と素材の再読込 |
+| リセット | 確認表示／キャンセルで維持、OKで削除、次の操作で保存再開 |
+| 戦闘計算 | 最低0、攻撃力・守備力に対する単調性、会心・強攻撃・防御の合成 |
+| スキル | MP消費、威力、賢さ成長、魔法の受け手能力非依存、回復上限 |
+
+このテストは実ブラウザ、CSSレイアウト、フォーカス、タッチ、音声再生、実際のタイマーを検証しません。変更に応じた意味のあるテストを追加し、ブラウザ確認の有無も記録してください。文書のみの変更ではリンクと記載内容の整合性を確認します。
+
+## ブラウザ確認を行える場合
+
+- PC幅とスマホ幅でヘッダー、地図、素材タブ、賢さとスキル種別が読めること。
+- 隣接ノードだけへ移動でき、街で宿泊・購入・素材売却できること。
+- 通常攻撃、物理スキル、魔法、回復、防御、敵の3ターン目の強攻撃。
+- セーブを保持して再読み込みしたときに進行が戻ること。
+- リセットのキャンセルで維持し、OKで削除されること。検証には作業用のブラウザデータを使うこと。
+- ブラウザコンソールのエラーと、操作中の二重入力・表示崩れ。
+
+## Markdown更新とGitHubへのpush
+
+1. 仕様変更を `GAME_SPEC.md`、構成・制約を `HANDOFF.md`、手順変更をこの文書へ反映する。
+2. `CHANGELOG.md` に実装内容・検証内容・未検証範囲を記載する。利用者向けの内容が変わればREADMEも更新する。
+3. 関連チェックを通し、差分をレビューする。
+4. 対象ファイルを明示してステージし、コードと関連Markdownをコミットする。
+5. GitHubへpushし、成功と作業ツリーを確認する。
+
+```sh
+git diff --check
+git diff --stat
+# 実際に変更したファイルだけを指定する
+git add README.md AGENTS.md CHANGELOG.md docs/
+# コードを変更した場合は該当する dist/ と tests/ のファイルも追加する
+git diff --cached --stat
+git commit -m "Describe the completed change"
+git push origin main
+git status --short
+```
+
+上記は現行 `main` での例です。別ブランチが指定された場合はそのブランチに合わせます。認証は環境に設定されたGit/CLI認証を使い、トークンをファイルやコマンド履歴へ埋め込みません。pushできなかった場合は、ローカルコミット済みかどうかと原因を報告します。デプロイ成功とGitHubへのpush成功は別々に確認してください。
+
+## Sitesへの反映
+
+ゲームのソースを変更した場合に使用します。文書だけの変更でアプリを再デプロイする必要はありません。最新のSitesスキルと利用可能なネイティブツールを読み、この節は既存Siteを特定するための情報として使ってください。
+
+| 項目 | 現在の値 |
+| --- | --- |
+| Site URL | https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site |
+| Site project ID | `appgprj_6aeacfc3f1d48191ad3e20c469ba6c1c` |
+| 配信形式 | 静的ファイル、公開ディレクトリ `dist` |
+| 最後に確認した閲覧範囲 | 所有者限定（custom、所有者のみ） |
+| これまでのGitHub作業ディレクトリ | `/workspace/gptwork-rpg-game` |
+| これまでのSites作業ディレクトリ | `/workspace/sites/starlight-rpg` |
+
+ディレクトリは過去の作業環境の値であり、別環境に存在するとは限りません。再作成の前に既存ソースとSiteを確認してください。GitHubの `main` が継続開発のソースです。Sites側には別のソースリポジトリと別のコミット履歴があります。
+
+1. 既存Siteを `get_site` で確認し、閲覧範囲を維持する。新しいSiteを作り直さない。
+2. 同じproject IDのソース書き込み認証を取得し、Sitesスキルのsource helperで既存ソースを開く。認証情報はメモリ／標準入力のみで扱う。
+3. GitHubで確定したアプリファイルをSitesソースへ反映する。Sites固有のmanifest・Git履歴・設定を消さない。
+4. テストを実行し、現在のスキルの手順でソースをコミット・push・パッケージ化する。
+5. **Sites側へpushしたコミットSHA**と、その内容に一致する静的アーカイブを保存・デプロイへ渡す。GitHub側の別履歴のSHAを代用しない。
+6. 所有者限定が確認できる場合は `save_version_and_deploy_private`、それ以外はスキル所定の保存・公開ルートを選ぶ。閲覧範囲を公開のために変更しない。
+7. 非終端なら状態を確認し、成功と返却URLを確認してから反映完了と報告する。
+
+Sites作業用の `.openai/hosting.json` は現在次の構成です。このmanifestはGitHub側には含めていません。
+
+```json
+{
+  "project_id": "appgprj_6aeacfc3f1d48191ad3e20c469ba6c1c",
+  "static": {"directory": "dist"}
+}
+```
+
+過去の環境ではSites補助スクリプトが見つからず、通常Git経由のpushと静的アーカイブを使いました。`work/` 内の過去の一時スクリプトや、期限切れの認証情報への依存は避けてください。環境が変わったら、現在のスキルと認証方式を優先します。
+
+## 完了報告
+
+変更内容、テスト結果、GitHubのpush状況、必要な場合のSites反映結果を短く伝えます。画面確認未実施、push失敗、デプロイ未完了などは明示してください。
