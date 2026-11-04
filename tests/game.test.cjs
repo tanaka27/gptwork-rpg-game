@@ -13,6 +13,7 @@ function boot(saved = null) {
   };
   context.Math.random = () => .5;
   vm.createContext(context);
+  vm.runInContext(fs.readFileSync('dist/combat.js','utf8'),context);
   vm.runInContext(source, context);
   return {run:code=>vm.runInContext(code,context), nodes, storage};
 }
@@ -89,5 +90,57 @@ function boot(saved = null) {
   assert.equal(reset.run('state.gold'),30);
   reset.run("moveTo('home')");
   assert.ok(reset.storage['starlight-rpg-v1'],'next action resumes autosave');
+
+  const rules = boot();
+  assert.equal(rules.run("normalAttack.type"),'physical');
+  assert.equal(rules.run("skillList.every(s=>['physical','magic'].includes(s.type))"),true);
+  assert.equal(rules.run("wisdom()"),10);
+  rules.run('state.lv=7');
+  assert.equal(rules.run("wisdom()"),34);
+  const physical = (a,d,extra='')=>rules.run(`CombatRules.physicalDamage({attack:${a},defense:${d},roll:.5${extra}})`);
+  assert.equal(physical(20,30),12,'attack below defense can still deal damage');
+  assert.equal(physical(20,10),16,'attack above defense deals damage');
+  assert.equal(physical(0,0),0,'zero attack');
+  assert.equal(physical(1,100),0,'no forced minimum damage');
+  assert.equal(physical(20,30,',power:2.4'),30);
+  assert.equal(physical(20,30,',critical:true'),22);
+  assert.equal(physical(20,30,',strong:true,guard:true'),6,'modifiers round once at end');
+  for(let a=0;a<80;a++)for(let d=0;d<80;d++){
+    const value=physical(a,d);
+    assert.ok(Number.isInteger(value)&&value>=0);
+    assert.ok(physical(a+1,d)>=value,'attack increases cannot reduce damage');
+    assert.ok(physical(a,d+1)<=value,'defense increases cannot increase damage');
+  }
+  // Exercise live battle routes rather than testing only the math helpers.
+  const setup = (app,defense=20) => app.run(`state.lv=7;state.hp=maxhp();state.mp=maxmp();state.enemy={name:'試験の魔物',hp:10000,max:10000,atk:0,def:${defense},wis:999,boss:false};state.turn=1`);
+  const physicalBattle=boot();setup(physicalBattle);
+  const expectedAttack=physicalBattle.run('CombatRules.physicalDamage({attack:attack(),defense:20,roll:.5})');
+  await physicalBattle.run("combat('attack')");
+  assert.equal(physicalBattle.run('10000-state.enemy.hp'),expectedAttack);
+  assert.equal(physicalBattle.run('state.hp===maxhp()'),true,'enemy zero attack causes zero damage');
+  setup(physicalBattle);
+  const expectedSlash=physicalBattle.run('CombatRules.physicalDamage({attack:attack(),defense:20,power:2.4,roll:.5})');
+  await physicalBattle.run("useSkill('slash')");
+  assert.equal(physicalBattle.run('10000-state.enemy.hp'),expectedSlash);
+  assert.equal(physicalBattle.run('state.mp'),physicalBattle.run('maxmp()-8'));
+  for(const id of ['flame','nova']){
+    const weak=boot(),tough=boot();setup(weak,0);setup(tough,1000000);
+    tough.run("state.weapon='star';state.enemy.wis=1000000");
+    await weak.run(`useSkill('${id}')`);await tough.run(`useSkill('${id}')`);
+    assert.equal(weak.run('state.enemy.hp'),tough.run('state.enemy.hp'),'magic ignores target stats and caster weapon');
+    const before=10000-weak.run('state.enemy.hp');setup(weak);weak.run('state.lv=8;state.mp=maxmp()');
+    await weak.run(`useSkill('${id}')`);
+    assert.ok(10000-weak.run('state.enemy.hp')>before,'wisdom increases magic damage');
+  }
+  const healing=boot();healing.run('state.lv=3;state.hp=1;state.mp=maxmp()');
+  healing.run("useSkill('heal')");
+  assert.equal(healing.run('state.hp'),53,'healing scales with wisdom');
+  healing.run('state.hp=maxhp()-1;state.mp=maxmp()');healing.run("useSkill('heal')");
+  assert.equal(healing.run('state.hp===maxhp()'),true,'healing capped at max HP');
+  const noMP=boot();setup(noMP);noMP.run('state.mp=0');await noMP.run("useSkill('nova')");
+  assert.equal(noMP.run('state.enemy.hp'),10000,'insufficient MP prevents cast');
+  assert.equal(noMP.run('state.turn'),1);
+  assert.equal(migrated.run('wisdom()'),26,'old saves gain derived wisdom without losing level');
+  console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
   console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});
