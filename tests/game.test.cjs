@@ -5,10 +5,10 @@ const source = fs.readFileSync('dist/game.js', 'utf8');
 function boot(saved = null) {
   const nodes = {}, storage = {};
   const node = () => ({innerHTML:'', textContent:'', disabled:false,
-    classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(){}, scrollIntoView(){}});
+    classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
   const context = {
     document:{getElementById:id=>nodes[id]??=node(), querySelectorAll:()=>[], addEventListener(){}, createElement:node},
-    localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value},
+    localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},
     console, setTimeout:fn=>{fn();return 1}, Math:Object.create(Math)
   };
   context.Math.random = () => .5;
@@ -71,5 +71,23 @@ function boot(saved = null) {
   const resumed = boot(loot.storage['starlight-rpg-v1']);
   assert.equal(resumed.run('state.materials.starcore'),1,'materials persist');
   assert.equal(resumed.run('state.node'),'meadow','position persists');
-  console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration and persistence');
+  const reset = boot(loot.storage['starlight-rpg-v1']);
+  const beforeReset = reset.storage['starlight-rpg-v1'];
+  reset.nodes.reset.onclick();
+  assert.equal(reset.storage['starlight-rpg-v1'],beforeReset,'opening confirmation preserves save');
+  assert.equal(reset.nodes.closeModal.textContent,'キャンセル');
+  reset.nodes.closeModal.onclick();
+  assert.equal(reset.storage['starlight-rpg-v1'],beforeReset,'cancel preserves save');
+  reset.nodes.reset.onclick();
+  const ok = reset.nodes.modalContent.children.at(-1);
+  assert.equal(ok.textContent,'OK');
+  ok.onclick();
+  assert.equal(reset.storage['starlight-rpg-v1'],undefined,'OK deletes save without writing a replacement');
+  assert.equal(reset.run('state.lv'),1);
+  assert.equal(reset.run('Object.keys(state.materials).length'),0);
+  assert.equal(reset.run('state.node'),'meadow');
+  assert.equal(reset.run('state.gold'),30);
+  reset.run("moveTo('home')");
+  assert.ok(reset.storage['starlight-rpg-v1'],'next action resumes autosave');
+  console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});
