@@ -95,3 +95,7 @@ CHANGELOG.md              変更履歴
 ## UI変更の引き継ぎ
 
 `#worldMap` はネイティブdetailsです。移動経路の表示操作ではopen=trueにしてからスクロールします。CSS末尾のResponsive adventure workspaceが現在のレスポンシブ規則です。UI改善（GitHub fb90d2e）のSites反映は2026-11-04に完了。Sitesソースコミットは39757d791ee56ef8f6e9a29ec2769c642f83e67c、デプロイappgdep_6aeb35de2488819197b814eac2c264caはsucceeded。既存URL・所有者限定の閲覧範囲を維持しています。アプリ変更後はGitHubへのpushとSitesへの反映を両方行ってください。
+
+## 公開版QA（2026-11-04）
+
+PCのアプリ内ブラウザで公開版の防御・逃走・村への移動、一覧、ヘルプ、保存を確認。320/390/768/1440pxの横あふれなし。スマホ実機は未接続のため未検証。逃走直後に道具・逃走サブメニューが残る点と、素材確率55%の浮動小数点表示を未修正の発見事項として記録。詳細はCHANGELOG参照。
