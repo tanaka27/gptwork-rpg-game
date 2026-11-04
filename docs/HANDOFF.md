@@ -94,4 +94,4 @@ CHANGELOG.md              変更履歴
 
 ## UI変更の引き継ぎ
 
-`#worldMap` はネイティブdetailsです。移動経路の表示操作ではopen=trueにしてからスクロールします。CSS末尾のResponsive adventure workspaceが現在のレスポンシブ規則です。Sitesへの反映は自動承認レビューで拒否されたため未実施。GitHub成果物とは別に公開作業が必要です。
+`#worldMap` はネイティブdetailsです。移動経路の表示操作ではopen=trueにしてからスクロールします。CSS末尾のResponsive adventure workspaceが現在のレスポンシブ規則です。UI改善（GitHub fb90d2e）のSites反映は2026-11-04に完了。Sitesソースコミットは39757d791ee56ef8f6e9a29ec2769c642f83e67c、デプロイappgdep_6aeb35de2488819197b814eac2c264caはsucceeded。既存URL・所有者限定の閲覧範囲を維持しています。アプリ変更後はGitHubへのpushとSitesへの反映を両方行ってください。
