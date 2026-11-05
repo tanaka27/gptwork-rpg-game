@@ -126,3 +126,22 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
   await page.getByRole('button',{name:'仲間',exact:true}).click();
   await expect(page.locator('#partyListView')).toBeVisible();
 });
+
+
+test('主人公と味方の状態は冒険タブだけに表示される', async ({ page }) => {
+  await page.goto('/');
+  for(const screen of ['adventure','map','bag','party','record','adventure']){
+    await page.locator(`.screen-nav [data-screen="${screen}"]`).click();
+    for(const selector of ['.player-strip','#partyStatus']){
+      if(screen==='adventure') await expect(page.locator(selector)).toBeVisible();
+      else await expect(page.locator(selector)).toBeHidden();
+    }
+    const box=await page.locator(`#screen-${screen}`).boundingBox();
+    if(screen!=='adventure') expect(box.y).toBeLessThan(100);
+    expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  }
+  await page.getByRole('button',{name:'仲間',exact:true}).click();
+  await page.locator('[data-character="0"]').click();
+  await expect(page.locator('#partyStatus')).toBeHidden();
+  await page.screenshot({path:test.info().outputPath('status-hidden.png')});
+});
