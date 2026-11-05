@@ -31,7 +31,7 @@ startBattle=function(boss=false){originalStart(boss);if(!state.enemy)return;cons
 render=function(persist=true){allies();const enemies=battleEnemies();originalRender(false);
  renderCharacterScreen();
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
- $('partyStatus').innerHTML=allies().map((a,i)=>`<div class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}</strong><span>HP ${allyHP(i)}/${maxhp()} · 速 ${speedOf(i)}</span><small>${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'操作キャラクター'}</small></div>`).join('');
+ $('partyStatus').innerHTML=allies().map((a,i)=>`<div class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</div>`).join('');
  if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" ${e.hp<=0?'disabled':''}>${monster(e)}<strong>${e.name}</strong><span>HP ${e.hp}/${e.max} · 速 ${e.speed}</span></button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent='仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
  if(persist)save();
 };

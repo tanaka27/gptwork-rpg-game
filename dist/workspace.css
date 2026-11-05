@@ -128,3 +128,9 @@ dialog { background:#17232d; border-color:#596c70; padding:24px; max-height:calc
 .game-shell:has(#screen-adventure[hidden]){grid-template-rows:minmax(0,1fr) auto}
 .game-shell:has(#screen-adventure[hidden])>.player-strip,
 .game-shell:has(#screen-adventure[hidden])>#partyStatus{display:none}
+
+/* Adventure party: compact HP / MP meters in all four columns. */
+.party-member{min-width:0;gap:3px;padding:5px}
+.party-member .meter-head{display:flex;justify-content:space-between;gap:2px;font-size:9px;line-height:1.4}
+.party-member .meter-head strong,.party-member .meter-head span{font-size:9px;white-space:nowrap}
+.party-member .bar{margin-top:2px;height:4px}
