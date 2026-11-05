@@ -128,11 +128,12 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
 });
 
 
-test('主人公と味方の状態は冒険タブだけに表示される', async ({ page }) => {
+test('主人公単独の状態欄を削除し、4人の状態は冒険タブだけに表示される', async ({ page }) => {
   await page.goto('/');
   for(const screen of ['adventure','map','bag','party','record','adventure']){
     await page.locator(`.screen-nav [data-screen="${screen}"]`).click();
-    for(const selector of ['.player-strip','#partyStatus']){
+    await expect(page.locator('.player-strip')).toHaveCount(0);
+    for(const selector of ['#partyStatus']){
       if(screen==='adventure') await expect(page.locator(selector)).toBeVisible();
       else await expect(page.locator(selector)).toBeHidden();
     }
