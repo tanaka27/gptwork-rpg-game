@@ -15,11 +15,23 @@ function activeEnemies(){return battleEnemies().filter(e=>e.hp>0);}
 function roundOrder(){return [...allies().map((a,i)=>({side:'ally',index:i,name:a.name,speed:speedOf(i),hp:allyHP(i)})),...battleEnemies().map((e,i)=>({side:'enemy',index:i,name:e.name,speed:e.speed,hp:e.hp}))].filter(a=>a.hp>0).sort((a,b)=>b.speed-a.speed||(a.side===b.side?a.index-b.index:a.side==='ally'?-1:1));}
 const originalRender=render, originalStart=startBattle, originalWin=win, originalUseItem=useItem, originalUseSkill=useSkill;
 let selectedEnemy=0;
+let selectedCharacter=null;
+function renderCharacterScreen(){
+ const members=allies();
+ $('partyListView').hidden=selectedCharacter!==null;
+ $('partyDetailView').hidden=selectedCharacter===null;
+ $('characterList').innerHTML=members.map((a,i)=>`<button type="button" class="character-row" data-character="${i}" aria-label="${a.name}のステータスを見る"><span class="character-emblem" aria-hidden="true">${['⚔','✧','♜','♧'][i]}</span><span><strong>${a.name}</strong><small>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'主人公'}</small></span><span class="character-row-hp">HP ${allyHP(i)} / ${maxhp()}<br>MP ${a.mp} / ${maxmp()}</span><span aria-hidden="true">›</span></button>`).join('');
+ const selected=members.map((a,i)=>({a,i})).filter(({i})=>i===selectedCharacter);
+
+ $('partyDetails').innerHTML=selected.map(({a,i})=>`<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading"><h2 tabindex="-1" id="characterName">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`).join('');
+}
+const previousShowScreen=showScreen;
+showScreen=function(name){if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
 startBattle=function(boss=false){originalStart(boss);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=8+state.zone*4+i*3);selectedEnemy=0;render();};
 render=function(persist=true){allies();const enemies=battleEnemies();originalRender(false);
- $('partyDetails').innerHTML=allies().map((a,i)=>`<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading"><h4>${a.name}</h4><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`).join('');
+ renderCharacterScreen();
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
- $('partyStatus').innerHTML=allies().map((a,i)=>`<button type="button" data-screen="record" aria-label="${a.name}のステータスを見る" class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}</strong><span>HP ${allyHP(i)}/${maxhp()} · 速 ${speedOf(i)}</span><small>${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'操作キャラクター'}</small></button>`).join('');
+ $('partyStatus').innerHTML=allies().map((a,i)=>`<div class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}</strong><span>HP ${allyHP(i)}/${maxhp()} · 速 ${speedOf(i)}</span><small>${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'操作キャラクター'}</small></div>`).join('');
  if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" ${e.hp<=0?'disabled':''}>${monster(e)}<strong>${e.name}</strong><span>HP ${e.hp}/${e.max} · 速 ${e.speed}</span></button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent='仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
  if(persist)save();
 };
@@ -57,5 +69,7 @@ useItem=id=>state.enemy?partyRound('item',null,id):originalUseItem(id);
 const originalAction=action;
 action=function(a){originalAction(a);if(a==='rest'&&!state.enemy){state.companions.forEach(c=>{c.hp=state.hp;c.mp=state.mp;});render();}};
 document.addEventListener('click',event=>{const button=event.target.closest('[data-target]');if(button&&!busy){selectedEnemy=Number(button.dataset.target);render();}});
+document.addEventListener('click',event=>{const button=event.target.closest('[data-character]');if(button){const index=Number(button.dataset.character);if(Number.isInteger(index)&&index>=0&&index<allies().length){selectedCharacter=index;renderCharacterScreen();$('characterName').focus();}}});
+$('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 $('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。敵を選択し、アステルのコマンドで1ラウンド開始します。素早さが高い順に行動し、戦闘不能者は行動しません。道具・回復魔法はアステルが対象。宿屋で全員回復します。</p>';});
 allies();render();

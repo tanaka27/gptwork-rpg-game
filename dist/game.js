@@ -106,7 +106,7 @@ function resetAdventure(){
 }
 
 function showScreen(name){
-  for(const id of ['adventure','map','bag','record']) $('screen-'+id).hidden=id!==name;
+  for(const id of ['adventure','map','bag','party','record']) $('screen-'+id).hidden=id!==name;
   document.querySelectorAll('[data-screen]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.screen===name)));
 }
 document.addEventListener('click',event=>{const button=event.target.closest('[data-screen]');if(button)showScreen(button.dataset.screen)});
