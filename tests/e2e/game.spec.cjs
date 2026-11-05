@@ -20,9 +20,9 @@ test('初期画面、素材画像、4画面切替、ビューポート内表示'
     }, asset)).toBe(true);
   }
   for (const screen of ['map', 'bag', 'record', 'adventure']) {
-    await page.locator(`[data-screen="${screen}"]`).click();
+    await page.locator(`.screen-nav [data-screen="${screen}"]`).click();
     await expect(page.locator(`#screen-${screen}`)).toBeVisible();
-    await expect(page.locator(`[data-screen="${screen}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator(`.screen-nav [data-screen="${screen}"]`)).toHaveAttribute('aria-pressed', 'true');
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth <= innerWidth &&
       document.documentElement.scrollHeight <= innerHeight
@@ -93,4 +93,25 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
   await page.reload();
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
   await page.screenshot({path: test.info().outputPath('party-battle.png')});
+});
+
+
+test('全員の能力と戦闘不能を記録画面で確認できる', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));save.companions[0].hp=0;save.companions[1].hp=31;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
+  await page.reload();
+  await page.getByRole('button',{name:'リナのステータスを見る'}).click();
+  await expect(page.locator('#screen-record')).toBeVisible();
+  await expect(page.locator('.character-card')).toHaveCount(4);
+  for(const [i,name,speed] of [[0,'アステル',12],[1,'リナ',18],[2,'ガルド',7],[3,'ノエル',14]]){
+    const card=page.locator('.character-card').nth(i);
+    await expect(card).toContainText(name);
+    await expect(card.locator('dd').nth(5)).toHaveText(String(speed));
+    for(const label of ['HP','MP','攻撃力','守備力','賢さ','素早さ']) await expect(card.locator('dt',{hasText:new RegExp('^'+label+'$')})).toHaveCount(1);
+  }
+  await expect(page.locator('.character-card').nth(1)).toContainText('戦闘不能');
+  await expect(page.locator('.character-card').nth(2).locator('dd').first()).toHaveText('31 / 80');
+  await page.locator('.character-card').last().scrollIntoViewIfNeeded();
+  await expect(page.locator('.character-card').last()).toBeInViewport();
+  await page.screenshot({path:test.info().outputPath('party-status.png')});
 });
