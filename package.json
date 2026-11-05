@@ -1,0 +1,14 @@
+{
+  "name": "starlight-chronicle",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node tests/game.test.cjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

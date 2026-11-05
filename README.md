@@ -35,7 +35,7 @@ python3 -m http.server 8080 --directory dist
 
 ## 検証
 
-Node.jsで実行します。パッケージのインストールは不要です。
+Node.jsで実行します。既存ロジックテストにパッケージのインストールは不要です。
 
 ```sh
 node --check dist/combat.js
@@ -44,6 +44,18 @@ node tests/game.test.cjs
 ```
 
 ロジックテストは通過済みです。2026-11-04にローカルブラウザで320〜1440px幅の横あふれ、地図の展開、探索・攻撃・ターン進行を確認しました。詳細は[開発手順](docs/DEVELOPMENT.md)を参照してください。
+
+### Playwrightによるブラウザ検証
+
+Node.js 20以上・npm・Python 3を用意し、次を実行します。アプリを遊ぶだけならインストール不要です。
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+PC・スマホ幅で画面切替、画像、はみ出し、戦闘と保存を確認します。スクショは毎テスト取得し、失敗時はトレースも保存します。結果を見るには `npm run test:e2e:report`。環境固有のChromiumを使う方法とGit管理対象は[開発手順](docs/DEVELOPMENT.md#playwrightによるブラウザ検証)を参照してください。
 
 ## 開発ドキュメント
 

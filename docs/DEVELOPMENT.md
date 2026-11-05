@@ -124,3 +124,32 @@ Sites作業用の `.openai/hosting.json` は現在次の構成です。このman
 ## 画面内への収まりの確認
 
 workspace.cssも配信対象に含めます。UI確認は横幅だけでなく320×568などの高さも指定し、ページのscrollWidth/scrollHeightとビューポートが一致すること、行動と下部ナビの矩形が画面内にあることを確認します。地図・素材・ログは内部スクロールで末尾まで到達できることを確認します。
+
+## Playwrightによるブラウザ検証
+
+開発用の追加依存として `@playwright/test` を使用します。Node.js 20以上・npm・Python 3が必要です。ゲームの実行・Sites配信にはnpmもビルドも不要です。
+
+```sh
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+LinuxでブラウザのOS依存が不足する場合は `npx playwright install --with-deps chromium` を使用します。既存Chromiumを使う場合は次のように指定できます。
+
+```sh
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+設定が127.0.0.1:4173でPython静的サーバーを起動し、終了時に停止します。ポートが使用中なら既存サーバーを流用せず失敗します。サンドボックスでソケットやブラウザ起動が制限される環境では、許可されたネットワーク実行権限が必要です。npmキャッシュが書き込めない場合は `npm ci --cache /tmp/rpg-npm-cache` を使用できます。
+
+PC 1440×900・スマホ幅390×844で、初期画面・画像読み込み・4画面切替・ページの縦横はみ出し・JS実行エラー、および探索→攻撃→敵ターン→再読み込みでの保存維持を確認します。外部フォントへの通信はテスト中だけ遮断します。各テストは独立したブラウザコンテキストで動作し、利用者のセーブには触れません。スマホ実機・音声・全進行の検証は含みません。
+
+スクショは毎テスト、トレースは失敗時に `test-results/` へ保存します。`playwright-report/` はHTMLレポートです。
+
+```sh
+npm run test:e2e:report
+npm run test:e2e:ui
+```
+
+Gitへ含めるのはpackage.json・package-lock.json・設定・テスト定義・手順です。node_modules・ブラウザ本体（Playwrightの外部キャッシュ）・スクショ・トレース・HTMLレポートは含めません。今回の導入は開発ツールのみでdistの変更はなく、Sites再デプロイは不要です。

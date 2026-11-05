@@ -28,7 +28,7 @@ CHANGELOG.md              変更履歴
  work/                    一時作業用（Git対象外）
 ```
 
-`dist/` が編集対象のソース兼配信物です。React、Phaser、TypeScript、Vite、npm依存、DB、APIサーバーは使用していません。描画はDOMとインラインSVG、効果音はWeb Audio APIです。外部リソースはGoogle Fontsのみで、フォールバックがあります。
+`dist/` が編集対象のソース兼配信物です。React、Phaser、TypeScript、Vite、アプリ実行用のnpm依存、DB、APIサーバーは使用していません。開発時は `@playwright/test` を使用します。描画はDOMとインラインSVG、効果音はWeb Audio APIです。外部リソースはGoogle Fontsのみで、フォールバックがあります。
 
 `combat.js` と `game.js` はクラシックスクリプトです。前者の `CombatRules` を後者が参照するため、HTMLとテストの両方でこの順に読み込みます。`game.js` は読み込み時にイベントを登録して `render()` を実行します。
 
@@ -113,3 +113,7 @@ PCのアプリ内ブラウザで公開版の防御・逃走・村への移動、
 最新の視覚仕様はDESIGN.mdを参照。workspace.cssを整理し、紺・生成り・セージ、明朝体、2列コマンド、線画ナビへ変更。風景はdist/assetsのPNGを読み込むため、公開時はassetsフォルダーも含める。設定メニュー内にsound/help/resetを移動。HTMLのIDと保存形式は維持。
 
 視覚刷新はGitHub b09f33c、Sitesソース48ffdbd703dea4b83ada8bcb9b727ebbdc0c1446。デプロイappgdep_6aeb3c4c7dec8191b242aa24cfe6e7e6が成功し、公開版のPNG読込と画面寸法一致を確認済み。
+
+## Playwright導入（2026-11-05）
+
+`package.json`・ロックファイル・`playwright.config.cjs`・`tests/e2e/`でブラウザ検証を再現できます。実行手順はDEVELOPMENT.mdを参照。アプリは引き続きビルド不要でdistを直接配信します。スクショ・レポート・トレース・node_modulesはGit管理対象外です。
