@@ -45,3 +45,31 @@ test('探索から攻撃で敵ターンへ進み、再読込で進行を保持�
   await expect(page.locator('#turn')).toContainText('2');
   expect(await page.evaluate(() => localStorage.getItem('starlight-rpg-v1'))).toBe(save);
 });
+
+test('街ごとの品揃えと購入、街の外での購入拒否', async ({ page }) => {
+  await page.goto('/');
+  for (const [node, zone, stock] of [
+    ['home', 0, ['herb', 'leather']],
+    ['luna', 1, ['herb', 'ether', 'iron', 'leather']],
+    ['forge', 2, ['herb', 'ether', 'potion', 'star', 'moon']],
+  ]) {
+    await page.evaluate(({ node, zone }) => {
+      const save = JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+      Object.assign(save, { node, zone, village: true, enemy: null, gold: 1000, cleared: [true, true, false] });
+      localStorage.setItem('starlight-rpg-v1', JSON.stringify(save));
+    }, { node, zone });
+    await page.reload();
+    await page.locator('[data-action="shop"]').click();
+    await expect(page.locator('#inventory [data-action^="buy:"]')).toHaveCount(stock.length);
+    for (const id of stock) await expect(page.locator(`[data-action="buy:${id}"]`)).toBeVisible();
+    const herbs = await page.evaluate(() => JSON.parse(localStorage.getItem('starlight-rpg-v1')).items.herb);
+    await page.locator('[data-action="buy:herb"]').click();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('starlight-rpg-v1')).items.herb)).toBe(herbs + 1);
+  }
+  await page.locator('[data-screen="map"]').click();
+  await page.locator('#regions [data-action="move:ash"]').click();
+  await page.locator('[data-screen="bag"]').click();
+  await page.locator('[data-tab="shop"]').click();
+  await expect(page.locator('#inventory')).toContainText('お店は街で利用できます');
+  await expect(page.locator('#inventory [data-action^="buy:"]')).toHaveCount(0);
+});

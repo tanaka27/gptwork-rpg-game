@@ -62,6 +62,23 @@ function boot(saved = null) {
   assert.equal(screens.nodes.subactions.innerHTML,'','successful escape clears battle menu');
   screens.run("tab='materials';renderInventory()");
   assert.ok(!screens.nodes.inventory.innerHTML.includes('55.0000'),'probabilities display clean percentages');
+  const shops = boot();
+  const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather'],forge:['herb','ether','potion','star','moon']};
+  for (const [town, ids] of Object.entries(expectedStock)) {
+    shops.run(`state.node='${town}';state.village=true;state.enemy=null;state.gold=10000;tab='shop';renderInventory()`);
+    for (const id of ['herb','ether','potion','iron','leather','star','moon']) {
+      assert.equal(shops.nodes.inventory.innerHTML.includes('data-action="buy:'+id+'"'),ids.includes(id),town+' displays '+id);
+      const before = shops.run('JSON.stringify(state)');
+      shops.run(`action('buy:${id}')`);
+      if (!ids.includes(id)) assert.equal(shops.run('JSON.stringify(state)'),before,'reject unlisted '+id+' in '+town);
+    }
+  }
+  shops.run("state.node='meadow';state.village=false;state.gold=10000");
+  const outside = shops.run('JSON.stringify(state)');
+  shops.run("action('buy:herb')");
+  assert.equal(shops.run('JSON.stringify(state)'),outside,'no purchases outside town');
+  shops.run("state.node='home';state.village=true;state.enemy={hp:10}");
+  assert.equal(shops.run('currentShopStock().length'),0,'no shop during battle');
   const loot = boot();
   for (const [roll, count] of [[0,4],[.0199,4],[.02,3],[.0799,3],[.08,2],[.2499,2],[.25,1],[.5499,1],[.55,0],[.99,0]]) {
     assert.equal(loot.run(`rollMaterials(bestiary[0][0],()=>${roll}).length`),count,'probability boundary '+roll);
