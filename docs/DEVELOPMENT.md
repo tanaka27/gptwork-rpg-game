@@ -153,3 +153,5 @@ npm run test:e2e:ui
 ```
 
 Gitへ含めるのはpackage.json・package-lock.json・設定・テスト定義・手順です。node_modules・ブラウザ本体（Playwrightの外部キャッシュ）・スクショ・トレース・HTMLレポートは含めません。今回の導入は開発ツールのみでdistの変更はなく、Sites再デプロイは不要です。
+
+4対4の検証はtests/e2e/game.spec.cjsとtests/game.test.cjsに追加。新規セーブで味方4人・敵4体を必ず生成し、素早さ順・戦闘不能・全滅・全敵報酬・保存再開を検証します。party.jsはcombat.js/game.jsの後で読み込む必要があります。

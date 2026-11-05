@@ -73,3 +73,24 @@ test('街ごとの品揃えと購入、街の外での購入拒否', async ({ pa
   await expect(page.locator('#inventory')).toContainText('お店は街で利用できます');
   await expect(page.locator('#inventory [data-action^="buy:"]')).toHaveCount(0);
 });
+
+
+test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('[data-action="explore"]').click();
+  await expect(page.locator('.party-member')).toHaveCount(4);
+  await expect(page.locator('.enemy-unit')).toHaveCount(4);
+  await expect(page.locator('#battleOrder')).toContainText('リナ');
+  const units=await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({box:n.getBoundingClientRect().toJSON(),svg:n.querySelector('svg').getBoundingClientRect().toJSON()})));
+  for(const u of units) expect(u.svg.width).toBeLessThanOrEqual(u.box.width);
+  await page.locator('[data-action="guard"]').click();
+  await expect(page.locator('[data-action="guard"]')).toBeEnabled();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
+  expect(saved.lastRoundOrder[0]).toBe('リナ');
+  expect(saved.lastRoundOrder.length).toBeGreaterThan(4);
+  expect(saved.companions).toHaveLength(3);
+  expect(saved.enemies).toHaveLength(4);
+  await page.reload();
+  await expect(page.locator('.enemy-unit')).toHaveCount(4);
+  await page.screenshot({path: test.info().outputPath('party-battle.png')});
+});

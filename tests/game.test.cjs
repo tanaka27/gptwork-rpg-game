@@ -2,10 +2,10 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync('dist/game.js', 'utf8');
-function boot(saved = null) {
+function boot(saved = null, party = false) {
   const nodes = {}, storage = {};
   const node = () => ({innerHTML:'', textContent:'', disabled:false,
-    classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
+    addEventListener(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
   const context = {
     document:{getElementById:id=>nodes[id]??=node(), querySelectorAll:()=>[], addEventListener(){}, createElement:node},
     localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},
@@ -15,9 +15,32 @@ function boot(saved = null) {
   vm.createContext(context);
   vm.runInContext(fs.readFileSync('dist/combat.js','utf8'),context);
   vm.runInContext(source, context);
+  if(party) vm.runInContext(fs.readFileSync('dist/party.js','utf8'),context);
   return {run:code=>vm.runInContext(code,context), nodes, storage};
 }
 (async () => {
+  const party = boot(null,true);
+  party.run('startBattle()');
+  assert.equal(party.run('allies().length'),4);
+  assert.equal(party.run('battleEnemies().length'),4);
+  assert.equal(party.run('roundOrder()[0].name'),'リナ');
+  await party.run("combat('guard')");
+  assert.equal(party.run('state.turn'),2);
+  assert.equal(party.run('state.lastRoundOrder.length'),8);
+  const partyResumed=boot(party.storage['starlight-rpg-v1'],true);
+  assert.equal(partyResumed.run('battleEnemies().length'),4);
+  party.run('state.hp=0;state.companions[0].hp=0');
+  await party.run("combat('attack')");
+  assert.equal(party.run("state.lastRoundOrder.includes('アステル')"),false);
+  assert.equal(party.run("state.lastRoundOrder.includes('リナ')"),false);
+  party.run('state.enemies.forEach(e=>{e.hp=1;e.atk=0;});state.hp=80;state.companions.forEach(a=>a.hp=80)');
+  await party.run("combat('attack')");
+  assert.equal(party.run('state.enemy'),null);
+  assert.equal(party.run('state.total'),4,'rewards once for every defeated enemy');
+  const defeat=boot(null,true);defeat.run('startBattle();state.enemies.forEach(e=>{e.atk=1000;e.speed=100});state.hp=1;state.companions.forEach(a=>a.hp=1)');
+  await defeat.run("combat('attack')");
+  assert.equal(defeat.run('state.node'),'home');
+  assert.equal(defeat.run('allies().every(a=>a.hp>0)'),true);
   const app = boot();
   assert.equal(app.run('mapNodes.length'),12);
   assert.equal(app.run('mapNodes.filter(n=>n.town).length'),3);
