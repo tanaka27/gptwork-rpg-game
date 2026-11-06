@@ -78,10 +78,14 @@ function boot(saved = null, party = false) {
   await lostTarget.run("useSkill('heal',1)");
   assert.equal(lostTarget.run('state.companions[0].hp'),0,'target can fall before caster acts');
   assert.equal(lostTarget.run('state.mp'),44,'failed healing during a round consumes no MP');
+  const meterCheck=boot(null,true);
+  assert.ok(meterCheck.run("enemyHPMeter({name:'試験',hp:5,max:10})").includes('width:50%'));
+  assert.ok(meterCheck.run("enemyHPMeter({name:'試験',hp:-1,max:10})").includes('width:0%'));
   const fallbackTarget=boot(null,true);setupSkillBattle(fallbackTarget);
   fallbackTarget.run('state.enemies[2].hp=1');
   await fallbackTarget.run("useSkill('flame',2)");
   assert.ok(fallbackTarget.run("state.log.some(t=>t.includes('の火花の魔法！ 敵0に'))"),'attack retargets if a faster companion defeats chosen enemy');
+  assert.equal(fallbackTarget.run('selectedEnemy'),0,'marker follows living target after selected enemy is defeated');
   const unavailable=boot(null,true);setupSkillBattle(unavailable);
   unavailable.run('state.mp=0');
   assert.equal(unavailable.run("useSkill('heal')"),false);

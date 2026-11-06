@@ -22,6 +22,10 @@ function validSkillTarget(skill,index){
  if(skill.effect==='heal')return index<allies().length&&allyHP(index)>0&&allyHP(index)<maxhp();
  return !!state.enemy&&index<battleEnemies().length&&battleEnemies()[index].hp>0;
 }
+function enemyHPMeter(enemy){
+ const percent=Math.max(0,Math.min(100,enemy.max>0?enemy.hp/enemy.max*100:0));
+ return `<span class="enemy-hp bar" role="meter" aria-label="${enemy.name}のHP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i style="width:${percent}%"></i></span>`;
+}
 function chooseSkillTarget(skill){
  pendingSkill={id:skill.id,inBattle:!!state.enemy};
  $('skillTargetTitle').textContent=skill.name+'：'+(skill.effect==='heal'?'回復する味方を選択':'攻撃する敵を選択');
@@ -29,7 +33,9 @@ function chooseSkillTarget(skill){
  $('skillTargets').innerHTML=targets.map((target,index)=>{
   const hp=skill.effect==='heal'?allyHP(index):target.hp,max=skill.effect==='heal'?maxhp():target.max;
   const note=hp<=0?' · 戦闘不能':skill.effect==='heal'&&hp>=max?' · HP満タン':'';
-  return btn(`${skill.effect==='damage'?'敵'+(index+1)+' · ':''}${target.name} · HP ${hp} / ${max}${note}`,'cast:'+skill.id+':'+index,'',!validSkillTarget(skill,index));
+  const label=skill.effect==='damage'?`敵${index+1} · ${target.name}${note}`:`${target.name} · HP ${hp} / ${max}${note}`;
+  const button=btn(label,'cast:'+skill.id+':'+index,'',!validSkillTarget(skill,index));
+  return skill.effect==='damage'?button.replace('</button>',enemyHPMeter(target)+'</button>'):button;
  }).join('');
  $('skillTargetDialog').showModal();
 }
@@ -48,9 +54,10 @@ showScreen=function(name){if(name==='party'){selectedCharacter=null;renderCharac
 startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;originalStart(boss,travelEncounter);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=8+state.zone*4+i*3);selectedEnemy=0;render();};
 render=function(persist=true){allies();const enemies=battleEnemies();originalRender(false);
  renderCharacterScreen();
+ if(state.enemy&&!(enemies[selectedEnemy]?.hp>0))selectedEnemy=enemies.findIndex(e=>e.hp>0);
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
  $('partyStatus').innerHTML=allies().map((a,i)=>`<div class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</div>`).join('');
- if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" ${e.hp<=0?'disabled':''}>${monster(e)}<strong>${e.name}</strong><span>HP ${e.hp}/${e.max} · 速 ${e.speed}</span></button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent=state.journey?'道中では戦闘・何もなし・素材入手が起こります。':'仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
+ if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" aria-label="${e.name}を攻撃対象に選択" ${e.hp<=0?'disabled':''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent=state.journey?'道中では戦闘・何もなし・素材入手が起こります。':'仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
  if(persist)save();
 };
 async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){

@@ -266,3 +266,48 @@ test('横向きでもスキル対象とキャンセルが画面内に収まる',
   await expect(page.locator('#skillTargetDialog')).toBeHidden();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).mp)).toBe(28);
 });
+
+test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を付ける', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('[data-action="explore"]').click();
+  await expect(page.locator('#enemy .enemy-hp')).toHaveCount(4);
+  for(const style of await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({background:getComputedStyle(n).backgroundColor,border:getComputedStyle(n).borderTopWidth,text:n.innerText})))){
+    expect(style.background).toBe('rgba(0, 0, 0, 0)');expect(style.border).toBe('0px');
+    expect(style.text).not.toMatch(/HP|速|\d+\s*\//);
+  }
+  const selected=page.locator('[data-target="2"]');
+  await selected.click();
+  await expect(selected).toHaveAttribute('aria-pressed','true');
+  await expect(selected.locator('.enemy-target-marker')).toBeVisible();
+  await expect(page.locator('[data-target="0"] .enemy-target-marker')).toBeHidden();
+  const field=await page.locator('.arena').boundingBox();
+  const marker=await selected.locator('.enemy-target-marker').boundingBox();
+  expect(marker.y).toBeGreaterThanOrEqual(field.y);
+  await page.locator('[data-target="0"]').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('[data-target="1"]')).toBeFocused();
+  await expect(page.locator('[data-target="1"] .enemy-target-marker')).toBeVisible();
+  await expect(selected.locator('.enemy-target-marker')).toBeHidden();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-target="1"]')).toHaveAttribute('aria-pressed','true');
+  await page.evaluate(()=>{
+    const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    save.enemies[1].hp=save.enemies[1].max/2;save.lv=3;save.hp=114;save.mp=28;
+    localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+  });
+  await page.reload();
+  await expect(page.locator('[data-target="1"] .enemy-hp')).toHaveAttribute('aria-valuenow','50');
+  expect(await page.locator('[data-target="1"] .enemy-hp i').evaluate(n=>n.style.width)).toBe('50%');
+  await page.locator('[data-action="skills"]').click();
+  await page.locator('[data-action="skill:flame"]').click();
+  await expect(page.locator('#skillTargets .enemy-hp')).toHaveCount(4);
+  await expect(page.locator('#skillTargets')).not.toContainText('HP');
+  await page.locator('[data-action="cancel-skill"]').click();
+  await page.setViewportSize({width:320,height:568});
+  const smallField=await page.locator('.arena').boundingBox();
+  const smallMessage=await page.locator('.field-message').boundingBox();
+  for(const box of await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()))){
+    expect(box.y).toBeGreaterThanOrEqual(smallField.y);
+    expect(box.bottom).toBeLessThanOrEqual(smallMessage.y);
+  }
+});
