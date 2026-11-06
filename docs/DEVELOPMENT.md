@@ -230,6 +230,6 @@ npm testに3街の見出し、宿泊成功メッセージの抑止、全員回�
 
 定義検証・既存ゲーム・SQLite APIはnpm test。ブラウザ検証はPLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=1。公開版を書き換える管理テストを含むため、専用DBを使用し順に実行する。生成物の同期後にnpm run buildし、build/.openai/hosting.json・build/server/index.js・build/drizzle/をパッケージ化する。Sitesソースへアプリだけでなくcontent/shared/server/db/drizzle/scripts/packageファイルとmanifestも同期する。
 
-新しいmanifestは同じproject_idを保持し、static設定を外してD1を宣言する。所有者IDはSitesのOWNER_ID環境変数で設定し、値をソースへ埋め込まない。ローカルDBやwork/、生成Worker、認証情報はコミットしない。
+新しいmanifestは同じproject_idを保持し、static設定を外してD1を宣言する。所有者の認証済みメールはSitesのOWNER_EMAIL環境変数で設定し、値をソースへ埋め込まない。ローカルDBやwork/、生成Worker、認証情報はコミットしない。
 
 今回の最終確認は、既存ゲームと管理/クラウドのPlaywright全34件、1440×900・390×844・320×568・844×390の追加12件が通過。Node側は既存ゲーム/コンテンツ検証に加えてSQLite API7ケースが通過。生成Workerからゲーム・管理画面・画像・定義JSONを配信できることも確認した。本番DB/Workerの反映結果は公開時に別途確認する。
