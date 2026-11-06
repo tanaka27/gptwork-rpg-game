@@ -208,3 +208,7 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
  .location-title { top:8px; left:10px; right:10px; font-size:17px; }
  .adventure-screen:has(.location-title:not([hidden])) #shopMenu { max-height:min(340px,40dvh); }
 }
+
+.admin-link{display:block;padding:10px 14px;color:var(--text);font-size:13px;text-decoration:none;min-height:44px}.preview-banner{font-size:10px;max-width:160px;color:var(--gold)}#cloudDialog label{display:block;font-size:12px}#cloudHistory{display:block;max-width:100%;margin-top:8px}#cloudStatus{white-space:pre-wrap;font-size:12px}
+
+#loadingMessage{position:fixed;inset:62px 0 0;z-index:40;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg);color:var(--text)}

@@ -1,36 +1,33 @@
 # 開発引き継ぎ
 
-更新日：2026-11-04（日本時間）。この文書は実装の入口です。具体的な数値は[ゲーム仕様](GAME_SPEC.md)、作業手順は[開発手順](DEVELOPMENT.md)、必須ルールは[AGENTS.md](../AGENTS.md)を参照してください。
+更新日：2026-11-06（日本時間）。この文書は実装の入口です。具体的な数値は[ゲーム仕様](GAME_SPEC.md)、作業手順は[開発手順](DEVELOPMENT.md)、必須ルールは[AGENTS.md](../AGENTS.md)を参照してください。
 
 ## 現在地
 
-オリジナルRPG「星灯りの旅団」をSitesで公開し、GitHubの `main` にソースを保存しています。最新の機能変更は、会心の廃止とドラクエを参考にした物理式（攻撃力÷2−守備力÷4）、高守備へのかすり当たりです。物理／魔法分類と賢さは維持しています。
+利用者1人のコンテンツ拡張を目的として、既存フロントを維持しながら定義JSON・共通処理・バックエンドAPI・SQLite/D1・定義管理画面を導入しました。最新構成は[BACKEND.md](BACKEND.md)。初期JSONからDBの下書きを作成し、検証・プレビュー・公開します。進行は従来のローカル自動保存に加え、明示的にクラウドへ保存・復元できます。
 
 ユーザーの継続的な指示は、文書のみの変更も含め、作業ごとに指定GitHubのmainへpushし、既存Sitesへデプロイすることです。両方とも事前承認済みで、作業のたびに許可を取り直す必要はありません。明示的な反映不要の指定がある作業だけを例外とします。関連Markdownも毎回更新してください。
 
 ## 技術構成
 
 ```text
-AGENTS.md                 エージェント向け開発ルール
-README.md                 利用者・開発者の入口
-CHANGELOG.md              変更履歴
- dist/
-   index.html             UIの枠・DOM ID・スクリプト読み込み順
-   style.css              レイアウト・レスポンシブ・地図・種別表示
-   combat.js              CombatRules：副作用のないダメージ／魔法計算
-   game.js                定数データ・状態・進行・戦闘・表示・保存・操作
- tests/
-   game.test.cjs          Node.js標準ライブラリだけの検証
- docs/
-   HANDOFF.md             この文書
-   GAME_SPEC.md           ゲーム仕様
-   DEVELOPMENT.md         開発・検証・公開手順
- work/                    一時作業用（Git対象外）
+content/game.json          初期定義（固定ID付き）
+shared/                    定義/セーブ検証、純粋なゲーム計算
+server/                    共通API・Node SQLite開発サーバー・本番Worker
+ db/schema.ts              Drizzleスキーマ
+ drizzle/                  SQLマイグレーションと生成メタデータ
+ dist/                     既存フロント、bootstrap・cloud-save・admin/
+ scripts/                  定義同期・検証・Workerビルド
+ tests/                    定義、既存ゲーム、SQLite API、Playwright
+ .openai/hosting.json       既存Site IDとD1バインディング
+ build/                    生成Worker（Git対象外）
+ .local/                   通常開発用SQLite（Git対象外）
+ work/                     テストDB・一時検証（Git対象外）
 ```
 
-`dist/` が編集対象のソース兼配信物です。React、Phaser、TypeScript、Vite、アプリ実行用のnpm依存、DB、APIサーバーは使用していません。開発時は `@playwright/test` を使用します。描画はDOMとインラインSVG、効果音はWeb Audio APIです。外部リソースはGoogle Fontsのみで、フォールバックがあります。
+Node.js 24以上。npm run devでフロントとSQLite APIを起動します。本番は同じAPIをWorkers/D1で実行。フロントは引き続きHTML/CSS/プレーンJS/SVGです。Reactへの書き換えはしていません。
 
-`combat.js` と `game.js` はクラシックスクリプトです。前者の `CombatRules` を後者が参照するため、HTMLとテストの両方でこの順に読み込みます。`game.js` は読み込み時にイベントを登録して `render()` を実行します。
+bootstrap.jsが公開定義・キャッシュ・戦闘中の定義を選び、storage.js → combat.js → game.js → party.js → cloud-save.jsを順に起動します。dist/data.generated.js・dist/data/・dist/shared/は生成物で、content/とshared/を変更してnpm run content:syncします。
 
 ## 変更箇所の早見表
 
@@ -82,7 +79,7 @@ CHANGELOG.md              変更履歴
 ## 既知の制約・未検証事項
 
 - ローカルのアプリ内ブラウザで320/390/650/768/1024/1440pxの横あふれ、地図展開、探索・攻撃・ターン進行を確認。スマホ実機、音声、全機能の実ブラウザ検証は未実施です。
-- セーブはブラウザ・オリジン単位です。Sitesとlocalhost、別端末、別ブラウザでは共有しません。サーバー保存・同期・エクスポートはありません。
+- 自動保存はブラウザ・オリジン単位。別端末への移動はクラウド保存・復元を明示操作します。自動同期はしません。
 - ロード時のデータ検証は簡易的です。任意に破損・改変されたセーブ全般への堅牢性は保証していません。
 - 敵の応答待ち中に保存しますが、`busy` と待機処理は保存しません。途中で再読み込みした場合に、未解決の敵ターンまで厳密に再開する仕組みはありません。
 - モンスターの出現候補はエリア単位です。同じエリアの各探索ノードで同じ4種を等確率で抽選します。街ごとに商品は異なりますが、共通商品の価格差はありません。
@@ -130,7 +127,7 @@ PCのアプリ内ブラウザで公開版の防御・逃走・村への移動、
 
 通常戦・ボス戦とも敵は4体（ボス1体と通常敵3体）。対象ボタンで攻撃先を選び、倒れた場合は生存敵へ自動変更。戦闘不能者は行動せず、敵も生存者だけを攻撃します。主人公が倒れた場合は「こうげき」で仲間のラウンドを進められます。道具は主人公対象。攻撃スキルは敵、回復スキルは味方を選択し、宿屋では全員回復。勝利時は倒した全敵の報酬を1回ずつ獲得し、戦闘不能の仲間はHP1で復帰。全員が倒れたら既存の救助費で街へ戻り全員回復します。
 
-保存キーとv:2は維持。companions/enemiesを追加し、旧セーブは仲間3人を全回復で追加、戦闘中の旧敵は1体の隊列として継続します。ラウンド中の再読込は直前の確定ラウンドから再開（途中経過は保存しない）。
+保存キーとv:2は維持。companions/enemiesを追加し、旧セーブは仲間3人を全回復で追加、戦闘中の旧敵は1体の隊列として継続します。ラウンド中の再読込は直前の確定ラウンドから再開（途中経過は保存しない）。戦闘中の定義スナップショットは維持します。
 
 4対4公開記録：GitHub 001d937と同じ配信ファイルをSitesソース8843466ac4c1b7cf9c5b0ec5c0cb9b3645430b44へ反映。デプロイappgdep_6aec8decfe048191a5113b04d027e98eのsucceededを確認。Playwright全8件通過、所有者限定を維持。公開版の実操作・スマホ実機は未確認。
 
@@ -261,3 +258,9 @@ workspace.cssでは開いているshopMenuを持つコマンド欄だけ通常�
 既存の#locationをhiddenのspanからh2.location-titleへ変更。renderで街かつ戦闘/道中なしの場合だけ見せ、従来どおりcurrentNodeの名前を入れます。最新ログが宿泊成功の定型文で街にいる場合だけ#latestLogを空にし、#fieldMessageをhiddenにします。ログと保存形式は変えないため旧セーブにも反映され、購入などの新しい通知でメッセージ窓は再表示されます。
 
 workspace.cssの.field-message[hidden]でflex表示を確実に解除。低いスマホ幅では、街名と商品購入メッセージが重ならないよう店一覧の高さ上限を40dvhに調整します。
+
+## コンテンツ拡張向けバックエンド・DB
+
+最新構成は[BACKEND.md](BACKEND.md)を参照。静的アプリだけという以前の説明は旧構成。フロントは維持し、初期JSON・共通計算/検証・API・管理画面・SQLite/D1を追加した。起動はNode.js 24以上でnpm run dev。DB公開後は定義の正本がDBへ移り、下書き→検証→プレビュー→公開を使用する。
+
+保存キー/v:2とクリック送りは維持。クラウドは明示的なバックアップ/復元で、通常のローカル自動保存を置き換えない。管理プレビューの進行は隔離する。dist/data.generated.js、dist/data/、dist/shared/は生成物。変更はcontent/とshared/へ行いnpm run content:syncする。

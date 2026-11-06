@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {validate,legacy}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
+assert.deepEqual(validate(content),[]);assert.equal(legacy(content).bestiary[0].length,4);
+for(const change of [d=>d.monsters[0].id=d.monsters[1].id,d=>d.monsters[0].zoneId='missing',d=>d.nodes[0].links=['dragon'],d=>d.shops[0].itemIds=['missing'],d=>d.skills[0].effects[0].type='eval',d=>d.monsters[0].name='<img src=x>',d=>d.monsters[0].hp=-1,d=>d.rarities[0].rate=2]){const altered=structuredClone(content);change(altered);assert.ok(validate(altered).length);}
+const c={Math};vm.createContext(c);vm.runInContext(fs.readFileSync('dist/combat.js','utf8')+';this.rules=CombatRules',c);
+assert.equal(rules.skillAmount(content.skills[0],{wisdom:18,attack:10,defense:1},c.rules),42);
+assert.equal(rules.enemy(content,0,true).id,'grass_guardian');assert.equal(rules.travelEvent(content.rules.travel,false,.29),'battle');
+const state={lv:1,weapon:'twig',armor:'cloth'};assert.equal(rules.stats(state,content).maxHP,80);
+console.log('PASS: content IDs, references, links, effects, numeric ranges, HTML rejection and pure game rules');
+
+const expanded=structuredClone(content);expanded.characters.push({...expanded.characters[0],id:'new_hero',name:'新しい仲間'});expanded.zones.push({...expanded.zones[0],id:'new_zone',bossId:'new_boss'});expanded.monsters.push({...expanded.monsters[0],id:'new_monster',zoneId:'new_zone'},{...expanded.monsters.find(m=>m.boss),id:'new_boss',zoneId:'new_zone'});expanded.items.push({...expanded.items[0],id:'new_sword'});expanded.nodes.push({id:'new_node',name:'新しい地点',zoneId:'new_zone',x:50,y:50,links:['home']});expanded.nodes[0].links.push('new_node');assert.deepEqual(validate(expanded),[]);assert.equal(legacy(expanded).zones.length,4);assert.ok(legacy(expanded).gear.new_sword);console.log('PASS: additional characters, areas, monsters, items and bidirectional map nodes are data-only changes');

@@ -6,3 +6,8 @@ work/
 /playwright-report/
 /playwright/.cache/
 /blob-report/
+
+.local/
+build/
+server/assets.generated.mjs
+.wrangler/

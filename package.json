@@ -3,12 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node tests/game.test.cjs",
+    "test": "node tests/content.test.cjs && node tests/game.test.cjs && node tests/backend/api.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "dev": "node server/dev.mjs",
+    "content:sync": "node scripts/sync-content.cjs",
+    "content:check": "node scripts/check-content.cjs",
+    "db:generate": "drizzle-kit generate",
+    "build": "node scripts/build.cjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "drizzle-kit": "^0.31.11",
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.4"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

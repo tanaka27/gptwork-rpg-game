@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 test('初期画面、素材画像、4画面切替、ビューポート内表示', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
   await expect(page.locator('#location')).toHaveText('風そよぐ草原');
   await expect(page.locator('#location')).toBeHidden();
@@ -49,7 +49,7 @@ test('初期画面、素材画像、4画面切替、ビューポート内表示'
 });
 
 test('探索から攻撃で敵ターンへ進み、再読込で進行を保持する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="explore"]').click();
   await expect(page.locator('[data-action="attack"]')).toBeVisible();
   await page.locator('[data-action="attack"]').click();
@@ -58,7 +58,7 @@ test('探索から攻撃で敵ターンへ進み、再読込で進行を保持�
   await expect(page.locator('#turn')).toContainText('2');
   const save = await page.evaluate(() => localStorage.getItem('starlight-rpg-v1'));
   expect(JSON.parse(save).turn).toBe(2);
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('[data-action="attack"]')).toBeVisible();
   await expect(page.locator('#turn')).toContainText('2');
   expect(await page.evaluate(() => localStorage.getItem('starlight-rpg-v1'))).toBe(save);
@@ -67,7 +67,7 @@ test('探索から攻撃で敵ターンへ進み、再読込で進行を保持�
 test('街のお店をその場で開き、品揃え・購入・戻るを操作する', async ({ page }) => {
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-screen="bag"]').click();
   await expect(page.locator('#screen-bag [data-tab]')).toHaveCount(3);
   await expect(page.locator('[data-tab="shop"]')).toHaveCount(0);
@@ -83,7 +83,7 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
       Object.assign(save, { node, zone, village: true, enemy: null, journey:null, gold: 1000, cleared: [true, true, false] });
       localStorage.setItem('starlight-rpg-v1', JSON.stringify(save));
     }, { node, zone });
-    await page.reload();
+    await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
     await page.locator('[data-action="shop"]').click();
     await expect(page.locator('#screen-adventure')).toBeVisible();
     await expect(page.locator('#screen-bag')).toBeHidden();
@@ -111,7 +111,7 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
     await expect(page.locator('[data-action="shop"]')).toBeFocused();
   }
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));save.gold=0;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
-  await page.reload();await page.locator('[data-action="shop"]').click();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await page.locator('[data-action="shop"]').click();
   for(const button of await page.locator('#shopItems [data-action^="buy:"]').all())await expect(button).toBeDisabled();
   await page.locator('[data-screen="bag"]').click();
   await expect(page.locator('#shopMenu')).toBeHidden();
@@ -128,7 +128,7 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
 
 
 test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="explore"]').click();
   await expect(page.locator('.party-member')).toHaveCount(4);
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
@@ -145,7 +145,7 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
   expect(saved.lastRoundOrder.length).toBeGreaterThan(4);
   expect(saved.companions).toHaveLength(3);
   expect(saved.enemies).toHaveLength(4);
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
   await page.screenshot({path: test.info().outputPath('party-battle.png')});
 });
@@ -153,9 +153,9 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
 
 
 test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));save.companions[0].hp=0;save.companions[1].hp=31;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('.screen-nav button')).toHaveCount(5);
   await page.getByRole('button',{name:'仲間',exact:true}).click();
   await expect(page.locator('#screen-party')).toBeVisible();
@@ -184,7 +184,7 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
 
 
 test('主人公単独の状態欄を削除し、4人の状態は冒険タブだけに表示される', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   for(const screen of ['adventure','map','bag','party','record','adventure']){
     await page.locator(`.screen-nav [data-screen="${screen}"]`).click();
     await expect(page.locator('.player-strip')).toHaveCount(0);
@@ -206,7 +206,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.addInitScript(()=>{Math.random=()=>.99;});
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-screen="map"]').click();
   await page.locator('#regions [data-action="move:home"]').click();
   await expect(page.locator('#screen-adventure')).toBeVisible();
@@ -220,7 +220,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   expect(saved.node).toBe('meadow');
   expect(saved.journey.step).toBe(1);
   expect(Object.values(saved.materials).reduce((a,b)=>a+b,0)).toBe(1);
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('#travelProgress')).toContainText('道中 1 / 3');
   await page.locator('[data-screen="map"]').click();
   await expect(page.locator('#networkMap .travel-road')).toHaveCount(1);
@@ -233,7 +233,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
   await expect(page.locator('#travelProgress')).toContainText('道中 3 / 3');
   await expect(page.locator('[data-action="travel-next"]')).toHaveCount(0);
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
   await page.evaluate(()=>{Math.random=()=>0;});
   await page.locator('[data-action="items"]').click();
@@ -246,13 +246,13 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
 });
 
 test('スキル一覧・詳細から上部の味方や敵をクリックして発動する', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.evaluate(()=>{
     const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
     Object.assign(save,{lv:3,hp:114,mp:28});save.companions[0].hp=1;save.companions[1].hp=0;
     localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-screen="bag"]').click();await page.locator('[data-tab="skills"]').click();
   await page.locator('[data-action="skill:heal"]').click();
   await expect(page.locator('#screen-adventure')).toBeVisible();
@@ -277,7 +277,7 @@ test('スキル一覧・詳細から上部の味方や敵をクリックして�
     save.enemies.forEach((e,i)=>{e.name='対象'+i;e.hp=1000;e.max=1000;e.atk=0;});save.enemy=save.enemies[0];
     localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="skills"]').click();
   await expect(page.locator('#actions')).toBeHidden();await expect(page.locator('.skill-list')).toBeVisible();
   await page.locator('[data-action="skill-back"]').click();await expect(page.locator('[data-action="attack"]')).toBeVisible();
@@ -294,9 +294,9 @@ test('スキル一覧・詳細から上部の味方や敵をクリックして�
 });
 
 test('横向きでもスキル一覧・詳細と戻るが画面内に収まる', async ({ page }) => {
-  await page.setViewportSize({width:844,height:390});await page.goto('/');
+  await page.setViewportSize({width:844,height:390});await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(save,{lv:7,hp:182,mp:44});save.companions[0].hp=1;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
-  await page.reload();await page.locator('[data-action="explore"]').click();await page.locator('[data-action="skills"]').click();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await page.locator('[data-action="explore"]').click();await page.locator('[data-action="skills"]').click();
   await expect(page.locator('.skill-list button')).toHaveCount(4);
   for(const selector of ['#skillMenu','[data-action="skill-back"]']){
     const b=await page.locator(selector).boundingBox();expect(b.x).toBeGreaterThanOrEqual(0);expect(b.y).toBeGreaterThanOrEqual(0);expect(b.x+b.width).toBeLessThanOrEqual(844);expect(b.y+b.height).toBeLessThanOrEqual(390);
@@ -307,7 +307,7 @@ test('横向きでもスキル一覧・詳細と戻るが画面内に収まる',
 });
 
 test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を付ける', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="explore"]').click();
   await expect(page.locator('#enemy .enemy-hp')).toHaveCount(4);
   for(const style of await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({background:getComputedStyle(n).backgroundColor,border:getComputedStyle(n).borderTopWidth,text:n.innerText})))){
@@ -334,7 +334,7 @@ test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を
     save.enemies[1].hp=save.enemies[1].max/2;save.lv=3;save.hp=114;save.mp=28;
     localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page.locator('[data-target="1"] .enemy-hp')).toHaveAttribute('aria-valuenow','50');
   expect(await page.locator('[data-target="1"] .enemy-hp i').evaluate(n=>n.style.width)).toBe('50%');
   await page.locator('[data-action="skills"]').click();
@@ -354,7 +354,7 @@ test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を
 
 
 test('戦闘メッセージはクリックするまで進まず、キーボードでも送れる', async ({page})=>{
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="explore"]').click();
   const save=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
   await page.locator('[data-action="attack"]').click();
@@ -378,9 +378,9 @@ test('戦闘メッセージはクリックするまで進まず、キーボー�
 
 
 test('行動開始を送るまでHPは変わらず、結果を送るまで次の攻撃を反映しない', async ({page})=>{
-  await page.goto('/');await page.locator('[data-action="explore"]').click();
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await page.locator('[data-action="explore"]').click();
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));save.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=1000;e.max=1000;e.atk=20;e.def=0;});save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   const hpView=()=>page.locator('#enemy .enemy-hp').evaluateAll(nodes=>nodes.map(n=>({text:n.innerText,html:n.innerHTML,value:n.getAttribute('aria-valuenow')})));
   const view=async()=>({allies:await page.locator('#partyStatus').innerHTML(),bars:await hpView()});
   let previous=await view();
@@ -405,7 +405,7 @@ test('行動開始を送るまでHPは変わらず、結果を送るまで次の
 test('行動待機で生存中の敵を薄くせず、攻撃を送った時だけ倒れた敵を薄くする', async ({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
   await expect(page).toHaveURL('http://127.0.0.1:4173/');
   await page.locator('[data-action="explore"]').click();
@@ -414,7 +414,7 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
     save.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=i===0?1:1000;e.max=e.hp;e.atk=0;e.def=0;});
     save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   const target=page.locator('[data-target="0"]');
   await expect(target).toHaveCSS('opacity','1');
   await page.locator('[data-action="attack"]').click();
@@ -443,7 +443,7 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await readBattleRound(page);
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(save,{lv:3,hp:114,mp:28});save.companions[0].hp=1;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
-  await page.reload();
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.locator('[data-action="skills"]').click();
   await page.locator('[data-action="skill:heal"]').click();
   await expect(page.locator('#skillDetail')).toBeVisible();
@@ -457,7 +457,7 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
 test('街名を上部に表示し、宿泊の成功メッセージを街の画面に残さない', async ({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
-  await page.goto('/');
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   for(const [node,zone,name] of [['home',0,'はじまりの村'],['luna',1,'月見の街ルナ'],['forge',2,'鍛冶の街ヴァル']]){
     await page.evaluate(({node,zone})=>{
       const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
@@ -466,7 +466,7 @@ test('街名を上部に表示し、宿泊の成功メッセージを街の画�
       save.log.unshift('宿屋でひと休み。HP・MPが全回復！');
       localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
     },{node,zone});
-    await page.reload();
+    await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
     const title=page.locator('.arena #location');
     await expect(title).toBeVisible();await expect(title).toHaveText(name);
     expect(await title.evaluate(node=>!!node.closest('.field-message'))).toBe(false);
@@ -478,7 +478,7 @@ test('街名を上部に表示し、宿泊の成功メッセージを街の画�
     expect(saved.hp).toBe(80);expect(saved.mp).toBe(20);expect(saved.gold).toBe(990);
     expect(saved.companions.every(c=>c.hp===80&&c.mp===20)).toBe(true);
     await page.screenshot({path:test.info().outputPath('town-'+node+'.png')});
-    await page.reload();await expect(title).toBeVisible();await expect(page.locator('#fieldMessage')).toBeHidden();
+    await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await expect(title).toBeVisible();await expect(page.locator('#fieldMessage')).toBeHidden();
     await page.locator('[data-action="shop"]').click();
     await expect(title).toBeVisible();
     await page.locator('[data-action="buy:herb"]').click();

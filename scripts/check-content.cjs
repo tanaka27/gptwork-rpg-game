@@ -1,0 +1,1 @@
+const {validate}=require('../shared/content.js');const data=require('../content/game.json');const errors=validate(data);if(errors.length){console.error(errors.join('\n'));process.exit(1);}console.log('Game content validation passed');

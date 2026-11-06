@@ -13,6 +13,8 @@ function boot(saved = null, party = false, manualMessages = false) {
   };
   context.Math.random = () => .5;
   vm.createContext(context);
+  context.GameData=JSON.parse(fs.readFileSync('content/game.json','utf8'));
+  for(const file of ['shared/content.js','shared/rules.js','dist/storage.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
   vm.runInContext(fs.readFileSync('dist/combat.js','utf8'),context);
   vm.runInContext(source, context);
   // Existing progression tests traverse real, uneventful three-step routes.
@@ -383,6 +385,10 @@ function boot(saved = null, party = false, manualMessages = false) {
   townReload.run("state.cleared=[true,true,false];moveTo('ash')");
   assert.equal(townReload.nodes.location.hidden,true,'town title is hidden on the road');
   assert.equal(townReload.nodes.fieldMessage.hidden,false,'travel messages stay visible');
+  const reordered=JSON.parse(townHeading.storage['starlight-rpg-v1']);
+  reordered.zoneIds=['volcano','grassland','moon_ruins'];reordered.kills=[7,2,3];reordered.cleared=[false,true,true];
+  const ordered=boot(JSON.stringify(reordered),true);
+  assert.equal(ordered.run('JSON.stringify(state.kills)'),JSON.stringify([2,3,7]),'zone progress follows stable IDs after reordering');
   const shops = boot();
   const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather'],forge:['herb','ether','potion','star','moon']};
   for (const [town, ids] of Object.entries(expectedStock)) {

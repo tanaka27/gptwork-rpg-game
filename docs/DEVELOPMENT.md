@@ -93,7 +93,7 @@ git status --short
 | --- | --- |
 | Site URL | https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site |
 | Site project ID | `appgprj_6aeacfc3f1d48191ad3e20c469ba6c1c` |
-| 配信形式 | 静的ファイル、公開ディレクトリ `dist` |
+| 配信形式 | Worker ESM + D1（フロント素材をWorkerへ同梱） |
 | 最後に確認した閲覧範囲 | 所有者限定（custom、所有者のみ） |
 | これまでのGitHub作業ディレクトリ | `/workspace/gptwork-rpg-game` |
 | これまでのSites作業ディレクトリ | `/workspace/sites/starlight-rpg` |
@@ -129,7 +129,7 @@ workspace.cssも配信対象に含めます。UI確認は横幅だけでなく32
 
 ## Playwrightによるブラウザ検証
 
-開発用の追加依存として `@playwright/test` を使用します。Node.js 20以上・npm・Python 3が必要です。ゲームの実行・Sites配信にはnpmもビルドも不要です。
+開発用の追加依存として `@playwright/test` を使用します。Node.js 24以上・npm・Python 3が必要です。ゲームの実行・Sites配信にはnpmもビルドも不要です。
 
 ```sh
 npm ci
@@ -223,3 +223,13 @@ Playwright（既存Chromium）でE2E全26件が通過（53.2秒）。同じシ�
 npm testに3街の見出し、宿泊成功メッセージの抑止、全員回復/支払、旧ログの再読込、購入案内と道中表示の維持を追加。Playwrightでは3街を順に開き、上部見出しがメッセージ窓の外にあること、宿泊後/再読込後も表示、購入案内とは非重複、道中へ出ると非表示となることを検証します。
 
 既存Chromiumで全E2E28件が通過（59.5秒）。同じケースを1440×900・390×844・320×568・844×390で実行し、追加4件も通過（14.5秒）。PC/スマホ幅のスクリーンショットを目視確認。アプリ由来のJS/consoleエラーなし（意図的に遮断した外部フォントの通信エラーは除外）。スマートフォン実端末は未確認です。
+
+## バックエンド導入後の起動・検証・公開
+
+最新の構成とAPIは[BACKEND.md](BACKEND.md)。Node.js 24以上でnpm ci、npm run content:sync、npm run devを実行する。ローカルAPIはSQLiteを使用するため、これ以前のPython静的サーバーはAPI検証には使わない。
+
+定義検証・既存ゲーム・SQLite APIはnpm test。ブラウザ検証はPLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=1。公開版を書き換える管理テストを含むため、専用DBを使用し順に実行する。生成物の同期後にnpm run buildし、build/.openai/hosting.json・build/server/index.js・build/drizzle/をパッケージ化する。Sitesソースへアプリだけでなくcontent/shared/server/db/drizzle/scripts/packageファイルとmanifestも同期する。
+
+新しいmanifestは同じproject_idを保持し、static設定を外してD1を宣言する。所有者IDはSitesのOWNER_ID環境変数で設定し、値をソースへ埋め込まない。ローカルDBやwork/、生成Worker、認証情報はコミットしない。
+
+今回の最終確認は、既存ゲームと管理/クラウドのPlaywright全34件、1440×900・390×844・320×568・844×390の追加12件が通過。Node側は既存ゲーム/コンテンツ検証に加えてSQLite API7ケースが通過。生成Workerからゲーム・管理画面・画像・定義JSONを配信できることも確認した。本番DB/Workerの反映結果は公開時に別途確認する。

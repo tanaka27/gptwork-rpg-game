@@ -1,0 +1,10 @@
+(function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.GameRules=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
+'use strict';
+function stats(state,data){const g=data.rules.growth,level=state.lv-1,weapon=data.items.find(e=>e.id===state.weapon),armor=data.items.find(e=>e.id===state.armor);return {maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,threshold:g.baseExperience+state.lv*g.experiencePerLevel};}
+function enemy(data,zone,boss,rng=Math.random){const area=data.zones[zone];const pool=data.monsters.filter(e=>e.zoneId===area.id&&!e.boss);const template=boss?data.monsters.find(e=>e.id===area.bossId):pool[Math.floor(rng()*pool.length)];return {...template,hp:template.hp,max:template.hp,boss:!!boss};}
+function loot(data,enemy,zone){const template=data.monsters.find(e=>e.id===enemy.id||e.name===enemy.name);const fallback=data.monsters.find(e=>e.zoneId===data.zones[zone].id);return (template||fallback).drops.map(id=>({id,rate:data.rarities.find(r=>r.id===data.materials.find(m=>m.id===id).rarity).rate}));}
+function effectAmount(effect,context,combat){switch(effect.type){case'physicalDamage':return combat.physicalDamage({attack:context.attack,defense:context.defense,power:effect.power,roll:context.roll});case'magicDamage':case'magicHeal':return combat.magicAmount(context.wisdom,effect);case'restoreHP':return effect.full?context.maxHP:effect.amount;case'restoreMP':return effect.full?context.maxMP:effect.amount;default:throw new Error('未対応の効果: '+effect.type);}}
+function skillAmount(skill,context,combat){return skill.effects.reduce((total,effect)=>total+effectAmount(effect,context,combat),0);}
+function travelEvent(rules,fought,roll){if(!fought&&roll<rules.battleRate)return 'battle';if(roll<(fought?rules.materialRate:rules.battleRate+rules.materialRate))return 'material';return 'none';}
+return {stats,enemy,loot,effectAmount,skillAmount,travelEvent};
+});
