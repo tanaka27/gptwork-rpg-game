@@ -136,3 +136,11 @@ dialog { background:#17232d; border-color:#596c70; padding:24px; max-height:calc
 #enemy,#enemy:has(.enemy-unit){inset:8px 0 calc(var(--field-message-height) + 24px);width:auto;min-height:0}
 @media(max-height:680px){#enemy,#enemy:has(.enemy-unit){inset:4px 0 calc(var(--field-message-height) + 16px)}}
 @media(max-height:540px) and (min-width:600px){#enemy .enemy-unit svg{height:48px}.enemy-unit{font-size:9px}}
+
+#skillTargetDialog{width:min(420px,calc(100vw - 32px))}
+#skillTargetDialog h2{margin:0 0 8px;font-size:18px}
+#skillTargets{display:grid;gap:8px;margin:16px 0}
+#skillTargets button{width:100%;min-height:44px;padding:10px 12px;text-align:left}
+#skillTargetDialog>button{min-height:40px;padding:8px 14px}
+.skill-target-note{font-size:12px;color:var(--muted)}
+#skillTargetDialog::backdrop{background:#0009}

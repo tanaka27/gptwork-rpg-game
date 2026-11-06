@@ -200,3 +200,46 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test('スキルの対象を選び、味方を回復・敵を攻撃する', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(()=>{
+    const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    Object.assign(save,{lv:3,hp:114,mp:28});
+    save.companions[0].hp=1;save.companions[1].hp=0;
+    localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+  });
+  await page.reload();
+  await page.locator('[data-screen="bag"]').click();
+  await page.locator('[data-tab="skills"]').click();
+  await page.locator('[data-action="skill:heal"]').click();
+  await expect(page.locator('#skillTargetDialog')).toBeVisible();
+  await expect(page.locator('[data-action="cast:heal:0"]')).toBeDisabled();
+  await expect(page.locator('[data-action="cast:heal:1"]')).toBeEnabled();
+  await expect(page.locator('[data-action="cast:heal:2"]')).toBeDisabled();
+  await page.locator('[data-action="cancel-skill"]').click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).mp)).toBe(28);
+  await page.locator('[data-action="skill:heal"]').click();
+  await page.locator('[data-action="cast:heal:1"]').click();
+  await expect(page.locator('#skillTargetDialog')).toBeHidden();
+  let saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
+  expect(saved.companions[0].hp).toBe(53);expect(saved.hp).toBe(114);expect(saved.mp).toBe(23);
+  await page.locator('[data-screen="adventure"]').click();
+  await page.locator('[data-action="explore"]').click();
+  await page.evaluate(()=>{
+    const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    save.enemies.forEach((e,i)=>{e.name='対象'+i;e.hp=1000;e.max=1000;e.atk=0;});
+    save.enemy=save.enemies[0];
+    localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+  });
+  await page.reload();
+  await page.locator('[data-action="skills"]').click();
+  await page.locator('[data-action="skill:flame"]').click();
+  await expect(page.locator('#skillTargetDialog')).toBeVisible();
+  await expect(page.locator('#skillTargets button')).toHaveCount(4);
+  await page.locator('[data-action="cast:flame:2"]').click();
+  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
+  saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
+  expect(saved.enemies[0].hp).toBe(1000);expect(saved.enemies[2].hp).toBeLessThan(1000);
+  expect(saved.mp).toBe(19);expect(saved.turn).toBe(2);
+});

@@ -21,6 +21,77 @@ function boot(saved = null, party = false) {
   return {run:code=>vm.runInContext(code,context), nodes, storage};
 }
 (async () => {
+  const healingTargets=boot(null,true);
+  healingTargets.run('state.lv=3;state.hp=maxhp();state.mp=maxmp();state.companions[0].hp=1;state.companions[1].hp=0;render()');
+  const beforeTargetChoice=healingTargets.storage['starlight-rpg-v1'];
+  healingTargets.run("useSkill('heal')");
+  assert.equal(healingTargets.run('pendingSkill.id'),'heal');
+  assert.ok(healingTargets.nodes.skillTargets.innerHTML.includes('cast:heal:1'));
+  assert.equal(healingTargets.storage['starlight-rpg-v1'],beforeTargetChoice,'choosing a skill does not consume anything');
+  healingTargets.run("action('cancel-skill')");
+  assert.equal(healingTargets.run('pendingSkill'),null);
+  assert.equal(healingTargets.storage['starlight-rpg-v1'],beforeTargetChoice,'cancel preserves HP, MP and turn');
+  healingTargets.run("useSkill('heal');action('cast:heal:2')");
+  assert.equal(healingTargets.run('state.companions[1].hp'),0,'healing cannot revive');
+  assert.equal(healingTargets.run('state.mp'),28,'invalid cast consumes no MP');
+  healingTargets.run("action('cast:heal:0')");
+  assert.equal(healingTargets.run('state.mp'),28,'full HP cannot consume MP');
+  healingTargets.run("action('cast:heal:1')");
+  assert.equal(healingTargets.run('state.companions[0].hp'),53,'chosen companion receives wisdom-scaled healing');
+  assert.equal(healingTargets.run('state.hp'),114,'caster HP remains unchanged');
+  assert.equal(healingTargets.run('state.mp'),23,'caster pays MP exactly once');
+  assert.equal(healingTargets.run('state.turn'),1,'field healing does not consume a battle turn');
+  for(const index of [-1,4,1.5,NaN]){
+    assert.equal(healingTargets.run(`useSkill('heal',${index})`),false,'invalid ally index');
+  }
+  healingTargets.run("state.node='home';state.village=true;state.companions[0].hp=maxhp()-1;useSkill('heal',1)");
+  assert.equal(healingTargets.run('state.companions[0].hp'),114,'town healing caps at maximum HP');
+  healingTargets.run("moveTo('meadow');state.companions[0].hp=1;useSkill('heal',1)");
+  assert.equal(healingTargets.run('state.journey.step'),0,'road healing does not advance the journey');
+  assert.equal(healingTargets.run('state.companions[0].hp'),53);
+  const healedSave=boot(healingTargets.storage['starlight-rpg-v1'],true);
+  assert.equal(healedSave.run('state.companions[0].hp'),53,'target HP persists');
+  assert.equal(healedSave.run('pendingSkill'),null,'selection UI is not saved');
+  const setupSkillBattle=app=>app.run("state.lv=7;state.hp=maxhp();state.mp=maxmp();startBattle();state.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=10000;e.max=10000;e.atk=0;e.def=0;});render()");
+  for(const id of ['flame','slash','nova']){
+    const targeted=boot(null,true);setupSkillBattle(targeted);
+    targeted.run(`useSkill('${id}')`);
+    assert.ok(targeted.nodes.skillTargets.innerHTML.includes('cast:'+id+':3'));
+    assert.equal(targeted.run('state.turn'),1);
+    const cost=targeted.run(`skillList.find(s=>s.id==='${id}').cost`);
+    await targeted.run(`action('cast:${id}:2')`);
+    assert.ok(targeted.run(`state.log.some(t=>t.includes('の'+skillList.find(s=>s.id==='${id}').name+'！ 敵2に'))`),'attack skill hits selected enemy');
+    assert.equal(targeted.run('state.enemies[0].hp'),10000,'unselected enemies remain unharmed');
+    assert.equal(targeted.run('state.mp'),44-cost);
+    assert.equal(targeted.run('state.turn'),2,'confirmed cast advances one round');
+    assert.equal(targeted.run(`useSkill('${id}',99)`),false);
+  }
+  const battleHeal=boot(null,true);setupSkillBattle(battleHeal);
+  battleHeal.run('state.companions[0].hp=1');
+  await battleHeal.run("useSkill('heal',1)");
+  assert.equal(battleHeal.run('state.companions[0].hp'),77,'battle healing targets the chosen companion');
+  assert.equal(battleHeal.run('state.hp'),182);
+  assert.equal(battleHeal.run('state.mp'),39);
+  assert.equal(battleHeal.run('state.turn'),2);
+  const lostTarget=boot(null,true);setupSkillBattle(lostTarget);
+  lostTarget.run('state.companions[0].hp=1;state.enemies[0].speed=100;state.enemies[0].atk=100;Math.random=()=>.3');
+  await lostTarget.run("useSkill('heal',1)");
+  assert.equal(lostTarget.run('state.companions[0].hp'),0,'target can fall before caster acts');
+  assert.equal(lostTarget.run('state.mp'),44,'failed healing during a round consumes no MP');
+  const fallbackTarget=boot(null,true);setupSkillBattle(fallbackTarget);
+  fallbackTarget.run('state.enemies[2].hp=1');
+  await fallbackTarget.run("useSkill('flame',2)");
+  assert.ok(fallbackTarget.run("state.log.some(t=>t.includes('の火花の魔法！ 敵0に'))"),'attack retargets if a faster companion defeats chosen enemy');
+  const unavailable=boot(null,true);setupSkillBattle(unavailable);
+  unavailable.run('state.mp=0');
+  assert.equal(unavailable.run("useSkill('heal')"),false);
+  unavailable.run('state.mp=maxmp();state.hp=0');
+  assert.equal(unavailable.run("useSkill('flame')"),false,'fallen caster cannot choose a spell');
+  unavailable.run('state.hp=maxhp();busy=true');
+  assert.equal(unavailable.run("useSkill('flame')"),false,'busy state blocks selection');
+  unavailable.run('busy=false;state.lv=1');
+  assert.equal(unavailable.run("useSkill('flame')"),false,'locked skill cannot open selection');
+  console.log('PASS: skill target selection/cancel, enemy targeting for all attack skills, ally healing in battle/town/road, target validity and death-before-cast, MP/turn guards and persistence');
   // Travel must gate arrival, town services and encounters, including after reload.
   const travel=boot(null,true);
   assert.equal(travel.run("moveTo('home')"),true);
