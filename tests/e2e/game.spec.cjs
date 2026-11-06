@@ -11,6 +11,15 @@ test('初期画面、素材画像、4画面切替、ビューポート内表示'
   await page.goto('/');
   await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
   await expect(page.locator('#location')).toHaveText('風そよぐ草原');
+  await expect(page.locator('#location')).toBeHidden();
+  await expect(page.locator('.scene-description')).toHaveCount(0);
+  await expect(page.locator('.arena .field-message #latestLog')).toBeVisible();
+  const field=await page.locator('.arena').boundingBox();
+  const message=await page.locator('.field-message').boundingBox();
+  expect(message.x).toBeGreaterThanOrEqual(field.x);
+  expect(message.y).toBeGreaterThanOrEqual(field.y);
+  expect(message.x+message.width).toBeLessThanOrEqual(field.x+field.width);
+  expect(message.y+message.height).toBeLessThanOrEqual(field.y+field.height);
   for (const asset of ['meadow.png', 'village.png']) {
     expect(await page.evaluate(async name => {
       const image = new Image();
@@ -83,6 +92,8 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
   await expect(page.locator('#battleOrder')).toContainText('リナ');
   const units=await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({box:n.getBoundingClientRect().toJSON(),svg:n.querySelector('svg').getBoundingClientRect().toJSON()})));
   for(const u of units) expect(u.svg.width).toBeLessThanOrEqual(u.box.width);
+  const message=await page.locator('.field-message').boundingBox();
+  for(const u of units) expect(u.box.bottom).toBeLessThanOrEqual(message.y);
   await page.locator('[data-action="guard"]').click();
   await expect(page.locator('[data-action="guard"]')).toBeEnabled();
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
@@ -156,7 +167,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   await page.locator('#regions [data-action="move:home"]').click();
   await expect(page.locator('#screen-adventure')).toBeVisible();
   await expect(page.locator('#location')).toHaveText('風そよぐ草原 → はじまりの村');
-  await expect(page.locator('#sceneCaption')).toContainText('道中 0 / 3');
+  await expect(page.locator('#travelProgress')).toContainText('道中 0 / 3');
   await expect(page.locator('[data-action="rest"]')).toHaveCount(0);
   await page.evaluate(()=>{Math.random=()=>.4;});
   await page.locator('[data-action="travel-next"]').click();
@@ -166,7 +177,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   expect(saved.journey.step).toBe(1);
   expect(Object.values(saved.materials).reduce((a,b)=>a+b,0)).toBe(1);
   await page.reload();
-  await expect(page.locator('#sceneCaption')).toContainText('道中 1 / 3');
+  await expect(page.locator('#travelProgress')).toContainText('道中 1 / 3');
   await page.locator('[data-screen="map"]').click();
   await expect(page.locator('#networkMap .travel-road')).toHaveCount(1);
   await expect(page.locator('#regions button:enabled')).toHaveCount(0);
@@ -176,7 +187,7 @@ test('地図から3工程の道中へ出発し、素材・戦闘・保存再開�
   await page.evaluate(()=>{Math.random=()=>0;});
   await page.locator('[data-action="travel-next"]').click();
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
-  await expect(page.locator('#sceneCaption')).toContainText('道中 3 / 3');
+  await expect(page.locator('#travelProgress')).toContainText('道中 3 / 3');
   await expect(page.locator('[data-action="travel-next"]')).toHaveCount(0);
   await page.reload();
   await expect(page.locator('.enemy-unit')).toHaveCount(4);

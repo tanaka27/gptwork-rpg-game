@@ -29,7 +29,7 @@ function boot(saved = null, party = false) {
   assert.equal(travel.run("moveTo('grove')"),false,'cannot replace a route in progress');
   assert.equal(travel.run('state.journey.step'),0);
   assert.ok(travel.nodes.actions.innerHTML.includes('travel-next'));
-  assert.ok(travel.nodes.sceneCaption.innerHTML.includes('0 / 3'));
+  assert.ok(travel.nodes.travelProgress.textContent.includes('0 / 3'));
   travel.run("action('explore');action('boss')");
   assert.equal(travel.run('state.enemy'),null,'exploration and boss commands cannot bypass travel');
   travel.run('Math.random=()=>.99;advanceTravel()');
