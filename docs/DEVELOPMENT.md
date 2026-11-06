@@ -187,3 +187,6 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 ## 戦闘メッセージの検証（2026-11-06）
 
 npm testにクリック待機・自動送りなし・二重入力・Enter/スペース・キーリピート・busy中の保存抑止・4敵の個別報酬表示を追加。既存ロジック検証では待機関数だけを即時解決し、専用ケースは実際のresolverを操作します。E2Eは各ラウンドでメッセージ窓を操作するよう更新し、600ms経過しても自動で進まないケースを追加。今回の環境はSites指定のcua_repl.jsが未提供のため、スキルの規定に従いブラウザQAは未実施。
+
+
+今回の環境はSitesのsite-workflow.mjsも未配置でした。既存Siteの認証を標準入力からメモリだけに取り込み、通常Gitで既存ソースをclone/pushし、manifestとdistをtar.gzへ格納しました。GitHubのdistとの全ファイル一致を確認しています。認証はファイルへ保存しません。デプロイの`no healthy upstream`は保存済みアーカイブの保存成功後に発生した基盤エラーです。復旧後はHANDOFFの保存済みversion_idから再開してください。
