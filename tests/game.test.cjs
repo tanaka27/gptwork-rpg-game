@@ -23,13 +23,21 @@ function boot(saved = null, party = false) {
 (async () => {
   const healingTargets=boot(null,true);
   healingTargets.run('state.lv=3;state.hp=maxhp();state.mp=maxmp();state.companions[0].hp=1;state.companions[1].hp=0;render()');
+  healingTargets.run("action('skills')");
+  assert.equal(healingTargets.nodes.actions.hidden,true);
+  assert.ok(healingTargets.nodes.skillMenu.innerHTML.includes('skill:heal'));
+  healingTargets.run("action('skill-back')");
+  assert.equal(healingTargets.nodes.actions.hidden,false);
   const beforeTargetChoice=healingTargets.storage['starlight-rpg-v1'];
   healingTargets.run("useSkill('heal')");
   assert.equal(healingTargets.run('pendingSkill.id'),'heal');
-  assert.ok(healingTargets.nodes.skillTargets.innerHTML.includes('cast:heal:1'));
+  assert.ok(healingTargets.nodes.partyStatus.innerHTML.includes('data-ally-target="1"'));
+  assert.ok(healingTargets.nodes.skillMenu.innerHTML.includes('skillDetail'));
+  assert.equal(healingTargets.nodes.actions.hidden,true);
   assert.equal(healingTargets.storage['starlight-rpg-v1'],beforeTargetChoice,'choosing a skill does not consume anything');
   healingTargets.run("action('cancel-skill')");
   assert.equal(healingTargets.run('pendingSkill'),null);
+  assert.equal(healingTargets.nodes.actions.hidden,false);
   assert.equal(healingTargets.storage['starlight-rpg-v1'],beforeTargetChoice,'cancel preserves HP, MP and turn');
   healingTargets.run("useSkill('heal');action('cast:heal:2')");
   assert.equal(healingTargets.run('state.companions[1].hp'),0,'healing cannot revive');
@@ -56,10 +64,13 @@ function boot(saved = null, party = false) {
   for(const id of ['flame','slash','nova']){
     const targeted=boot(null,true);setupSkillBattle(targeted);
     targeted.run(`useSkill('${id}')`);
-    assert.ok(targeted.nodes.skillTargets.innerHTML.includes('cast:'+id+':3'));
+    assert.ok(targeted.nodes.enemy.innerHTML.includes('data-target="3"'));
+    assert.ok(targeted.nodes.skillMenu.innerHTML.includes('skillDetail'));
     assert.equal(targeted.run('state.turn'),1);
     const cost=targeted.run(`skillList.find(s=>s.id==='${id}').cost`);
-    await targeted.run(`action('cast:${id}:2')`);
+    const casting=targeted.run(`action('cast:${id}:2')`);
+    assert.equal(targeted.run("castPendingSkill(2,'enemy')"),false,'one target click cannot cast twice');
+    await casting;
     assert.ok(targeted.run(`state.log.some(t=>t.includes('の'+skillList.find(s=>s.id==='${id}').name+'！ 敵2に'))`),'attack skill hits selected enemy');
     assert.equal(targeted.run('state.enemies[0].hp'),10000,'unselected enemies remain unharmed');
     assert.equal(targeted.run('state.mp'),44-cost);
@@ -95,6 +106,14 @@ function boot(saved = null, party = false) {
   assert.equal(unavailable.run("useSkill('flame')"),false,'busy state blocks selection');
   unavailable.run('busy=false;state.lv=1');
   assert.equal(unavailable.run("useSkill('flame')"),false,'locked skill cannot open selection');
+  const skillNavigation=boot(null,true);setupSkillBattle(skillNavigation);
+  skillNavigation.run("useSkill('flame');showScreen('map')");
+  assert.equal(skillNavigation.run('pendingSkill'),null,'screen changes cancel target selection');
+  skillNavigation.run("showScreen('adventure')");
+  assert.equal(skillNavigation.nodes.actions.hidden,false,'returning to adventure restores commands');
+  skillNavigation.run("useSkill('flame');resetAdventure()");
+  assert.equal(skillNavigation.run('skillMenuMode'),'commands','reset clears skill menu');
+  assert.equal(skillNavigation.run('pendingSkill'),null);
   console.log('PASS: skill target selection/cancel, enemy targeting for all attack skills, ally healing in battle/town/road, target validity and death-before-cast, MP/turn guards and persistence');
   // Travel must gate arrival, town services and encounters, including after reload.
   const travel=boot(null,true);
