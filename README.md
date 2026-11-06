@@ -27,7 +27,7 @@ npm run dev
 
 `http://127.0.0.1:4173/`がゲーム、`/admin/`がデータ管理画面です。ローカルDBは`.local/rpg.sqlite`へ作成し、マイグレーションを適用します。Playwrightは専用の`work/playwright.sqlite`を使い、普段のセーブには触れません。
 
-本番は既存SitesのWorkers/D1で動作します。`npm run build`はフロントとAPIを含む`build/server/index.js`・ホスティング設定・DBマイグレーションを生成します。`dist/`の静的配信でも同梱定義によるローカルプレイは可能ですが、データ管理・クラウド保存にはAPIが必要です。
+本番は既存SitesのWorkers/D1で動作します。[データ管理画面](https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site/admin/)は所有者としてChatGPTにサインインして開きます。`npm run build`はフロントとAPIを含む`build/server/index.js`・ホスティング設定・DBマイグレーションを生成します。`dist/`の静的配信でも同梱定義によるローカルプレイは可能ですが、データ管理・クラウド保存にはAPIが必要です。
 
 ## データ管理と保存
 

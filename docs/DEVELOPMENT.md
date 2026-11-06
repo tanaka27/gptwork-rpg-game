@@ -233,3 +233,5 @@ npm testに3街の見出し、宿泊成功メッセージの抑止、全員回�
 新しいmanifestは同じproject_idを保持し、static設定を外してD1を宣言する。所有者の認証済みメールはSitesのOWNER_EMAIL環境変数で設定し、値をソースへ埋め込まない。ローカルDBやwork/、生成Worker、認証情報はコミットしない。
 
 今回の最終確認は、既存ゲームと管理/クラウドのPlaywright全34件、1440×900・390×844・320×568・844×390の追加12件が通過。Node側は既存ゲーム/コンテンツ検証に加えてSQLite API7ケースが通過。生成Workerからゲーム・管理画面・画像・定義JSONを配信できることも確認した。本番DB/Workerの反映結果は公開時に別途確認する。
+
+公開アーカイブはnpm run package:siteでwork/site.tar.gzへ生成する。ルートに.openai/hosting.json、dist/server/index.js、drizzle/が必要。D1宣言は文字列"DB"。本番は4テーブルの作成と所有者限定を確認し、公開ゲームもPlaywrightでPC/スマホ幅を操作した。詳細と確認範囲はBACKEND.md参照。

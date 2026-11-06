@@ -68,3 +68,13 @@ npm run buildでWorkerアーカイブを作る。既存Site IDと所有者限定
 現在の表示は初期隊列4人・敵最大4体を維持。新しい属性/状態異常などの効果種類は共通効果処理を追加して拡張する。定義の追加だけで未対応の効果が実装されるわけではない。独立したキャラクター別レベルやリアルタイム対戦は今回の対象外。
 
 認証上の注意：Sitesのoai-authenticated-user-idはサイトごとのIDであり、アクセス設定のaccount_user_idとは同一と仮定しない。本番はSitesアクセス設定で確認した所有者のメールをOWNER_EMAILへ設定して認可し、保存レコードの所有者キーにはリクエストのサイト内認証IDを使用する。メールをDBの所有者キーにはしない。
+
+## 公開アーカイブと本番確認
+
+npm run package:siteはビルドし、work/site.tar.gzを生成する。アーカイブ内は`.openai/hosting.json`・`dist/server/index.js`・`drizzle/`を保持する。`server/index.js`だけをルートへ配置する形式はSitesに認識されないため使用しない。生成物を確定したSitesソースのcommit_shaと組み合わせて保存/デプロイする。
+
+本番反映済み：GitHub実装6aaf43e、認証調整ab577e3と同じアプリをSitesソース8cf8240240272f32cd627e9d5fc67de3f1b65873として公開。デプロイappgdep_6aee040c319881919f4bdc57d1625c6eはsucceeded。D1のDBにapp_settings/content_versions/save_history/savesの4テーブルを確認。所有者限定を維持。
+
+Playwrightはローカルの編集/公開/復元を含む全34件、4画面サイズの追加12件と更新後の追加8件を通過。認証修正後も管理/クラウド/オフラインの6件とSQLite API8件が通過。本番URLでも1440×900・390×844でゲーム表示・4敵・クリック待機/送り・寸法を確認。公開URLのブラウザ確認は実行環境のCAを信頼するPlaywrightのHTTP取得を使い、TLS検証を無効にせずレスポンスをブラウザへ渡した。
+
+本番のテスト接続は利用者のログインIDを持たないため、管理API/公開定義APIが401で拒否されることを確認。本番の所有者ログイン後の管理/クラウド書き込みと、iOS/Android実端末は未確認。ローカルでは本番と同じAPIコードを実SQLiteで操作検証している。本番の書き込みテストで実データを上書きしていない。

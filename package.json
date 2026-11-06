@@ -11,7 +11,8 @@
     "content:sync": "node scripts/sync-content.cjs",
     "content:check": "node scripts/check-content.cjs",
     "db:generate": "drizzle-kit generate",
-    "build": "node scripts/build.cjs"
+    "build": "node scripts/build.cjs",
+    "package:site": "npm run build && node scripts/package-site.cjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
