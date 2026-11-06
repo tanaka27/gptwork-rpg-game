@@ -36,7 +36,7 @@ CHANGELOG.md              変更履歴
 
 | 変更対象 | 主な定義・関数 |
 | --- | --- |
-| 世界・街・接続 | `zones`, `mapNodes`, `canMove`, `moveTo`, `renderMap` |
+| 世界・街・接続 | `zones`, `mapNodes`, `canMove`, `moveTo`, `advanceTravel`, `finishTravel`, `returnFromTravel`, `renderMap` |
 | モンスター | `bestiary`, `startBattle`, `monster`, `creatureSVG` |
 | 装備・消耗品 | `gear`, `consumables`, `action`, `useItem`, `renderInventory` |
 | 素材と抽選 | `rarities`, `materials`, `lootTable`, `rollMaterials`, `renderMaterials` |
@@ -161,3 +161,11 @@ HP・MPバーの公開記録：GitHub 878ea49と同一配信物をSitesソース
 冒険上部の大きな主人公単独の名前・レベル・HP/MP/EXP欄をDOMから削除。4人横並びのHP・MPバーは維持し、空いた行をなくして冒険画面の表示領域に充てます。レベルなどの詳細は仲間画面で確認できます。戦闘・成長・保存形式は変更しません。
 
 アステル単独欄の削除を公開：GitHub 2ba65e3と同一配信物をSitesソース0e397ee768234fdd201d63758d1e251244556afeへ同期。デプロイappgdep_6aed16110e4c81919d863781a80d7083はsucceeded。所有者限定を維持。実ブラウザ確認は未実施。
+
+## 3工程の道中（2026-11-06）
+
+`moveTo`は到着ではなく出発です。`state.journey={from,to,step,fought}`を追加し、`node`は到着まで出発地のIDを保持。`zone`は道中の上位エリア、`village`はfalse。`advanceTravel`でイベントを抽選、`finishTravel`で3工程と戦闘終了を確認して到着。戻る操作は`returnFromTravel`。戦闘の逃走・勝利時に完了処理、全滅時はjourneyを破棄します。原則としてゲーム側の行動関数を経由し、nodeの直接書き換えで移動を実装しないでください。
+
+ロード時は出発地・目的地の隣接関係、解放条件、整数の工程0〜3を検証。不正な道中は破棄し、既存の進行は維持します。道中フィールドのない旧v1/v2はnullで補完。戦闘済みフラグで道中の再遭遇を防ぎ、最終工程の戦闘後に到着するまで街の機能は使えません。仕様と確率はGAME_SPEC参照。party.jsの宿屋連動は有効な宿泊だけを対象にし、道中での無効な操作による仲間の回復も防ぎます。
+
+ブラウザ経路は今回も指定のCUAツールが利用できず未検証。Nodeでは道中・戦闘の全結果・保存再開を検証済み。E2EにはPC/スマホ幅で目的地選択→素材→再読込→何もなし→戦闘→再読込→逃走→到着のシナリオを追加しています。

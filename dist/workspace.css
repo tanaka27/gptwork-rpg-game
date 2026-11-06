@@ -133,3 +133,5 @@ dialog { background:#17232d; border-color:#596c70; padding:24px; max-height:calc
 .party-member .meter-head{display:flex;justify-content:space-between;gap:2px;font-size:9px;line-height:1.4}
 .party-member .meter-head strong,.party-member .meter-head span{font-size:9px;white-space:nowrap}
 .party-member .bar{margin-top:2px;height:4px}
+
+#networkMap line.travel-road{stroke:var(--green);stroke-width:1.3;stroke-dasharray:3 2}

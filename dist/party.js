@@ -27,18 +27,18 @@ function renderCharacterScreen(){
 }
 const previousShowScreen=showScreen;
 showScreen=function(name){if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
-startBattle=function(boss=false){originalStart(boss);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=8+state.zone*4+i*3);selectedEnemy=0;render();};
+startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;originalStart(boss,travelEncounter);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=8+state.zone*4+i*3);selectedEnemy=0;render();};
 render=function(persist=true){allies();const enemies=battleEnemies();originalRender(false);
  renderCharacterScreen();
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
  $('partyStatus').innerHTML=allies().map((a,i)=>`<div class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</div>`).join('');
- if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" ${e.hp<=0?'disabled':''}>${monster(e)}<strong>${e.name}</strong><span>HP ${e.hp}/${e.max} · 速 ${e.speed}</span></button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent='仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
+ if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${i===selectedEnemy}" ${e.hp<=0?'disabled':''}>${monster(e)}<strong>${e.name}</strong><span>HP ${e.hp}/${e.max} · 速 ${e.speed}</span></button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent='アステルの行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent=state.journey?'道中では戦闘・何もなし・素材入手が起こります。':'仲間は自動攻撃。対象を選んで、素早さ順に1ラウンド行動。';
  if(persist)save();
 };
 async function partyRound(kind,skillId,itemId){
  if(!state.enemy||busy)return;
  const enemies=battleEnemies();
- if(kind==='run'){if(enemies.some(e=>e.boss&&e.hp>0)){log('ボスからは逃げられない！');render();return;}if(Math.random()<.7){state.enemy=null;state.enemies=[];$('subactions').innerHTML='';log('旅団は逃げきった。');render();return;}}
+ if(kind==='run'){if(enemies.some(e=>e.boss&&e.hp>0)){log('ボスからは逃げられない！');render();return;}if(Math.random()<.7){state.enemy=null;state.enemies=[];$('subactions').innerHTML='';log('旅団は逃げきった。');finishTravel();render();return;}}
  const skill=skillList.find(s=>s.id===skillId);
  if(kind==='skill'&&(!skill||state.lv<skill.lv||state.mp<skill.cost||state.hp<=0))return;
  if(kind==='item'&&(!consumables[itemId]||state.items[itemId]<=0||state.hp<=0))return;
@@ -58,16 +58,16 @@ async function partyRound(kind,skillId,itemId){
   await new Promise(resolve=>setTimeout(resolve,120));
  }
  state.turn++;
- if(!allies().some((a,i)=>allyHP(i)>0)){const lost=Math.floor(state.gold*.15);state.gold-=lost;state.enemy=null;state.enemies=[];state.node=state.lastTown;state.zone=currentNode().zone;state.village=true;state.hp=maxhp();state.mp=maxmp();state.companions.forEach(a=>{a.hp=maxhp();a.mp=maxmp();});log(`旅団は全滅。救助費${lost} Gで街へ戻った。`);}
+ if(!allies().some((a,i)=>allyHP(i)>0)){const lost=Math.floor(state.gold*.15);state.gold-=lost;state.enemy=null;state.enemies=[];state.journey=null;state.node=state.lastTown;state.zone=currentNode().zone;state.village=true;state.hp=maxhp();state.mp=maxmp();state.companions.forEach(a=>{a.hp=maxhp();a.mp=maxmp();});log(`旅団は全滅。救助費${lost} Gで街へ戻った。`);}
  else if(enemies.every(e=>e.hp<=0)){for(const e of [...enemies].sort((a,b)=>Number(a.boss)-Number(b.boss))){state.enemy=e;originalWin();}state.enemies=[];state.companions.forEach(a=>{a.hp=Math.max(1,Math.min(a.hp,maxhp()));});}
  else state.enemy=enemies.find(e=>e.hp>0);
- busy=false;$('subactions').innerHTML='';render();
+ busy=false;$('subactions').innerHTML='';finishTravel();render();
 }
 combat=kind=>partyRound(kind);
 useSkill=id=>state.enemy?partyRound('skill',id):originalUseSkill(id);
 useItem=id=>state.enemy?partyRound('item',null,id):originalUseItem(id);
 const originalAction=action;
-action=function(a){originalAction(a);if(a==='rest'&&!state.enemy){state.companions.forEach(c=>{c.hp=state.hp;c.mp=state.mp;});render();}};
+action=function(a){const resting=a==='rest'&&state.village&&!state.journey&&!state.enemy&&!busy;originalAction(a);if(resting){state.companions.forEach(c=>{c.hp=state.hp;c.mp=state.mp;});render();}};
 document.addEventListener('click',event=>{const button=event.target.closest('[data-target]');if(button&&!busy){selectedEnemy=Number(button.dataset.target);render();}});
 document.addEventListener('click',event=>{const button=event.target.closest('[data-character]');if(button){const index=Number(button.dataset.character);if(Number.isInteger(index)&&index>=0&&index<allies().length){selectedCharacter=index;renderCharacterScreen();$('characterName').focus();}}});
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
