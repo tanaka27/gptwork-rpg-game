@@ -235,3 +235,8 @@ party.jsのlogラッパーがbusy中のログをbattleMessagesへ記録し、sho
 
 
 公開状況（2026-11-06）：実装コミット`351c5b55a21f8c6600aff1647acf66cb48556430`をGitHub mainへpush済み。同一distをSitesソース`df715c60b1a5da9bf22be9af8f8c390035460d1e`へpushし、保存済みバージョン24（`appgprj_6aeacfc3f1d48191ad3e20c469ba6c1c~appgver_9f1aea4995348191932197e7cf924e88`）のアーカイブ保存まで成功。デプロイ`appgdep_6aed9e2b14188191b76506f17a1a260f`と同バージョンでの再試行`appgdep_6aed9e49c1e0819189a23b4def372aed`は、いずれもSites基盤の`no healthy upstream`でfailed。公開反映は未完了。復旧後は保存済みバージョン24をdeploy_private_site_versionで再デプロイでき、再保存は不要。所有者限定は変更していません。
+
+
+## メッセージと行動結果の同期（2026-11-06）
+
+partyRoundは各アクターの開始ログの直後、ダメージ計算やHP/MP/消耗品の変更より前にもshowBattleMessagesをawaitします。結果ログの後も従来どおり待機するため、次のアクターの結果は先行しません。勝利時はoriginalWinを1体分呼ぶごとにログ確認を待ち、後続敵の報酬を先に付与しません。セーブ形式・素早さ順・ダメージ式は変更なし。

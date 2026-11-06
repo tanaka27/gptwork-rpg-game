@@ -118,6 +118,9 @@ async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
   if(actor.side==='ally'){
    const i=actor.index;if(allyHP(i)<=0)continue;
    state.lastRoundOrder.push(actor.name);
+   const announcement=i===0&&kind==='guard'?`${actor.name}は身を守る！`:i===0&&kind==='item'?`${actor.name}は${consumables[itemId].name}を使う！`:i===0&&kind==='skill'?`${actor.name}の${skill.name}！`:`${actor.name}の攻撃！`;
+   log(announcement);
+   await showBattleMessages();
    const targetIndex=i===0&&kind==='skill'&&skill.effect==='damage'?skillTargetIndex:selectedEnemy;
    let target=enemies[targetIndex]?.hp>0?enemies[targetIndex]:enemies.find(e=>e.hp>0);
    if(i===0&&kind==='guard'){state.mp=Math.min(maxmp(),state.mp+3);log('アステルは身を守った。');}
@@ -135,13 +138,18 @@ async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
     }
    }
    else{const damage=CombatRules.physicalDamage({attack:attack(),defense:target.def});target.hp=Math.max(0,target.hp-damage);log(`${actor.name}の攻撃！ ${target.name}に${damage}。`);}
-  }else{const enemy=enemies[actor.index];if(enemy.hp<=0)continue;state.lastRoundOrder.push(actor.name);const targets=allies().map((a,i)=>i).filter(i=>allyHP(i)>0);const target=targets[Math.floor(Math.random()*targets.length)];const damage=CombatRules.physicalDamage({attack:enemy.atk,defense:defense(),strong:state.turn%3===0,guard:target===0&&kind==='guard'});setAllyHP(target,Math.max(0,allyHP(target)-damage));log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);}
+  }else{
+   const enemy=enemies[actor.index];if(enemy.hp<=0)continue;
+   state.lastRoundOrder.push(actor.name);
+   log(`${enemy.name}の攻撃！`);
+   await showBattleMessages();
+   const targets=allies().map((a,i)=>i).filter(i=>allyHP(i)>0);const target=targets[Math.floor(Math.random()*targets.length)];const damage=CombatRules.physicalDamage({attack:enemy.atk,defense:defense(),strong:state.turn%3===0,guard:target===0&&kind==='guard'});setAllyHP(target,Math.max(0,allyHP(target)-damage));log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);}
   state.enemy=enemies.find(e=>e.hp>0)||enemies[0];render(false);
   await showBattleMessages();
  }
  state.turn++;
  if(!allies().some((a,i)=>allyHP(i)>0)){const lost=Math.floor(state.gold*.15);state.gold-=lost;state.enemy=null;state.enemies=[];state.journey=null;state.node=state.lastTown;state.zone=currentNode().zone;state.village=true;state.hp=maxhp();state.mp=maxmp();state.companions.forEach(a=>{a.hp=maxhp();a.mp=maxmp();});log(`旅団は全滅。救助費${lost} Gで街へ戻った。`);}
- else if(enemies.every(e=>e.hp<=0)){for(const e of [...enemies].sort((a,b)=>Number(a.boss)-Number(b.boss))){state.enemy=e;originalWin();}state.enemies=[];state.companions.forEach(a=>{a.hp=Math.max(1,Math.min(a.hp,maxhp()));});}
+ else if(enemies.every(e=>e.hp<=0)){for(const e of [...enemies].sort((a,b)=>Number(a.boss)-Number(b.boss))){state.enemy=e;originalWin();await showBattleMessages();}state.enemies=[];state.companions.forEach(a=>{a.hp=Math.max(1,Math.min(a.hp,maxhp()));});}
  else state.enemy=enemies.find(e=>e.hp>0);
  await showBattleMessages();
  busy=false;$('subactions').innerHTML='';finishTravel();render();
@@ -174,5 +182,5 @@ document.addEventListener('click',event=>{const button=event.target.closest('[da
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 const originalResetAdventure=resetAdventure;
 resetAdventure=function(){if(busy)return;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
-$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。敵を選択し、アステルのコマンドで1ラウンド開始します。素早さが高い順に行動し、戦闘不能者は行動しません。行動・報酬のメッセージはウィンドウをクリック（タップ）すると次へ進みます。フォーカスしてEnter・スペースでも操作できます。道具はアステルが対象。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
+$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。敵を選択し、アステルのコマンドで1ラウンド開始します。素早さが高い順に行動し、戦闘不能者は行動しません。行動の開始メッセージをクリック（タップ）すると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具はアステルが対象。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
 allies();render();

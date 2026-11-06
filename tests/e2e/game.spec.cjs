@@ -341,3 +341,28 @@ test('戦闘メッセージはクリックするまで進まず、キーボー�
   await expect(page.locator('#messageNext')).toBeHidden();
   await expect(page.locator('#turn')).toContainText('2');
 });
+
+
+test('行動開始を送るまでHPは変わらず、結果を送るまで次の攻撃を反映しない', async ({page})=>{
+  await page.goto('/');await page.locator('[data-action="explore"]').click();
+  await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));save.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=1000;e.max=1000;e.atk=20;e.def=0;});save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
+  await page.reload();
+  const hpView=()=>page.locator('#enemy .enemy-hp').evaluateAll(nodes=>nodes.map(n=>({text:n.innerText,html:n.innerHTML,value:n.getAttribute('aria-valuenow')})));
+  const view=async()=>({allies:await page.locator('#partyStatus').innerHTML(),bars:await hpView()});
+  let previous=await view();
+  await page.locator('[data-action="attack"]').click();
+  for(let i=0;i<8;i++){
+    await expect(page.locator('#latestLog')).toHaveText(/^(リナ|ノエル|アステル|ガルド|敵[0-3])の攻撃！$/);
+    expect(await view()).toEqual(previous);
+    await page.waitForTimeout(200);
+    expect(await view()).toEqual(previous);
+    await page.locator('#fieldMessage').click();
+    await expect(page.locator('#latestLog')).toContainText(/に[0-9]+。/);
+    const result=await view();expect(result).not.toEqual(previous);
+    await page.waitForTimeout(200);
+    expect(await view()).toEqual(result);
+    await page.locator('#fieldMessage').click();previous=result;
+  }
+  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
+  await expect(page.locator('#turn')).toContainText('2');
+});
