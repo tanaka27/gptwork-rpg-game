@@ -185,3 +185,5 @@ HP・MPバーの公開記録：GitHub 878ea49と同一配信物をSitesソース
 party.jsの`useSkill(id,targetIndex=null)`は、対象未指定なら`chooseSkillTarget`で`#skillTargetDialog`を開きます。`pendingSkill`にIDと戦闘内/外だけを一時保持し、`cast:id:index`の確定で検証して実行。`validSkillTarget`は範囲・生存・HP不足を確認します。選択UIは保存しません。`cancel-skill`またはEscで中止。
 
 `partyRound`の第4引数で対象を固定し、主人公の行動時にも再確認。攻撃先が倒れていれば生存敵へ切替、回復先が無効ならMP消費なしで見送り。戦闘外の回復も仲間HPへ適用します。Nodeテストでは各攻撃スキル・回復・キャンセル・死亡/満タン・発動前の死亡・MP/ターン・保存を検証。E2Eにも対象選択を追加していますが、指定ブラウザツールがないため今回実行できていません。
+
+スキル対象選択を公開：GitHub c6c1c94と同一配信物をSitesソースdd0510922e9f8e85612092b67d4377de486152caへ同期。デプロイappgdep_6aed6fddb2f48191803ff9f7ff8678e0はsucceeded。所有者限定を維持。JS構文・Nodeの対象選択/既存進行テスト通過。実画面・E2E実行・スマホ実機は未確認。
