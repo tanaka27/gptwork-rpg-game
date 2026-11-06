@@ -254,3 +254,10 @@ Playwrightで修正前の失敗と修正後の成功を確認。全E2E26件＋4�
 game.jsのshopOpenは保存しない一時状態。openShopで街・道中・戦闘・busyの条件を確認し、renderShopが#shopMenu内の#shopTitle/#shopGold/#shopItemsを描画します。renderInventoryから旧shop分岐を削除し、不正/旧タブ値はbagへ戻します。購入は既存のcurrentShopStockで検証し、再描画後もお店を維持。shop-close、他画面へのshowScreen、リセット、不正な位置への遷移で閉じます。
 
 workspace.cssでは開いているshopMenuを持つコマンド欄だけ通常コマンドを非表示にし、商品一覧を内部スクロールさせて戻るボタンを残します。party.jsのスキル表示の切替とは独立して動作します。
+
+
+## 街名の見出しと宿泊成功メッセージ（2026-11-06）
+
+既存の#locationをhiddenのspanからh2.location-titleへ変更。renderで街かつ戦闘/道中なしの場合だけ見せ、従来どおりcurrentNodeの名前を入れます。最新ログが宿泊成功の定型文で街にいる場合だけ#latestLogを空にし、#fieldMessageをhiddenにします。ログと保存形式は変えないため旧セーブにも反映され、購入などの新しい通知でメッセージ窓は再表示されます。
+
+workspace.cssの.field-message[hidden]でflex表示を確実に解除。低いスマホ幅では、街名と商品購入メッセージが重ならないよう店一覧の高さ上限を40dvhに調整します。

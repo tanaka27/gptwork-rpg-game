@@ -452,3 +452,50 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
   }
   expect(errors).toEqual([]);
 });
+
+
+test('街名を上部に表示し、宿泊の成功メッセージを街の画面に残さない', async ({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
+  await page.goto('/');
+  for(const [node,zone,name] of [['home',0,'はじまりの村'],['luna',1,'月見の街ルナ'],['forge',2,'鍛冶の街ヴァル']]){
+    await page.evaluate(({node,zone})=>{
+      const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+      Object.assign(save,{node,zone,village:true,enemy:null,journey:null,gold:1000,hp:1,mp:0,cleared:[true,true,false]});
+      save.companions.forEach(c=>{c.hp=1;c.mp=0;});
+      save.log.unshift('宿屋でひと休み。HP・MPが全回復！');
+      localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+    },{node,zone});
+    await page.reload();
+    const title=page.locator('.arena #location');
+    await expect(title).toBeVisible();await expect(title).toHaveText(name);
+    expect(await title.evaluate(node=>!!node.closest('.field-message'))).toBe(false);
+    await expect(page.locator('#fieldMessage')).toBeHidden();
+    await expect(page.locator('#latestLog')).toHaveText('');
+    await page.locator('[data-action="rest"]').click();
+    await expect(title).toHaveText(name);await expect(page.locator('#fieldMessage')).toBeHidden();
+    const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
+    expect(saved.hp).toBe(80);expect(saved.mp).toBe(20);expect(saved.gold).toBe(990);
+    expect(saved.companions.every(c=>c.hp===80&&c.mp===20)).toBe(true);
+    await page.screenshot({path:test.info().outputPath('town-'+node+'.png')});
+    await page.reload();await expect(title).toBeVisible();await expect(page.locator('#fieldMessage')).toBeHidden();
+    await page.locator('[data-action="shop"]').click();
+    await expect(title).toBeVisible();
+    await page.locator('[data-action="buy:herb"]').click();
+    await expect(title).toHaveText(name);
+    await expect(page.locator('#latestLog')).toContainText('購入した');
+    const rects=await page.evaluate(()=>{
+      const title=document.querySelector('#location').getBoundingClientRect(),scene=document.querySelector('.arena').getBoundingClientRect(),message=document.querySelector('#fieldMessage').getBoundingClientRect();
+      return {title:title.toJSON(),scene:scene.toJSON(),message:message.toJSON()};
+    });
+    expect(rects.title.y).toBeGreaterThanOrEqual(rects.scene.y);
+    expect(rects.title.bottom).toBeLessThanOrEqual(rects.message.y);
+    expect(rects.title.right).toBeLessThanOrEqual(rects.scene.right);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
+    await page.locator('[data-action="shop-close"]').click();
+  }
+  await page.locator('[data-screen="map"]').click();await page.locator('[data-action="move:ash"]').last().click();
+  await expect(page.locator('#location')).toBeHidden();
+  await expect(page.locator('#fieldMessage')).toBeVisible();
+  expect(errors).toEqual([]);
+});

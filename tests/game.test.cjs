@@ -363,6 +363,26 @@ function boot(saved = null, party = false, manualMessages = false) {
   assert.equal(screens.nodes.subactions.innerHTML,'','successful escape clears battle menu');
   screens.run("tab='materials';renderInventory()");
   assert.ok(!screens.nodes.inventory.innerHTML.includes('55.0000'),'probabilities display clean percentages');
+  const townHeading=boot(null,true);
+  for(const [id,name] of [['home','はじまりの村'],['luna','月見の街ルナ'],['forge','鍛冶の街ヴァル']]){
+    townHeading.run(`state.node='${id}';state.zone=currentNode().zone;state.village=true;state.gold=100;state.hp=1;state.mp=0;state.companions.forEach(c=>c.hp=1);render();action('rest')`);
+    assert.equal(townHeading.nodes.location.hidden,false);
+    assert.equal(townHeading.nodes.location.textContent,name);
+    assert.equal(townHeading.nodes.fieldMessage.hidden,true,'town does not show the rest success message');
+    assert.equal(townHeading.nodes.latestLog.textContent,'');
+    assert.equal(townHeading.run('state.hp'),townHeading.run('maxhp()'));
+    assert.equal(townHeading.run('state.companions[0].hp'),townHeading.run('maxhp()'));
+    assert.equal(townHeading.run('state.gold'),90,'inn payment is unchanged');
+  }
+  const townReload=boot(townHeading.storage['starlight-rpg-v1'],true);
+  assert.equal(townReload.nodes.location.hidden,false,'town title survives reload');
+  assert.equal(townReload.nodes.fieldMessage.hidden,true,'old inn success log remains suppressed on reload');
+  townReload.run("action('shop');action('buy:herb')");
+  assert.equal(townReload.nodes.location.hidden,false);
+  assert.equal(townReload.nodes.fieldMessage.hidden,false,'purchase feedback stays available');
+  townReload.run("state.cleared=[true,true,false];moveTo('ash')");
+  assert.equal(townReload.nodes.location.hidden,true,'town title is hidden on the road');
+  assert.equal(townReload.nodes.fieldMessage.hidden,false,'travel messages stay visible');
   const shops = boot();
   const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather'],forge:['herb','ether','potion','star','moon']};
   for (const [town, ids] of Object.entries(expectedStock)) {
