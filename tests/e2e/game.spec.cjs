@@ -1,5 +1,13 @@
 const { test, expect } = require('@playwright/test');
 
+async function readBattleRound(page) {
+  for(let i=0;i<80;i++){
+    if(!await page.locator('#messageNext').isVisible())return;
+    await page.locator('#fieldMessage').click();
+  }
+  throw new Error('Battle messages did not finish');
+}
+
 test.beforeEach(async ({ page }) => {
   // 外部フォントに左右されず、ローカルの配信物だけを検証する。
   await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/, route => route.abort());
@@ -45,6 +53,7 @@ test('探索から攻撃で敵ターンへ進み、再読込で進行を保持�
   await page.locator('[data-action="explore"]').click();
   await expect(page.locator('[data-action="attack"]')).toBeVisible();
   await page.locator('[data-action="attack"]').click();
+  await readBattleRound(page);
   await expect(page.locator('[data-action="attack"]')).toBeEnabled();
   await expect(page.locator('#turn')).toContainText('2');
   const save = await page.evaluate(() => localStorage.getItem('starlight-rpg-v1'));
@@ -95,6 +104,7 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
   const message=await page.locator('.field-message').boundingBox();
   for(const u of units) expect(u.box.bottom).toBeLessThanOrEqual(message.y);
   await page.locator('[data-action="guard"]').click();
+  await readBattleRound(page);
   await expect(page.locator('[data-action="guard"]')).toBeEnabled();
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
   expect(saved.lastRoundOrder[0]).toBe('リナ');
@@ -242,7 +252,8 @@ test('スキル一覧・詳細から上部の味方や敵をクリックして�
   await expect(page.locator('#skillDetail')).toContainText('フィールドの敵');
   await expect(page.locator('#skillTargetDialog')).toHaveCount(0);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).mp)).toBe(23);
-  await page.locator('[data-target="2"]').click();await expect(page.locator('[data-action="attack"]')).toBeEnabled();
+  await page.locator('[data-target="2"]').click();await readBattleRound(page);
+  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
   saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
   expect(saved.enemies[0].hp).toBe(1000);expect(saved.enemies[2].hp).toBeLessThan(1000);
   expect(saved.mp).toBe(19);expect(saved.turn).toBe(2);
@@ -305,4 +316,28 @@ test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を
       const box=node.getBoundingClientRect();return box.y>=field.y&&box.bottom<=message.y;
     });
   })).toBe(true);
+});
+
+
+test('戦闘メッセージはクリックするまで進まず、キーボードでも送れる', async ({page})=>{
+  await page.goto('/');
+  await page.locator('[data-action="explore"]').click();
+  const save=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
+  await page.locator('[data-action="attack"]').click();
+  await expect(page.locator('#messageNext')).toBeVisible();
+  const first=await page.locator('#latestLog').textContent();
+  await page.waitForTimeout(600);
+  await expect(page.locator('#latestLog')).toHaveText(first);
+  await expect(page.locator('[data-action="attack"]')).toBeDisabled();
+  expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(save);
+  await page.locator('#fieldMessage').click();
+  await expect(page.locator('#latestLog')).not.toHaveText(first);
+  await expect(page.locator('#turn')).toContainText('1');
+  const second=await page.locator('#latestLog').textContent();
+  await page.locator('#fieldMessage').focus();await page.keyboard.press('Enter');
+  await expect(page.locator('#latestLog')).not.toHaveText(second);
+  await readBattleRound(page);
+  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
+  await expect(page.locator('#messageNext')).toBeHidden();
+  await expect(page.locator('#turn')).toContainText('2');
 });

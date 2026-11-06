@@ -173,3 +173,10 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 
 .skill-list,#skillDetail{min-height:0;overflow:auto}
 @media(max-height:680px) and (max-width:450px){#skillMenu{max-height:140px}}
+
+/* Battle messages advance only when the reader chooses. */
+.field-message.awaiting-click { cursor:pointer; }
+.field-message.awaiting-click:hover { border-color:#e4d8b8; }
+.field-message.awaiting-click:focus-visible { outline:2px solid #e4d8b8; outline-offset:2px; }
+#messageNext { flex:none; align-self:flex-end; font-size:10px; line-height:1.2; color:#e4d8b8; }
+#messageNext[hidden] { display:none; }

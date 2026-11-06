@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync('dist/game.js', 'utf8');
-function boot(saved = null, party = false) {
+function boot(saved = null, party = false, manualMessages = false) {
   const nodes = {}, storage = {};
   const node = () => ({innerHTML:'', textContent:'', disabled:false,
     addEventListener(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
@@ -18,9 +18,54 @@ function boot(saved = null, party = false) {
   // Existing progression tests traverse real, uneventful three-step routes.
   vm.runInContext(`function walkTo(id){if(!moveTo(id))return false;const previous=Math.random;Math.random=()=>.99;try{for(let i=0;i<3;i++)advanceTravel();}finally{Math.random=previous;}return !state.journey;}`,context);
   if(party) vm.runInContext(fs.readFileSync('dist/party.js','utf8'),context);
+  if(party&&!manualMessages)vm.runInContext('waitForBattleMessage=()=>Promise.resolve()',context);
   return {run:code=>vm.runInContext(code,context), nodes, storage};
 }
 (async () => {
+  const reader=boot(null,true,true);
+  reader.run("startBattle();state.enemies.forEach(e=>{e.hp=1000;e.max=1000;e.atk=0;});render()");
+  const beforeRound=reader.storage['starlight-rpg-v1'];
+  const round=reader.run("partyRound('attack')");
+  const flush=async()=>{for(let i=0;i<5;i++)await Promise.resolve();};
+  await flush();
+  const first=reader.nodes.latestLog.textContent;
+  assert.equal(reader.run('state.lastRoundOrder.length'),1);
+  await flush();
+  assert.equal(reader.nodes.latestLog.textContent,first,'no automatic advance');
+  assert.equal(reader.run('busy'),true);
+  assert.equal(reader.nodes.messageNext.hidden,false);
+  await reader.run("partyRound('attack')");
+  reader.run('render()');
+  assert.equal(reader.storage['starlight-rpg-v1'],beforeRound,'incomplete round is not saved');
+  reader.nodes.fieldMessage.onclick();reader.nodes.fieldMessage.onclick();
+  await flush();
+  assert.equal(reader.run('state.lastRoundOrder.length'),2,'double input resolves a message once');
+  assert.equal(reader.run('state.turn'),1);
+  reader.nodes.fieldMessage.onkeydown({key:'Enter',repeat:true,preventDefault(){}});
+  await flush();
+  assert.equal(reader.run('state.lastRoundOrder.length'),2,'held key does not skip messages');
+  reader.nodes.fieldMessage.onkeydown({key:' ',repeat:false,preventDefault(){}});
+  await flush();
+  assert.equal(reader.run('state.lastRoundOrder.length'),3,'keyboard advances one action');
+  for(let i=0;i<30&&reader.run('busy');i++){reader.nodes.fieldMessage.onclick();await flush();}
+  await round;
+  assert.equal(reader.run('state.turn'),2);
+  assert.equal(reader.run('busy'),false);
+  assert.equal(reader.nodes.messageNext.hidden,true);
+  const victor=boot(null,true,true);
+  victor.run('startBattle();state.lv=30;state.enemies.forEach(e=>{e.hp=1;e.def=0;});Math.random=()=>.5');
+  const won=victor.run("partyRound('attack')");
+  await flush();let rewards=0;
+  for(let i=0;i<60&&victor.run('busy');i++){
+    if(victor.nodes.latestLog.textContent.includes('EXP'))rewards++;
+    victor.nodes.fieldMessage.onclick();await flush();
+  }
+  await won;
+  assert.equal(rewards,4,'all four enemies rewards are shown separately');
+  assert.equal(victor.run('state.total'),4);
+  assert.equal(victor.run('state.enemy'),null);
+  console.log('PASS: battle click wait, single advance, keyboard, busy/save guards and individual victory messages');
+
   const healingTargets=boot(null,true);
   healingTargets.run('state.lv=3;state.hp=maxhp();state.mp=maxmp();state.companions[0].hp=1;state.companions[1].hp=0;render()');
   healingTargets.run("action('skills')");

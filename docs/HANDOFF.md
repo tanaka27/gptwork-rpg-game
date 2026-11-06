@@ -227,3 +227,8 @@ party.jsの`enemyHPMeter`でフィールドと攻撃スキル対象一覧のHP�
 AGENTS.mdとDEVELOPMENT.mdに、毎作業でのGitHub mainへのpush・既存Sitesへのデプロイ、および都度の許可確認が不要であることを明記しました。文書のみの作業もデプロイ対象です。過去の「文書だけなら再デプロイ不要」という記録は旧ルールであり、この指示を優先します。
 
 2026-11-06：非戦闘・非移動時の固定案内文を削除。`renderSkillMenu`で空の`#battleOrder`もhiddenにし、余白を残しません。戦闘中の行動順と道中の案内は維持。
+
+
+## 戦闘メッセージの手動送り（2026-11-06）
+
+party.jsのlogラッパーがbusy中のログをbattleMessagesへ記録し、showBattleMessages/waitForBattleMessageで1件ずつクリックを待ちます。fieldMessageは待機中だけrole=button/tabIndex=0、messageNextを表示。advanceBattleMessageは先にresolverを解除して同じ待機の重複解決を防ぎ、キーリピートは無視します。renderは待機メッセージを維持し、busy中の保存を抑止します。元の勝利処理の複数ログも順に表示します。
