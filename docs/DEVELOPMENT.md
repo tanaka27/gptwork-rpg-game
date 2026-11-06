@@ -194,3 +194,18 @@ npm testにクリック待機・自動送りなし・二重入力・Enter/スペ
 
 
 行動同期の回帰検証：npm testで味方4人・敵4体すべての開始待ちと結果待ちを操作し、HP状態と描画されたHPバーがクリック前に変化しないこと、スキルのMP・道具の残数・防御のMP回復も開始確認まで変化しないことを確認します。E2Eにも8行動のHP表示比較を追加。今回の実ブラウザ確認はSites指定のcua_repl.jsが未提供のため未実施です。
+
+
+## 動作変更時のPlaywright必須検証（2026-11-06）
+
+AGENTS.mdの実装ルールにより、動作変更はロジックテストに加えてPlaywrightによる実ブラウザの操作検証が必須です。ユーザーがPlaywrightを明示指定した今回は、Browser用操作ツールが利用できなかったため、既存Chromiumと通常のPlaywrightを使用しました。ユーザーの指定に従って実行し、Sites既定の指定ブラウザツール不在を理由に省略しません。
+
+今回の再現・検証コマンド：
+
+```sh
+npm ci --cache /tmp/rpg-npm-cache
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --grep '行動待機で生存中' --workers=2
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2
+```
+
+敵の透明度の回帰ケースは、開始メッセージ待機中は全生存敵がopacity:1・HP100%、クリック後は倒れた1体だけopacity:.4・HP0%、時間経過では変わらないこと、回復対象選択中でも生存敵は透明にならないことを検証します。1440×900/390×844に加え、一時設定で320×568/844×390も実行し、全26件と追加8件の通過を確認。操作前後のスクショを確認し、JS/consoleエラーとページ寸法も検証しました。外部フォント通信は意図的に遮断。スマホ実端末は未接続のため未検証です。

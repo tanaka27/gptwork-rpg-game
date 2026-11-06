@@ -240,3 +240,10 @@ party.jsのlogラッパーがbusy中のログをbattleMessagesへ記録し、sho
 ## メッセージと行動結果の同期（2026-11-06）
 
 partyRoundは各アクターの開始ログの直後、ダメージ計算やHP/MP/消耗品の変更より前にもshowBattleMessagesをawaitします。結果ログの後も従来どおり待機するため、次のアクターの結果は先行しません。勝利時はoriginalWinを1体分呼ぶごとにログ確認を待ち、後続敵の報酬を先に付与しません。セーブ形式・素早さ順・ダメージ式は変更なし。
+
+
+## 敵の半透明化とブラウザ検証（2026-11-06）
+
+メッセージ待機では敵のボタンをdisabledにするため、共通button:disabledのopacity:.36が生存中の敵へ適用されていました。workspace.cssの末尾で`#enemy .enemy-unit:disabled:not(.fallen)`をopacity:1、`#enemy .enemy-unit.fallen`をopacity:.4へ上書きします。行動の計算順を変える必要はありません。
+
+Playwrightで修正前の失敗と修正後の成功を確認。全E2E26件＋4画面サイズの追加8件が通過し、クリック前後の画像も確認済み。今後の動作変更はAGENTS.mdの新ルールどおりPlaywrightの実ブラウザ検証を必須とし、スマホ幅とスマホ実機は区別してください。

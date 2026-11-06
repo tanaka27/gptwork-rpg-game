@@ -366,3 +366,55 @@ test('行動開始を送るまでHPは変わらず、結果を送るまで次の
   await expect(page.locator('[data-action="attack"]')).toBeEnabled();
   await expect(page.locator('#turn')).toContainText('2');
 });
+
+
+test('行動待機で生存中の敵を薄くせず、攻撃を送った時だけ倒れた敵を薄くする', async ({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
+  await page.goto('/');
+  await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
+  await expect(page).toHaveURL('http://127.0.0.1:4173/');
+  await page.locator('[data-action="explore"]').click();
+  await page.evaluate(()=>{
+    const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    save.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=i===0?1:1000;e.max=e.hp;e.atk=0;e.def=0;});
+    save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+  });
+  await page.reload();
+  const target=page.locator('[data-target="0"]');
+  await expect(target).toHaveCSS('opacity','1');
+  await page.locator('[data-action="attack"]').click();
+  await expect(page.locator('#latestLog')).toHaveText('リナの攻撃！');
+  for(const enemy of await page.locator('.enemy-unit').all()){
+    await expect(enemy).toBeDisabled();
+    await expect(enemy).toHaveCSS('opacity','1');
+    await expect(enemy).not.toHaveClass(/fallen/);
+    await expect(enemy.locator('.enemy-hp')).toHaveAttribute('aria-valuenow','100');
+  }
+  await page.screenshot({path:test.info().outputPath('before-message-confirmation.png')});
+  await page.waitForTimeout(600);
+  await expect(target).toHaveCSS('opacity','1');
+  await page.locator('#fieldMessage').click();
+  await expect(page.locator('#latestLog')).toContainText('敵0に');
+  await expect(target).toHaveClass(/fallen/);
+  await expect(target).toHaveCSS('opacity','0.4');
+  await expect(target.locator('.enemy-hp')).toHaveAttribute('aria-valuenow','0');
+  for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all())await expect(enemy).toHaveCSS('opacity','1');
+  await page.screenshot({path:test.info().outputPath('after-message-confirmation.png')});
+  await page.waitForTimeout(600);
+  await expect(page.locator('.enemy-unit.fallen')).toHaveCount(1);
+  await page.locator('#fieldMessage').click();
+  await expect(page.locator('#latestLog')).toHaveText('敵3の攻撃！');
+  for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all())await expect(enemy).toHaveCSS('opacity','1');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
+  await readBattleRound(page);
+  await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(save,{lv:3,hp:114,mp:28});save.companions[0].hp=1;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
+  await page.reload();
+  await page.locator('[data-action="skills"]').click();
+  await page.locator('[data-action="skill:heal"]').click();
+  await expect(page.locator('#skillDetail')).toBeVisible();
+  for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all()){
+    await expect(enemy).toBeDisabled();await expect(enemy).toHaveCSS('opacity','1');
+  }
+  expect(errors).toEqual([]);
+});

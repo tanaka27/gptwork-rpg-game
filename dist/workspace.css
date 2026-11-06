@@ -180,3 +180,7 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 .field-message.awaiting-click:focus-visible { outline:2px solid #e4d8b8; outline-offset:2px; }
 #messageNext { flex:none; align-self:flex-end; font-size:10px; line-height:1.2; color:#e4d8b8; }
 #messageNext[hidden] { display:none; }
+
+/* Disabling target selection must not make living monsters look defeated. */
+#enemy .enemy-unit:disabled:not(.fallen) { opacity:1; cursor:default; }
+#enemy .enemy-unit.fallen { opacity:.4; }
