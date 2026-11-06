@@ -247,3 +247,10 @@ partyRoundは各アクターの開始ログの直後、ダメージ計算やHP/M
 メッセージ待機では敵のボタンをdisabledにするため、共通button:disabledのopacity:.36が生存中の敵へ適用されていました。workspace.cssの末尾で`#enemy .enemy-unit:disabled:not(.fallen)`をopacity:1、`#enemy .enemy-unit.fallen`をopacity:.4へ上書きします。行動の計算順を変える必要はありません。
 
 Playwrightで修正前の失敗と修正後の成功を確認。全E2E26件＋4画面サイズの追加8件が通過し、クリック前後の画像も確認済み。今後の動作変更はAGENTS.mdの新ルールどおりPlaywrightの実ブラウザ検証を必須とし、スマホ幅とスマホ実機は区別してください。
+
+
+## 街の中で開くお店（2026-11-06）
+
+game.jsのshopOpenは保存しない一時状態。openShopで街・道中・戦闘・busyの条件を確認し、renderShopが#shopMenu内の#shopTitle/#shopGold/#shopItemsを描画します。renderInventoryから旧shop分岐を削除し、不正/旧タブ値はbagへ戻します。購入は既存のcurrentShopStockで検証し、再描画後もお店を維持。shop-close、他画面へのshowScreen、リセット、不正な位置への遷移で閉じます。
+
+workspace.cssでは開いているshopMenuを持つコマンド欄だけ通常コマンドを非表示にし、商品一覧を内部スクロールさせて戻るボタンを残します。party.jsのスキル表示の切替とは独立して動作します。

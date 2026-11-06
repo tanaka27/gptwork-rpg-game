@@ -5,7 +5,7 @@ const source = fs.readFileSync('dist/game.js', 'utf8');
 function boot(saved = null, party = false, manualMessages = false) {
   const nodes = {}, storage = {};
   const node = () => ({innerHTML:'', textContent:'', disabled:false,
-    addEventListener(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
+    addEventListener(){}, focus(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
   const context = {
     document:{getElementById:id=>nodes[id]??=node(), querySelectorAll:()=>[], addEventListener(){}, createElement:node},
     localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},
@@ -355,7 +355,9 @@ function boot(saved = null, party = false, manualMessages = false) {
   assert.equal(screens.nodes['screen-map'].hidden,false,'travel opens map screen');
   assert.equal(screens.nodes['screen-adventure'].hidden,true);
   screens.run("walkTo('home');action('shop')");
-  assert.equal(screens.nodes['screen-bag'].hidden,false,'shop opens inventory screen');
+  assert.equal(screens.nodes['screen-adventure'].hidden,false,'shop stays on the adventure screen');
+  assert.equal(screens.nodes.shopMenu.hidden,false);
+  assert.equal(screens.nodes['screen-bag'].hidden,true,'shop does not open the bag');
   screens.run("walkTo('meadow');startBattle();action('items');Math.random=()=>0;combat('run')");
   assert.equal(screens.run('state.enemy'),null);
   assert.equal(screens.nodes.subactions.innerHTML,'','successful escape clears battle menu');
@@ -364,20 +366,34 @@ function boot(saved = null, party = false, manualMessages = false) {
   const shops = boot();
   const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather'],forge:['herb','ether','potion','star','moon']};
   for (const [town, ids] of Object.entries(expectedStock)) {
-    shops.run(`state.node='${town}';state.village=true;state.enemy=null;state.gold=10000;tab='shop';renderInventory()`);
+    shops.run(`state.node='${town}';state.village=true;state.enemy=null;state.gold=10000;action('shop')`);
     for (const id of ['herb','ether','potion','iron','leather','star','moon']) {
-      assert.equal(shops.nodes.inventory.innerHTML.includes('data-action="buy:'+id+'"'),ids.includes(id),town+' displays '+id);
+      assert.equal(shops.nodes.shopItems.innerHTML.includes('data-action="buy:'+id+'"'),ids.includes(id),town+' displays '+id);
       const before = shops.run('JSON.stringify(state)');
       shops.run(`action('buy:${id}')`);
       if (!ids.includes(id)) assert.equal(shops.run('JSON.stringify(state)'),before,'reject unlisted '+id+' in '+town);
     }
   }
-  shops.run("state.node='meadow';state.village=false;state.gold=10000");
+  shops.run("action('shop-close')");
+  assert.equal(shops.nodes.shopMenu.hidden,true,'close restores town commands');
+  shops.run("action('shop');showScreen('bag')");
+  assert.equal(shops.nodes.shopMenu.hidden,true,'screen navigation closes the shop');
+  shops.run("tab='shop';renderInventory()");
+  assert.equal(shops.run('tab'),'bag','removed shop tab falls back to the bag');
+  assert.ok(!shops.nodes.inventory.innerHTML.includes('data-action="buy:'));
+  shops.run("state.node='meadow';state.village=false;state.gold=10000;render()");
+  assert.equal(shops.run('openShop()'),false,'no shop opening outside town');
+  assert.equal(shops.nodes.shopMenu.hidden,true);
   const outside = shops.run('JSON.stringify(state)');
   shops.run("action('buy:herb')");
   assert.equal(shops.run('JSON.stringify(state)'),outside,'no purchases outside town');
   shops.run("state.node='home';state.village=true;state.enemy={hp:10}");
   assert.equal(shops.run('currentShopStock().length'),0,'no shop during battle');
+  assert.equal(shops.run('openShop()'),false);
+  const busyShop=boot();busyShop.run("state.node='home';state.village=true;busy=true");
+  assert.equal(busyShop.run('openShop()'),false,'busy blocks shop entry');
+  const reloadShop=boot(shops.storage['starlight-rpg-v1']);
+  assert.equal(reloadShop.run('shopOpen'),false,'shop UI is not persisted');
   const loot = boot();
   for (const [roll, count] of [[0,4],[.0199,4],[.02,3],[.0799,3],[.08,2],[.2499,2],[.25,1],[.5499,1],[.55,0],[.99,0]]) {
     assert.equal(loot.run(`rollMaterials(bestiary[0][0],()=>${roll}).length`),count,'probability boundary '+roll);
