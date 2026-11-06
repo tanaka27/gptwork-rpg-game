@@ -140,7 +140,13 @@ dialog { background:#17232d; border-color:#596c70; padding:24px; max-height:calc
 #skillTargetDialog{width:min(420px,calc(100vw - 32px))}
 #skillTargetDialog h2{margin:0 0 8px;font-size:18px}
 #skillTargets{display:grid;gap:8px;margin:16px 0}
-#skillTargets button{width:100%;min-height:44px;padding:10px 12px;text-align:left}
+#skillTargets button{width:100%;min-height:44px;margin:0;padding:10px 12px;text-align:left}
 #skillTargetDialog>button{min-height:40px;padding:8px 14px}
 .skill-target-note{font-size:12px;color:var(--muted)}
 #skillTargetDialog::backdrop{background:#0009}
+@media(max-height:540px) and (min-width:600px){
+ #skillTargetDialog{width:min(560px,calc(100vw - 32px));padding:16px}
+ #skillTargets{grid-template-columns:repeat(2,minmax(0,1fr));margin:10px 0}
+ #skillTargetDialog .skill-target-note{margin:4px 0}
+ #skillTargetDialog>button{margin-top:0}
+}

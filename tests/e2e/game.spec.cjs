@@ -243,3 +243,26 @@ test('スキルの対象を選び、味方を回復・敵を攻撃する', async
   expect(saved.enemies[0].hp).toBe(1000);expect(saved.enemies[2].hp).toBeLessThan(1000);
   expect(saved.mp).toBe(19);expect(saved.turn).toBe(2);
 });
+
+test('横向きでもスキル対象とキャンセルが画面内に収まる', async ({ page }) => {
+  await page.setViewportSize({width:844,height:390});
+  await page.goto('/');
+  await page.evaluate(()=>{
+    const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    Object.assign(save,{lv:3,hp:114,mp:28});save.companions[0].hp=1;
+    localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
+  });
+  await page.reload();
+  await page.locator('[data-screen="bag"]').click();
+  await page.locator('[data-tab="skills"]').click();
+  await page.locator('[data-action="skill:heal"]').click();
+  for(const selector of ['#skillTargetDialog','#skillTargets button','[data-action="cancel-skill"]']){
+    for(const box of await page.locator(selector).evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().toJSON()))){
+      expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.right).toBeLessThanOrEqual(844);expect(box.bottom).toBeLessThanOrEqual(390);
+    }
+  }
+  await page.locator('[data-action="cancel-skill"]').click();
+  await expect(page.locator('#skillTargetDialog')).toBeHidden();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).mp)).toBe(28);
+});
