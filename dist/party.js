@@ -58,6 +58,10 @@ async function showBattleMessages(){
  while(battleMessages.length)await waitForBattleMessage(battleMessages.shift());
 }
 $('fieldMessage').onclick=advanceBattleMessage;
+$('screen-adventure').addEventListener('click',event=>{
+ if(!battleMessageResolve)return;
+ event.preventDefault();event.stopImmediatePropagation();advanceBattleMessage();
+},true);
 $('fieldMessage').onkeydown=event=>{
  if(battleMessageResolve&&(event.key==='Enter'||event.key===' ')){
   event.preventDefault();if(!event.repeat)advanceBattleMessage();
@@ -243,5 +247,5 @@ document.addEventListener('click',event=>{const button=event.target.closest('[da
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 const originalResetAdventure=resetAdventure;
 resetAdventure=function(){if(busy||roundActive)return;pendingItem=null;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
-$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。行動の開始メッセージをクリック（タップ）すると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具を選んだら上部の味方をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
+$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具を選んだら上部の味方をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
 allies();render();if(state.enemy)scheduleRound();

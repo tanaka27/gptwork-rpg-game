@@ -212,3 +212,7 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 .admin-link{display:block;padding:10px 14px;color:var(--text);font-size:13px;text-decoration:none;min-height:44px}.preview-banner{font-size:10px;max-width:160px;color:var(--gold)}#cloudDialog label{display:block;font-size:12px}#cloudHistory{display:block;max-width:100%;margin-top:8px}#cloudStatus{white-space:pre-wrap;font-size:12px}
 
 #loadingMessage{position:fixed;inset:62px 0 0;z-index:40;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg);color:var(--text)}
+
+/* Let disabled targets pass message-advance clicks to the adventure screen. */
+#screen-adventure:has(.awaiting-click) { cursor:pointer; }
+#screen-adventure:has(.awaiting-click) button:disabled { pointer-events:none; }
