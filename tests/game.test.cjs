@@ -19,7 +19,11 @@ function boot(saved = null, party = false, manualMessages = false) {
   vm.runInContext(source, context);
   // Existing progression tests traverse real, uneventful three-step routes.
   vm.runInContext(`function walkTo(id){if(!moveTo(id))return false;const previous=Math.random;Math.random=()=>.99;try{for(let i=0;i<3;i++)advanceTravel();}finally{Math.random=previous;}return !state.journey;}`,context);
-  if(party) vm.runInContext(fs.readFileSync('dist/party.js','utf8'),context);
+  if(party) {
+    // Engine regressions supply a command at the hero's slot; controller timing is tested separately.
+    vm.runInContext(fs.readFileSync('dist/party.js','utf8').replace('function scheduleRound(){return partyRound();}', 'function scheduleRound(){}'),context);
+    vm.runInContext(`commandResolve=()=>{};partyRound=function(kind,skillId,itemId,skillTargetIndex=selectedEnemy){if(busy||!state.enemy)return;return executePartyRound(()=>Promise.resolve({kind,skillId,itemId,skillTargetIndex}));};submitCommand=(...args)=>partyRound(...args);`,context);
+  }
   if(party&&!manualMessages)vm.runInContext('waitForBattleMessage=()=>Promise.resolve()',context);
   return {run:code=>vm.runInContext(code,context), nodes, storage};
 }

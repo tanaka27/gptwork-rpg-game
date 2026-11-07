@@ -235,3 +235,9 @@ npm testに3街の見出し、宿泊成功メッセージの抑止、全員回�
 今回の最終確認は、既存ゲームと管理/クラウドのPlaywright全34件、1440×900・390×844・320×568・844×390の追加12件が通過。Node側は既存ゲーム/コンテンツ検証に加えてSQLite API7ケースが通過。生成Workerからゲーム・管理画面・画像・定義JSONを配信できることも確認した。本番DB/Workerの反映結果は公開時に別途確認する。
 
 公開アーカイブはnpm run package:siteでwork/site.tar.gzへ生成する。ルートに.openai/hosting.json、dist/server/index.js、drizzle/が必要。D1宣言は文字列"DB"。本番は4テーブルの作成と所有者限定を確認し、公開ゲームもPlaywrightでPC/スマホ幅を操作した。詳細と確認範囲はBACKEND.md参照。
+
+## 行動時入力の検証（2026-11-07）
+
+Browserプラグインは未提供のため、リポジトリのPlaywrightで実ブラウザを操作します。WindowsではNode.js 24の実行ファイルをPATHの先頭へ置き、インストール済みChromiumはPLAYWRIGHT_CHROMIUM_EXECUTABLE_PATHで指定します。npm test、npm run test:e2e -- --workers=2、npm run buildを使用します。
+
+tests/e2e/command-timing.spec.cjsは敵の先行攻撃→仲間→主人公の入力待ち→取消→防御→後続攻撃→次ラウンド→再読込を検証します。開始確認前のHP/MP非消費、二重確定拒否、前半/後半での防御の差、未確定ラウンドの保存抑止、主人公の戦闘不能スキップ・仲間のみの勝利・全滅を確認。既存E2Eは戦闘開始/読込後のメッセージを主人公の番まで送り、コマンド操作を行うよう更新しました。PC幅とPC上のスマホ幅の検証であり、スマートフォン実端末の確認とは区別します。

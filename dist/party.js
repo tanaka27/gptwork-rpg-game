@@ -21,6 +21,23 @@ let selectedEnemy=0;
 let selectedCharacter=null;
 let pendingSkill=null;
 let skillMenuMode='commands';
+let roundActive=false, commandResolve=null;
+function scheduleRound(){return partyRound();}
+function waitForCommand(){
+ busy=false;log(`${partyNames[0]}の番です。行動を選んでください。`);
+ return new Promise(resolve=>{commandResolve=resolve;render(false);});
+}
+function submitCommand(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
+ if(!commandResolve||busy||state.hp<=0)return false;
+ const skill=skillList.find(s=>s.id===skillId);
+ if(!['attack','guard','run','skill','item'].includes(kind))return false;
+ if(kind==='run'&&activeEnemies().some(e=>e.boss)){log('ボスからは逃げられない！');render(false);return false;}
+ if(kind==='skill'&&(!skill||state.lv<skill.lv||state.mp<skill.cost||!validSkillTarget(skill,skillTargetIndex)))return false;
+ if(kind==='item'&&(!consumables[itemId]||!state.items[itemId]))return false;
+ const resolve=commandResolve;commandResolve=null;busy=true;
+ pendingSkill=null;skillMenuMode='commands';$('subactions').innerHTML='';
+ resolve({kind,skillId,itemId,skillTargetIndex});render(false);return true;
+}
 // ラウンド中のログを、時間ではなくメッセージ窓の操作で1件ずつ送る。
 let battleMessageResolve=null, battleMessageText=null;
 const battleMessages=[];
@@ -90,7 +107,7 @@ function renderCharacterScreen(){
 }
 const previousShowScreen=showScreen;
 showScreen=function(name){if(name!=='adventure'&&skillMenuMode!=='commands'){pendingSkill=null;skillMenuMode='commands';render(false);}if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
-startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;originalStart(boss,travelEncounter);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i%bestiary[state.zone].length];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=(e.speed??((GameData.rules.battle.baseEnemySpeed??8)+state.zone*(GameData.rules.battle.enemySpeedPerZone??4)))+i*(GameData.rules.battle.slotSpeedStep??3));selectedEnemy=0;render();};
+startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;originalStart(boss,travelEncounter);if(!state.enemy)return;const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i%bestiary[state.zone].length];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=(e.speed??((GameData.rules.battle.baseEnemySpeed??8)+state.zone*(GameData.rules.battle.enemySpeedPerZone??4)))+i*(GameData.rules.battle.slotSpeedStep??3));selectedEnemy=0;render();scheduleRound();};
 render=function(persist=true){allies();const enemies=battleEnemies();originalRender(false);
  if(pendingSkill){const skill=skillList.find(s=>s.id===pendingSkill.id);if(pendingSkill.inBattle!==!!state.enemy||!skill||state.lv<skill.lv||state.hp<=0){pendingSkill=null;skillMenuMode='commands';}}
  renderCharacterScreen();
@@ -106,27 +123,41 @@ render=function(persist=true){allies();const enemies=battleEnemies();originalRen
  $('fieldMessage').tabIndex=waiting?0:-1;
  $('messageNext').hidden=!waiting;
  if(battleMessageText!==null)$('latestLog').textContent=battleMessageText;
- if(persist&&!busy)save();
+ $('reset').disabled=busy||roundActive;
+ if(state.enemy)$('commandTitle').textContent=commandResolve?partyNames[0]+'の番：行動を選択':'素早さ順に行動中（メッセージを送って進行）';
+ if(persist&&!busy&&!roundActive)save();
 };
-async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
- if(!state.enemy||busy)return;
+async function partyRound(){
+ if(!state.enemy||busy||roundActive)return;
+ roundActive=true;
+ while(state.enemy)await executePartyRound(waitForCommand);
+ roundActive=false;render(false);
+}
+async function executePartyRound(getCommand){
+ let kind=null,skillId,itemId,skillTargetIndex=selectedEnemy,skill,guarding=false;
+ if(!state.enemy)return;
  const enemies=battleEnemies();
- if(kind==='run'){if(enemies.some(e=>e.boss&&e.hp>0)){log('ボスからは逃げられない！');render();return;}if(Math.random()<GameData.rules.battle.escapeRate){state.enemy=null;state.enemies=[];$('subactions').innerHTML='';log('旅団は逃げきった。');finishTravel();render();return;}}
- const skill=skillList.find(s=>s.id===skillId);
- if(kind==='skill'&&(!skill||state.lv<skill.lv||state.mp<skill.cost||state.hp<=0||!validSkillTarget(skill,skillTargetIndex)))return;
- if(kind==='item'&&(!consumables[itemId]||state.items[itemId]<=0||state.hp<=0))return;
  busy=true;const order=roundOrder();state.lastRoundOrder=[];
  for(const actor of order){
   if(!enemies.some(e=>e.hp>0)||!allies().some((a,i)=>allyHP(i)>0))break;
   if(actor.side==='ally'){
    const i=actor.index;if(allyHP(i)<=0)continue;
+   if(i===0){
+    ({kind,skillId,itemId,skillTargetIndex}=await getCommand());
+    busy=true;skill=skillList.find(s=>s.id===skillId);
+    if(kind==='run'){
+     log('旅団は逃走を試みた！');await showBattleMessages();
+     if(Math.random()<GameData.rules.battle.escapeRate){state.enemy=null;state.enemies=[];log('旅団は逃げきった。');await showBattleMessages();busy=false;finishTravel();save();render(false);return;}
+     log('逃げられなかった！');await showBattleMessages();continue;
+    }
+   }
    state.lastRoundOrder.push(actor.name);
    const announcement=i===0&&kind==='guard'?`${actor.name}は身を守る！`:i===0&&kind==='item'?`${actor.name}は${consumables[itemId].name}を使う！`:i===0&&kind==='skill'?`${actor.name}の${skill.name}！`:`${actor.name}の攻撃！`;
    log(announcement);
    await showBattleMessages();
    const targetIndex=i===0&&kind==='skill'&&skill.effect==='damage'?skillTargetIndex:selectedEnemy;
    let target=enemies[targetIndex]?.hp>0?enemies[targetIndex]:enemies.find(e=>e.hp>0);
-   if(i===0&&kind==='guard'){state.mp=Math.min(maxmp(),state.mp+GameData.rules.battle.guardMPRestore);log(`${partyNames[0]}は身を守った。`);}
+   if(i===0&&kind==='guard'){guarding=true;state.mp=Math.min(maxmp(),state.mp+GameData.rules.battle.guardMPRestore);log(`${partyNames[0]}は身を守った。`);}
    else if(i===0&&kind==='item'){state.items[itemId]--;if(itemId==='ether')state.mp=Math.min(maxmp(),state.mp+GameRules.effectAmount(consumables[itemId].effects[0],{maxHP:maxhp(),maxMP:maxmp()},CombatRules));else state.hp=Math.min(maxhp(),state.hp+GameRules.effectAmount(consumables[itemId].effects[0],{maxHP:maxhp(),maxMP:maxmp()},CombatRules));log(`${consumables[itemId].name}で${partyNames[0]}を回復。`);}
    else if(i===0&&kind==='skill'){
     if(skill.effect==='heal'){
@@ -146,7 +177,7 @@ async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
    state.lastRoundOrder.push(actor.name);
    log(`${enemy.name}の攻撃！`);
    await showBattleMessages();
-   const targets=allies().map((a,i)=>i).filter(i=>allyHP(i)>0);const target=targets[Math.floor(Math.random()*targets.length)];const damage=CombatRules.physicalDamage({attack:enemy.atk,defense:defense(),strong:state.turn%GameData.rules.battle.strongEvery===0,guard:target===0&&kind==='guard'});setAllyHP(target,Math.max(0,allyHP(target)-damage));log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);}
+   const targets=allies().map((a,i)=>i).filter(i=>allyHP(i)>0);const target=targets[Math.floor(Math.random()*targets.length)];const damage=CombatRules.physicalDamage({attack:enemy.atk,defense:defense(),strong:state.turn%GameData.rules.battle.strongEvery===0,guard:target===0&&guarding});setAllyHP(target,Math.max(0,allyHP(target)-damage));log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);}
   state.enemy=enemies.find(e=>e.hp>0)||enemies[0];render(false);
   await showBattleMessages();
  }
@@ -155,20 +186,20 @@ async function partyRound(kind,skillId,itemId,skillTargetIndex=selectedEnemy){
  else if(enemies.every(e=>e.hp<=0)){for(const e of [...enemies].sort((a,b)=>Number(a.boss)-Number(b.boss))){state.enemy=e;originalWin();await showBattleMessages();}state.enemies=[];state.companions.forEach(a=>{a.hp=Math.max(1,Math.min(a.hp,maxhp()));});}
  else state.enemy=enemies.find(e=>e.hp>0);
  await showBattleMessages();
- busy=false;$('subactions').innerHTML='';finishTravel();render();
+ busy=false;$('subactions').innerHTML='';finishTravel();save();render(false);
 }
-combat=kind=>partyRound(kind);
+combat=kind=>submitCommand(kind);
 useSkill=function(id,targetIndex=null){
  const skill=skillList.find(s=>s.id===id);
- if(!skill||busy||state.hp<=0||state.lv<skill.lv||state.mp<skill.cost||(skill.effect==='damage'&&!state.enemy))return false;
+ if(!skill||busy||(state.enemy&&!commandResolve)||state.hp<=0||state.lv<skill.lv||state.mp<skill.cost||(skill.effect==='damage'&&!state.enemy))return false;
  if(targetIndex===null){chooseSkillTarget(skill);return true;}
  if(!validSkillTarget(skill,targetIndex))return false;
- if(state.enemy){if(skill.effect==='damage')selectedEnemy=targetIndex;return partyRound('skill',id,null,targetIndex);}
+ if(state.enemy){if(skill.effect==='damage')selectedEnemy=targetIndex;return submitCommand('skill',id,null,targetIndex);}
  const healed=Math.min(maxhp()-allyHP(targetIndex),GameRules.skillAmount(skill,{wisdom:wisdom(),attack:attack()},CombatRules));
  state.mp-=skill.cost;setAllyHP(targetIndex,allyHP(targetIndex)+healed);
  log(`${skill.name}！ ${partyNames[targetIndex]}のHPが${healed}回復。`);render();return true;
 };
-useItem=id=>state.enemy?partyRound('item',null,id):originalUseItem(id);
+useItem=id=>state.enemy?submitCommand('item',null,id):originalUseItem(id);
 const originalAction=action;
 action=function(a){
  const [key,id,target]=a.split(':');
@@ -184,6 +215,6 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!busy&&skil
 document.addEventListener('click',event=>{const button=event.target.closest('[data-character]');if(button){const index=Number(button.dataset.character);if(Number.isInteger(index)&&index>=0&&index<allies().length){selectedCharacter=index;renderCharacterScreen();$('characterName').focus();}}});
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 const originalResetAdventure=resetAdventure;
-resetAdventure=function(){if(busy)return;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
-$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。敵を選択し、アステルのコマンドで1ラウンド開始します。素早さが高い順に行動し、戦闘不能者は行動しません。行動の開始メッセージをクリック（タップ）すると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具はアステルが対象。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
-allies();render();
+resetAdventure=function(){if(busy||roundActive)return;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
+$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。行動の開始メッセージをクリック（タップ）すると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具はアステルが対象。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
+allies();render();if(state.enemy)scheduleRound();

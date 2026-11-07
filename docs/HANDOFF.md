@@ -264,3 +264,11 @@ workspace.cssの.field-message[hidden]でflex表示を確実に解除。低い�
 最新構成は[BACKEND.md](BACKEND.md)を参照。静的アプリだけという以前の説明は旧構成。フロントは維持し、初期JSON・共通計算/検証・API・管理画面・SQLite/D1を追加した。起動はNode.js 24以上でnpm run dev。DB公開後は定義の正本がDBへ移り、下書き→検証→プレビュー→公開を使用する。
 
 保存キー/v:2とクリック送りは維持。クラウドは明示的なバックアップ/復元で、通常のローカル自動保存を置き換えない。管理プレビューの進行は隔離する。dist/data.generated.js、dist/data/、dist/shared/は生成物。変更はcontent/とshared/へ行いnpm run content:syncする。
+
+## 行動時コマンド入力への変更（2026-11-07）
+
+最新の戦闘進行はparty.jsのpartyRound（ラウンド制御）→executePartyRound（1ラウンドの効果処理）です。startBattleと戦闘セーブ読込でscheduleRoundを呼び、ラウンドは自動開始します。主人公の順番だけwaitForCommandで停止。commandResolveが存在する間だけsubmitCommandが入力を検証・確定します。busyはメッセージ待ちでtrue、コマンド待ちでfalse。roundActiveはラウンド進行中（入力待ち含む）を表し、自動保存・リセット・クラウド操作を抑止します。各確定ラウンド末に明示保存し、戦闘終了時にroundActiveを解除して再描画します。
+
+防御はguardingを主人公の効果反映時に立て、ラウンドごとに解除。逃走判定も主人公の順番です。主人公が倒れている場合はコマンド待ちを作らず、自動行動とクリック送りだけで継続します。セーブ形式は増やさず、再読込は従来どおり直前の確定ラウンド冒頭へ戻ります。bootstrapの配信クエリをbackend-2、HTMLのbootstrap参照をv=2へ更新。
+
+tests/game.test.cjsの既存効果処理テストは、scheduleRoundを止め、主人公のスロットでテスト用コマンドを供給します。実際の制御経路はtests/e2e/command-timing.spec.cjsで差し替えずに検証します。古い「コマンドでラウンド開始」という説明は旧仕様です。
