@@ -241,3 +241,8 @@ npm testに3街の見出し、宿泊成功メッセージの抑止、全員回�
 Browserプラグインは未提供のため、リポジトリのPlaywrightで実ブラウザを操作します。WindowsではNode.js 24の実行ファイルをPATHの先頭へ置き、インストール済みChromiumはPLAYWRIGHT_CHROMIUM_EXECUTABLE_PATHで指定します。npm test、npm run test:e2e -- --workers=2、npm run buildを使用します。
 
 tests/e2e/command-timing.spec.cjsは敵の先行攻撃→仲間→主人公の入力待ち→取消→防御→後続攻撃→次ラウンド→再読込を検証します。開始確認前のHP/MP非消費、二重確定拒否、前半/後半での防御の差、未確定ラウンドの保存抑止、主人公の戦闘不能スキップ・仲間のみの勝利・全滅を確認。既存E2Eは戦闘開始/読込後のメッセージを主人公の番まで送り、コマンド操作を行うよう更新しました。PC幅とPC上のスマホ幅の検証であり、スマートフォン実端末の確認とは区別します。
+
+
+## 道具の味方選択（2026-11-07）
+
+戦闘・街・道中で道具を選ぶと冒険画面へ移り、上部の味方を押してHP/MPを回復できます。満タン・戦闘不能・不正な対象は使用不可。戻る・Esc・画面切替では道具とターンを消費しません。戦闘では開始メッセージの確認後に対象と残数を再検証し、回復と1個の消費を反映します。セーブ形式は維持。実装はdist/party.jsのvalidItemTarget/applyItem/useItem、ブラウザ検証はtests/e2e/item-target.spec.cjsです。
