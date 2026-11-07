@@ -215,4 +215,91 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 
 /* Let disabled targets pass message-advance clicks to the adventure screen. */
 #screen-adventure:has(.awaiting-click) { cursor:pointer; }
-#screen-adventure:has(.awaiting-click) button:disabled { pointer-events:none; }
+#screen-adventure:has(.awaiting-click) button:disabled:not(.party-member) { pointer-events:none; }
+
+/* Reference battle composition: field, party at its foot, then one command panel. */
+.game-shell:has(.battle-layout){grid-template-rows:minmax(0,1fr) auto}
+.battle-layout.adventure-screen{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:0}
+.battle-layout .arena{grid-column:1;grid-row:1;border-radius:10px 10px 0 0;overflow:hidden;height:auto}
+.battle-layout #partyStatus{position:absolute;z-index:4;left:12px;right:12px;bottom:12px;width:auto;max-width:none;gap:7px}
+.battle-layout .party-member{position:relative;padding:9px 8px 7px;background:#101d23ed;border:1px solid #a7b4a4;border-radius:7px;gap:5px;box-shadow:0 3px 10px #0004;line-height:1.4}
+.battle-layout .party-member>strong{display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.battle-layout .party-member>strong::after{content:'Lv.' attr(data-level);font-size:10px;color:var(--muted);font-weight:400}
+.battle-layout .party-member.acting{border-color:#f5e5ac;box-shadow:0 0 0 2px #f5e5ac55,0 3px 10px #0004;transform:translateY(-5px)}
+.battle-layout .party-member .meter-head strong,.battle-layout .party-member .meter-head span{font-size:11px}
+.battle-layout .party-member .bar{height:5px;margin:2px 0 0}
+.battle-layout #enemy:has(.enemy-unit){inset:16px 14px 130px;align-items:center;gap:12px;padding:0}
+.battle-layout #enemy .enemy-unit{align-self:center;gap:6px}
+.battle-layout #enemy .enemy-unit strong{order:-3;font-size:13px;font-weight:600}
+.battle-layout #enemy .enemy-target-marker{order:-4}
+.battle-layout #enemy .enemy-hp{order:-2;max-width:125px;height:6px}
+.battle-layout #enemy .enemy-unit svg{width:100%;height:clamp(85px,23dvh,200px);max-height:none}
+.battle-layout .command{grid-column:1;grid-row:2;max-height:none;overflow:visible;padding:12px;background:#15232ced;border:1px solid #879789;border-radius:0 0 10px 10px;box-shadow:0 4px 16px #0003}
+.battle-layout #actions{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.battle-layout #actions button{min-height:58px;padding:8px 3px;font-size:15px;border:1px solid #c9b481;border-radius:8px;background:#293832;box-shadow:inset 0 0 0 2px #101820, inset 0 0 0 3px #c9b48144}
+.battle-layout #actions button:first-child{background:#53694b}
+.battle-layout #actions button:hover:not(:disabled){background:#53694b}
+.battle-layout .field-message{position:relative;inset:auto;width:100%;height:58px;margin-top:8px;padding:5px 2px 0;background:transparent;border:0;border-top:1px solid #87978955;box-shadow:none;border-radius:0;gap:2px}
+.battle-layout #latestLog{font-size:12px}
+.battle-layout #battleOrder{display:none}
+.battle-layout #skillMenu{max-height:230px;gap:10px}
+.battle-layout .skill-list{max-height:162px;gap:8px}
+.battle-layout .skill-list button{min-height:62px;padding:8px 12px;background:#293832;border:1px solid #c9b481;border-radius:8px;box-shadow:inset 0 0 0 2px #101820}
+.battle-layout .skill-list button>span{font-size:14px;font-weight:600}
+.battle-layout .skill-list button>span small{display:block;margin-top:3px;font-weight:400}
+.battle-layout .skill-list button>small b{font-size:16px;color:var(--text)}
+.battle-layout #skillMenu>button{align-self:flex-start;border-radius:18px;border-color:#c9b481;font-size:12px}
+.battle-layout .command:has(#skillMenu:not([hidden])) .field-message:not(.awaiting-click){display:none}
+.battle-layout #skillDetail h3{border:1px solid #879789;border-radius:5px;padding:8px 10px;font-size:16px}
+.battle-layout #skillDetail h3 span{font-size:12px}
+.battle-layout #skillDetail p{margin:10px 0;font-size:13px}
+.battle-layout #skillDetail .skill-target-note{padding-top:10px;margin-bottom:0;border-top:1px dotted #879789;font-weight:600}
+.battle-layout.choosing-enemy #partyStatus{display:none}
+.battle-layout.choosing-enemy #enemy:has(.enemy-unit){bottom:24px}
+@media(max-width:600px){
+ .game-shell:has(.battle-layout){padding:0 10px}
+ .battle-layout #partyStatus{left:7px;right:7px;bottom:10px;gap:4px}
+ .battle-layout .party-member{padding:7px 4px;gap:4px}
+ .battle-layout .party-member>strong{font-size:11px;flex-wrap:wrap;gap:2px}
+ .battle-layout .party-member>strong::after{font-size:9px}
+ .battle-layout .party-member .meter-head strong,.battle-layout .party-member .meter-head span{font-size:9px}
+ .battle-layout .party-member .meter-head strong span{display:none}
+ .battle-layout #enemy:has(.enemy-unit){inset:12px 7px 122px;gap:4px}
+ .battle-layout #enemy .enemy-unit{gap:4px}
+ .battle-layout #enemy .enemy-unit strong{font-size:10px}
+ .battle-layout #enemy .enemy-unit svg{height:clamp(68px,20dvh,140px)}
+ .battle-layout .command{padding:10px 8px}
+ .battle-layout #actions{gap:5px}
+ .battle-layout #actions button{font-size:12px;min-height:52px}
+ .battle-layout .skill-list button{padding:7px;min-height:56px;gap:3px}
+ .battle-layout .skill-list button>span{font-size:12px}
+ .battle-layout .skill-list button>small{font-size:9px}
+}
+@media(max-height:680px){
+ .battle-layout #enemy:has(.enemy-unit){bottom:108px;top:8px}
+ .battle-layout #enemy .enemy-unit{gap:2px}
+ .battle-layout #enemy .enemy-unit svg{height:70px}
+ .battle-layout .party-member{padding:5px 4px;gap:2px}
+ .battle-layout .command{padding:8px}
+ .battle-layout #actions button{min-height:44px}
+ .battle-layout .field-message{height:48px;margin-top:5px}
+ .battle-layout #skillMenu{max-height:190px;gap:6px}
+ .battle-layout .skill-list{max-height:120px;gap:6px}
+ .battle-layout .skill-list button{min-height:48px}
+ .battle-layout #skillDetail p{font-size:11px;margin:6px 0}
+ .battle-layout #skillDetail h3{padding:6px 8px;font-size:14px}
+}
+@media(max-height:450px) and (min-width:600px){
+ .battle-layout.adventure-screen{grid-template-columns:minmax(0,1.2fr) minmax(260px,1fr);grid-template-rows:minmax(0,1fr);gap:8px}
+ .battle-layout .command{grid-column:2;grid-row:1;overflow:auto;border-radius:8px}
+ .battle-layout .arena{border-radius:8px}
+ .battle-layout #enemy:has(.enemy-unit){bottom:100px}
+ .battle-layout #enemy .enemy-unit svg{height:45px}
+}
+
+.skill-footer{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.skill-footer button{min-height:36px;padding:6px 12px}
+.skill-footer>span{font-size:12px;color:var(--text)}
+.battle-layout .skill-footer button{border-radius:18px;border-color:#c9b481;background:var(--bg)}
+@media(max-width:350px){.skill-footer{gap:8px}.skill-footer>span{font-size:11px}}
+@media(max-height:450px) and (min-width:600px){.battle-layout .skill-list{max-height:160px}}

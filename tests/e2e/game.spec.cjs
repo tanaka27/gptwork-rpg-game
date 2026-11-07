@@ -345,9 +345,9 @@ test('敵は背景枠とHP数値なしのバーで表示し、対象に矢印を
   await page.setViewportSize({width:320,height:568});
   await expect.poll(()=>page.evaluate(()=>{
     const field=document.querySelector('.arena').getBoundingClientRect();
-    const message=document.querySelector('.field-message').getBoundingClientRect();
+    const party=document.querySelector('#partyStatus').getBoundingClientRect();
     return [...document.querySelectorAll('.enemy-unit')].every(node=>{
-      const box=node.getBoundingClientRect();return box.y>=field.y&&box.bottom<=message.y;
+      const box=node.getBoundingClientRect();return box.y>=field.y&&box.bottom<=party.y;
     });
   })).toBe(true);
 });
