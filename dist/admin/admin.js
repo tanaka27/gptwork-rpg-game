@@ -1,7 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const categoryNames={characters:'キャラクター',zones:'エリア',monsters:'モンスター',items:'アイテム・装備',skills:'スキル',nodes:'マップ地点',rarities:'レアリティ',materials:'素材',shops:'ショップ'};
-const fieldNames={id:'固定ID',name:'名前',speed:'素早さ',hp:'HP',atk:'攻撃力',def:'守備力',wis:'賢さ',xp:'経験値',gold:'所持金・報酬',price:'価格',value:'補正値',cost:'消費MP',lv:'習得レベル',zoneId:'エリア',nodeId:'街の地点',itemIds:'販売商品',drops:'ドロップ素材',links:'接続先（双方向）',rarity:'レアリティ',bossId:'ボス',category:'分類',effects:'効果',desc:'説明',type:'種類',power:'倍率',base:'基礎値',shape:'姿',rate:'確率',x:'地図X',y:'地図Y',town:'街',boss:'ボス',common:'基本素材',bonusItemId:'装備ドロップ',travelMaterials:'道中の素材',party:'初期隊列',growth:'成長',travel:'道中',battle:'戦闘',inn:'宿屋',normalAttack:'通常攻撃'};
+const fieldNames={id:'固定ID',name:'名前',speed:'素早さ',hp:'HP',atk:'攻撃力',def:'守備力',wis:'賢さ',xp:'経験値',gold:'所持金・報酬',price:'価格',value:'補正値',cost:'消費MP',lv:'習得レベル',zoneId:'エリア',nodeId:'街の地点',itemIds:'販売商品',drops:'ドロップ素材',links:'接続先（双方向）',rarity:'レアリティ',bossId:'ボス',category:'分類',effects:'効果',desc:'説明',type:'種類',power:'倍率',base:'基礎値',shape:'姿',rate:'確率',x:'地図X',y:'地図Y',town:'街',boss:'ボス',common:'基本素材',bonusItemId:'装備ドロップ',travelMaterials:'道中の素材',party:'初期隊列',baseLuck:'うんのよさ（初期値）',luckPerLevel:'うんのよさ（レベル上昇分）',growth:'成長',travel:'道中',battle:'戦闘',inn:'宿屋',normalAttack:'通常攻撃'};
 let working=null,version=null,category='monsters',index=0,dirty=false;
 function status(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error);}
 async function api(path,options={}){const response=await fetch(path,{...options,headers:{'content-type':'application/json'}}),result=await response.json();if(!response.ok)throw new Error(result.error||'接続できません');return result;}

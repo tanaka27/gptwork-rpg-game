@@ -1,0 +1,29 @@
+const {test,expect}=require('@playwright/test');
+async function advanceToInput(page){for(let i=0;i<80;i++){if(!await page.locator('#messageNext').isVisible())return;await page.locator('#fieldMessage').click();}throw Error('input not reached');}
+for(const critical of [true,false])test(`うんのよさと物理スキルの${critical?'会心':'通常'}ダメージ・保存`,async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
+ await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
+ await page.addInitScript(()=>{Math.random=()=>0;});
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.locator('[data-action="explore"]').click();
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));s.lv=5;s.mp=36;s.hp=148;s.companions.forEach(c=>{c.hp=148;c.mp=36;});s.enemies.forEach((e,i)=>Object.assign(e,{name:'守備の試験'+i,hp:10000,max:10000,def:100000,atk:0,speed:0}));s.enemy=s.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(s));});
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await advanceToInput(page);
+ await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();
+ await expect(page.locator('#partyDetails')).toContainText('うんのよさ');await expect(page.locator('#partyDetails dt').filter({hasText:'うんのよさ'}).locator('..')).toHaveText('うんのよさ18');
+ await page.screenshot({path:test.info().outputPath('luck-status.png')});
+ await page.locator('[data-screen="adventure"]').click();await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:slash"]').click();await expect(page.locator('#skillDetail')).toContainText('会心の一撃');
+ await page.evaluate(critical=>{Math.random=()=>critical?0:.99;},critical);
+ const before=await page.evaluate(()=>({hp:state.enemies[0].hp,mp:state.mp}));
+ await page.locator('[data-target="0"]').click();await expect(page.locator('#latestLog')).toHaveText('アステルの流星斬り！');
+ expect(await page.evaluate(()=>state.enemies[0].hp)).toBe(before.hp);expect(await page.evaluate(()=>state.mp)).toBe(before.mp);
+ await page.screenshot({path:test.info().outputPath('before-skill.png')});
+ await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).toContainText(critical?'会心の一撃！':'流星斬り！ 守備の試験0');
+ if(!critical)await expect(page.locator('#latestLog')).not.toContainText('会心の一撃');
+ expect(await page.evaluate(()=>state.mp)).toBe(before.mp-8);
+ expect(before.hp-await page.evaluate(()=>state.enemies[0].hp)).toBe(critical?62:2);
+ await page.screenshot({path:test.info().outputPath('after-skill.png')});await advanceToInput(page);
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));expect(saved.lv).toBe(5);expect(saved.mp).toBe(28);expect(saved.v).toBe(2);
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');expect(await page.evaluate(()=>state.mp)).toBe(28);expect(await page.evaluate(()=>luck())).toBe(18);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);expect(errors).toEqual([]);
+});

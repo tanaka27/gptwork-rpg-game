@@ -527,6 +527,31 @@ function boot(saved = null, party = false, manualMessages = false) {
   assert.equal(noMP.run('state.enemy.hp'),10000,'insufficient MP prevents cast');
   assert.equal(noMP.run('state.turn'),1);
   assert.equal(migrated.run('wisdom()'),26,'old saves gain derived wisdom without losing level');
-  console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, DQ-style base, no critical hits, glancing hits, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
+  const critical=boot(null,true);
+  assert.equal(critical.run('luck()'),10);
+  critical.run('state.lv=5');assert.equal(critical.run('luck()'),18);
+  for(const rate of [0,1,10,100,256,1000])assert.equal(critical.run('CombatRules.criticalRate('+rate+')'),Math.min(.5,rate/512));
+  for(const defense of [0,1000000])assert.equal(critical.run('CombatRules.physicalDamage({attack:100,defense:'+defense+',power:2.4,critical:true,roll:.5})'),240);
+  assert.equal(critical.run('CombatRules.physicalDamage({attack:0,defense:99,critical:true})'),0);
+  assert.equal(critical.run('CombatRules.physicalDamage({attack:100,defense:99,power:0,critical:true})'),0);
+  for(const roll of [0,.899999,.9]){
+   const result=critical.run('GameRules.skillResult(skillList.find(s=>s.id===\'slash\'),{attack:100,defense:100000,luck:460.8,criticalRoll:'+roll+',roll:.5},CombatRules)');
+   assert.equal(result.critical,roll<.5);
+  }
+  const boundary=18/512;
+  for(const roll of [boundary-1e-9,boundary])assert.equal(critical.run('GameRules.skillResult(skillList.find(s=>s.id===\'slash\'),{attack:100,defense:999,luck:18,criticalRoll:'+roll+',roll:.5},CombatRules).critical'),roll<boundary);
+  for(const id of ['flame','heal','nova'])assert.equal(critical.run('GameRules.skillResult(skillList.find(s=>s.id===\''+id+'\'),{wisdom:10,attack:100,defense:999,luck:10000,criticalRoll:0},CombatRules).critical'),false);
+  critical.run('startBattle();state.lv=5;state.mp=maxmp();state.enemies.forEach(e=>{e.hp=10000;e.max=10000;e.def=100000;e.atk=0;});Math.random=()=>0');
+  const hpBefore=critical.run('state.enemies[0].hp');
+  await critical.run("partyRound('skill','slash')");
+  const critDamage=critical.run('CombatRules.physicalDamage({attack:attack(),defense:0,power:2.4,critical:true,roll:0})');
+  assert.equal(hpBefore-critical.run('state.enemies[0].hp'),critDamage,'live party skill ignores high defense');
+  assert.equal(critical.run('state.mp'),critical.run('maxmp()-8'));
+  assert.equal(critical.run("state.log.filter(t=>t.includes('会心の一撃')).length"),1);
+  const legacyData=critical.run('GameData');delete legacyData.rules.growth.baseLuck;delete legacyData.rules.growth.luckPerLevel;
+  assert.equal(critical.run('luck()'),18,'old published and battle definitions use compatible defaults');
+  assert.equal(migrated.run('luck()'),18,'old saves retain level and gain derived luck');
+  console.log('PASS: luck growth, legacy defaults, critical boundary and cap, defense bypass, party MP and critical log, magic exclusion');
+  console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, DQ-style base, normal attacks without critical hits, glancing hits, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
   console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});

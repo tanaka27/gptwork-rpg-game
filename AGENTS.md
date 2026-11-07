@@ -25,7 +25,7 @@
 
 - 現行はHTML/CSS/JavaScript/SVGのフロントと、ESMバックエンドAPI。ローカルはNode.js 24のSQLite、本番はCloudflare Workers/D1。開発はnpm run dev、検証はnpm testとPlaywright。npm run buildでSites向けWorkerを生成する。認証はSitesを利用し、OWNER_EMAIL（またはサイト内認証IDのOWNER_ID）が一致する所有者だけがAPIを利用できる。
 - `dist/` はフロントのソース。ただしdist/data.generated.js・dist/data/game.json・dist/shared/は生成物で直接編集しない。初期定義はcontent/game.json、共通処理はshared/を編集しnpm run content:syncする。公開後の定義はDBの公開版が正本。bootstrap.jsが定義を読み、storage.js → combat.js → game.js → party.jsの順で起動する。build/とserver/assets.generated.mjsはGit対象外。
-- 物理計算は `CombatRules.physicalDamage` に集約する。通常攻撃と物理スキルは攻撃力、魔法は賢さを参照する。魔法の計算へ受け手のステータスを入れない。ダメージの最低値は0。会心は廃止済み。物理はドラクエ風の基準式と、低基準値でのかすり当たりを使用する。
+- 物理計算は `CombatRules.physicalDamage` に集約する。通常攻撃と物理スキルは攻撃力、魔法は賢さを参照する。魔法の計算へ受け手のステータスを入れない。ダメージの最低値は0。会心は物理ダメージスキルのみ。うんのよさで抽選し、守備力を無視して攻撃力を基準に計算する。通常攻撃・魔法・敵攻撃には適用しない。物理はドラクエ風の基準式と、低基準値でのかすり当たりを使用する。
 - セーブのキー `starlight-rpg-v1` と現在の形式 `v:2` に注意する。既存セーブを扱う変更には移行処理と検証を含める。ユーザーの明示的なリセット以外で進行を消さない。
 - コンテンツのIDは名前と独立した固定ID。参照先・双方向接続・効果・数値は共通バリデーターで検証し、不正な定義は保存/公開しない。公開済み定義と適用済みDBマイグレーションは変更せず、複製または新しいマイグレーションを追加する。マップの接続は双方向に定義する。移動・購入などはボタンの無効化だけでなく処理側でも条件を検証する。
 - 表示や挙動を変えたら、日本語の説明、スキル表示、ヘルプ、README、関連テストとの整合を確認する。配信ファイルを変えた場合はHTMLのキャッシュ更新用クエリも確認する。

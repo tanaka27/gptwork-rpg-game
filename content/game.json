@@ -808,6 +808,8 @@
       "defensePerLevel": 2,
       "baseWisdom": 10,
       "wisdomPerLevel": 4,
+      "baseLuck": 10,
+      "luckPerLevel": 2,
       "baseExperience": 25,
       "experiencePerLevel": 15,
       "maxLevel": 30

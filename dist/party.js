@@ -106,7 +106,7 @@ function renderSkillMenu(){
  }
  const skill=skillList.find(s=>s.id===pendingSkill?.id);
  if(!skill)return;
- const description=skill.effect==='heal'?`味方1人のHPを最大${GameRules.skillAmount(skill,{wisdom:wisdom(),attack:attack()},CombatRules)}回復します。`:skill.desc;
+ const description=skill.effect==='heal'?`味方1人のHPを最大${GameRules.skillAmount(skill,{wisdom:wisdom(),attack:attack()},CombatRules)}回復します。`:skillDescription(skill);
  $('skillMenu').innerHTML=`<article id="skillDetail"><h3>${skill.name}<span>消費MP ${skill.cost}</span></h3><p>${skillTypeLabel(skill)} · ${description}</p><p class="skill-target-note">${skill.effect==='heal'?'上部の回復する味方をクリックしてください。':'フィールドの敵をクリックすると発動します。'}</p></article>`+btn('スキル一覧へ戻る','skill-list');
 }
 function chooseSkillTarget(skill){
@@ -127,7 +127,7 @@ function renderCharacterScreen(){
  $('characterList').innerHTML=members.map((a,i)=>`<button type="button" class="character-row" data-character="${i}" aria-label="${a.name}のステータスを見る"><span class="character-emblem" aria-hidden="true">${['⚔','✧','♜','♧'][i]}</span><span><strong>${a.name}</strong><small>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'主人公'}</small></span><span class="character-row-hp">HP ${allyHP(i)} / ${maxhp()}<br>MP ${a.mp} / ${maxmp()}</span><span aria-hidden="true">›</span></button>`).join('');
  const selected=members.map((a,i)=>({a,i})).filter(({i})=>i===selectedCharacter);
 
- $('partyDetails').innerHTML=selected.map(({a,i})=>`<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading"><h2 tabindex="-1" id="characterName">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`).join('');
+ $('partyDetails').innerHTML=selected.map(({a,i})=>`<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading"><h2 tabindex="-1" id="characterName">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)],['うんのよさ',luck()]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`).join('');
 }
 const previousShowScreen=showScreen;
 showScreen=function(name){if(name!=='adventure'&&skillMenuMode!=='commands'){pendingItem=null;pendingSkill=null;skillMenuMode='commands';render(false);}if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
@@ -191,8 +191,8 @@ async function executePartyRound(getCommand){
       log(`${actor.name}の${skill.name}！ ${partyNames[skillTargetIndex]}のHPが${healed}回復。`);
      }else log(`${skill.name}の対象を回復できないため、MPを消費せず見送った。`);
     }else{
-     state.mp-=skill.cost;const damage=GameRules.skillAmount(skill,{wisdom:wisdom(),attack:attack(),defense:target.def},CombatRules);
-     target.hp=Math.max(0,target.hp-damage);log(`${actor.name}の${skill.name}！ ${target.name}に${damage}。`);
+     state.mp-=skill.cost;const result=GameRules.skillResult(skill,{wisdom:wisdom(),attack:attack(),defense:target.def,luck:luck()},CombatRules),damage=result.amount;
+     target.hp=Math.max(0,target.hp-damage);log(`${actor.name}の${skill.name}！ ${result.critical?'会心の一撃！ ' : ''}${target.name}に${damage}。`);
     }
    }
    else{const damage=CombatRules.physicalDamage({attack:attack(),defense:target.def,power:normalAttack.power});target.hp=Math.max(0,target.hp-damage);log(`${actor.name}の攻撃！ ${target.name}に${damage}。`);}
