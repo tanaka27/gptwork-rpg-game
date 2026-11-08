@@ -93,12 +93,18 @@ function enemyHPMeter(enemy){
 }
 function renderAdventureLayout(){
  const screen=$('screen-adventure'),battle=!!state.enemy||roundActive;
+ screen.classList.toggle('battle-active',battle);
+ screen.classList.toggle('battle-menu',battle&&skillMenuMode!=='commands'&&!battleMessageResolve);
  screen.classList.toggle('choosing-enemy',battle&&!!pendingSkill&&skillMenuMode==='detail'&&skillList.find(s=>s.id===pendingSkill.id)?.effect==='damage');
- // Party and messages keep the same parent in every adventure state.
+ // Battle messages belong to the field, above the party, not below commands.
  const party=$('partyStatus');
+ const arena=document.querySelector?.('.arena'),command=document.querySelector?.('.command'),message=$('fieldMessage');
+ if(arena&&command){const parent=battle?arena:command;if(message.parentElement!==parent)parent.append(message);}
  if(!party.querySelectorAll)return;
  party.querySelectorAll('.party-member').forEach((member,i)=>{member.classList.toggle('acting',battle&&i===0&&!!commandResolve);member.querySelector('strong').dataset.level=state.lv;});
+ if(arena)screen.style.setProperty('--party-height',party.getBoundingClientRect().height+'px');
 }
+globalThis.addEventListener?.('resize',renderAdventureLayout);
 function renderSkillMenu(){
  const active=skillMenuMode!=='commands';
  $('actions').hidden=active;$('subactions').hidden=active;$('battleOrder').hidden=active||!$('battleOrder').textContent;$('skillMenu').hidden=!active;
