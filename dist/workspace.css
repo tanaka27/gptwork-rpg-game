@@ -328,3 +328,36 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
  .adventure-layout.battle-active #enemy .enemy-unit strong{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .adventure-layout.battle-active #enemy .enemy-unit svg{height:32px}
 }
+
+/* Original 2D anime portraits share the existing status and target controls. */
+.character-portrait{display:block;object-fit:cover;object-position:center;border-radius:5px;background:#203638;border:1px solid #87978966;flex:none}
+.adventure-layout .party-member:has(.character-portrait){display:grid;grid-template-columns:64px minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:8px;row-gap:4px;align-items:center}
+.adventure-layout .party-member>.character-portrait{grid-column:1;grid-row:1/4;width:64px;height:80px}
+.adventure-layout .party-member>strong,.adventure-layout .party-member>div{min-width:0}
+.adventure-layout .party-member:has(.character-portrait)>strong,.adventure-layout .party-member:has(.character-portrait)>div{grid-column:2}
+.character-row>.character-portrait{width:54px;height:60px}
+.character-heading>.character-portrait{width:104px;height:104px;margin-right:8px}
+.character-heading:has(.character-portrait){justify-content:flex-start;gap:12px}
+.character-heading:has(.character-portrait)>span{margin-left:auto}
+@media(max-width:600px){
+ .adventure-layout .party-member:has(.character-portrait){display:flex;flex-direction:column;align-items:stretch;gap:3px}
+ .adventure-layout .party-member>.character-portrait{width:54px;height:54px;align-self:center}
+ .adventure-layout .party-member:has(.character-portrait)>strong{font-size:10px}
+ .character-row{gap:8px}
+ .character-row>.character-portrait{width:44px;height:50px}
+ .character-row strong{font-size:14px}
+ .character-row-hp{font-size:10px}
+ .character-heading>.character-portrait{width:80px;height:80px}
+}
+@media(max-width:350px){
+ .adventure-layout .party-member>.character-portrait{width:42px;height:42px}
+ .adventure-layout .party-member:has(.character-portrait)>strong{font-size:10px}
+}
+@media(max-height:450px) and (min-width:600px){
+ .adventure-layout .party-member:has(.character-portrait){grid-template-columns:28px minmax(0,1fr);column-gap:4px;row-gap:2px}
+ .adventure-layout .party-member>.character-portrait{width:28px;height:40px}
+ .adventure-layout .party-member:has(.character-portrait)>strong{font-size:9px}
+ .adventure-layout .party-member:has(.character-portrait)>strong::after{font-size:7px}
+ .adventure-layout .party-member:has(.character-portrait) .meter-head strong,.adventure-layout .party-member:has(.character-portrait) .meter-head span{font-size:8px}
+ .adventure-layout .party-member .meter-head strong span{display:none}
+}
