@@ -21,13 +21,13 @@ test('初期画面、素材画像、4画面切替、ビューポート内表示'
   await expect(page.locator('#location')).toHaveText('風そよぐ草原');
   await expect(page.locator('#location')).toBeHidden();
   await expect(page.locator('.scene-description')).toHaveCount(0);
-  await expect(page.locator('.arena .field-message #latestLog')).toBeVisible();
-  const field=await page.locator('.arena').boundingBox();
+  await expect(page.locator('.command .field-message #latestLog')).toBeVisible();
+  const panel=await page.locator('.command').boundingBox();
   const message=await page.locator('.field-message').boundingBox();
-  expect(message.x).toBeGreaterThanOrEqual(field.x);
-  expect(message.y).toBeGreaterThanOrEqual(field.y);
-  expect(message.x+message.width).toBeLessThanOrEqual(field.x+field.width);
-  expect(message.y+message.height).toBeLessThanOrEqual(field.y+field.height);
+  expect(message.x).toBeGreaterThanOrEqual(panel.x);
+  expect(message.y).toBeGreaterThanOrEqual(panel.y);
+  expect(message.x+message.width).toBeLessThanOrEqual(panel.x+panel.width);
+  expect(message.y+message.height).toBeLessThanOrEqual(panel.y+panel.height);
   for (const asset of ['meadow.png', 'village.png']) {
     expect(await page.evaluate(async name => {
       const image = new Image();

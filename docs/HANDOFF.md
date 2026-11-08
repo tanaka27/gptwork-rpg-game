@@ -301,6 +301,6 @@ tests/game.test.cjsの既存効果処理テストは、scheduleRoundを止め、
 
 ## 戦闘レイアウトの実装（2026-11-07）
 
-dist/party.jsのrenderBattleLayoutが戦闘中だけ.battle-layoutを付け、既存#partyStatusを.arena下端、#fieldMessageを.command末尾へ移動します。非戦闘では元の親へ戻します。重複DOMや保存形式の追加はありません。報酬待ちはroundActiveにより戦闘配置を保持します。攻撃スキルの詳細中は.choosing-enemyで味方欄を隠し、回復では残します。見た目はdist/workspace.css末尾、一覧／詳細はrenderSkillMenu。味方欄クリックはcaptureのメッセージ送りから除外し、無効な味方ボタンもクリック透過させません。キャッシュはworkspace.css?v=28、bootstrap.js?v=7、動的JSはbackend-7。
+2026-11-08更新：dist/index.htmlで#partyStatusを.arena内、#fieldMessageを.command末尾へ固定し、冒険画面へ.adventure-layoutを付けています。戦闘・非戦闘でDOMを移動しません。dist/party.jsのrenderAdventureLayoutは主人公の入力待ち強調と攻撃スキル対象選択の.choosing-enemyだけを更新します。見た目はdist/workspace.css末尾、一覧／詳細はrenderSkillMenu。味方欄クリックはメッセージ送りの対象外、地図など別タブでは冒険画面ごと非表示になります。重複DOM・保存形式の追加はありません。街名・宿泊成功メッセージの非表示・お店の操作は維持。キャッシュはworkspace.css?v=29、bootstrap.js?v=8、動的JSはbackend-8。
 
 追加E2Eはtests/e2e/battle-layout.spec.cjs。既存の敵レイアウト検証は、一覧中の非表示メッセージではなく味方欄との非重複を検証します。参考画像は配置・状態遷移の参考とし、既存の背景・敵SVG・ゲーム仕様を使用しています。

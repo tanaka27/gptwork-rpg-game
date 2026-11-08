@@ -91,16 +91,12 @@ function enemyHPMeter(enemy){
  const percent=Math.max(0,Math.min(100,enemy.max>0?enemy.hp/enemy.max*100:0));
  return `<span class="enemy-hp bar" role="meter" aria-label="${enemy.name}のHP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i style="width:${percent}%"></i></span>`;
 }
-function renderBattleLayout(){
+function renderAdventureLayout(){
  const screen=$('screen-adventure'),battle=!!state.enemy||roundActive;
- screen.classList.toggle('battle-layout',battle);
  screen.classList.toggle('choosing-enemy',battle&&!!pendingSkill&&skillMenuMode==='detail'&&skillList.find(s=>s.id===pendingSkill.id)?.effect==='damage');
- // Move the existing nodes so HP, keyboard controls and live messages have one source.
- const party=$('partyStatus'),message=$('fieldMessage');
- const arena=document.querySelector?.('.arena'),command=document.querySelector?.('.command');
- if(!arena||!command)return;
- if(battle){if(party.parentElement!==arena)arena.append(party);if(message.parentElement!==command)command.append(message);}
- else{const shell=document.querySelector('.game-shell');if(party.parentElement!==shell)shell.insertBefore(party,shell.firstChild);if(message.parentElement!==arena)arena.append(message);}
+ // Party and messages keep the same parent in every adventure state.
+ const party=$('partyStatus');
+ if(!party.querySelectorAll)return;
  party.querySelectorAll('.party-member').forEach((member,i)=>{member.classList.toggle('acting',battle&&i===0&&!!commandResolve);member.querySelector('strong').dataset.level=state.lv;});
 }
 function renderSkillMenu(){
@@ -152,7 +148,7 @@ render=function(persist=true){if(pendingItem&&(pendingItem.inBattle!==!!state.en
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
  $('partyStatus').innerHTML=allies().map((a,i)=>`<${healingSkill?'button':'div'} ${healingSkill?`type="button" data-ally-target="${i}" aria-label="${a.name}に${healingSkill.name}を使う" ${busy||!(pendingItem?(state.items[pendingItem.id]>0&&validItemTarget(pendingItem.id,i)):validSkillTarget(healingSkill,i))?'disabled':''}`:''} class="party-member ${allyHP(i)<=0?'fallen':''}"><strong>${healingSkill?'<span class="ally-target-marker" aria-hidden="true">▼</span>':''}${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</${healingSkill?'button':'div'}>`).join('');
  if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${!healingSkill&&i===selectedEnemy}" aria-label="${e.name}を攻撃対象に選択" ${e.hp<=0||busy||healingSkill?'disabled':''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent=partyNames[0]+'の行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent=state.journey?'道中では戦闘・何もなし・素材入手が起こります。':'';
- renderSkillMenu();renderBattleLayout();
+ renderSkillMenu();renderAdventureLayout();
  const waiting=!!battleMessageResolve;
  $('fieldMessage').classList.toggle('awaiting-click',waiting);
  $('fieldMessage').role=waiting?'button':'group';

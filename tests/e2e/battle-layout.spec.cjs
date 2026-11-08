@@ -27,6 +27,58 @@ async function insideViewport(page){
   expect(box.x+box.width).toBeLessThanOrEqual(v.width+1);expect(box.y+box.height).toBeLessThanOrEqual(v.height+1);
  }
 }
+test('探索・道中・街・回復・逃走後も同じ味方欄とコマンド配置を保つ',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
+ await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
+ await page.addInitScript(()=>{Math.random=()=>.99;});
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.evaluate(()=>{state.gold=1000;render();});
+ const original=page.viewportSize();
+ const check=async(name)=>{
+  await expect(page.locator('.arena #partyStatus .party-member')).toHaveCount(4);
+  await expect(page.locator('.command #fieldMessage')).toHaveCount(1);
+  await expect(page.locator('.party-member.acting')).toHaveCount(0);
+  const field=await page.locator('.arena').boundingBox(),party=await page.locator('#partyStatus').boundingBox();
+  expect(party.y).toBeGreaterThanOrEqual(field.y);
+  expect(party.y+party.height).toBeLessThanOrEqual(field.y+field.height);
+  expect(field.y+field.height-party.y-party.height).toBeLessThanOrEqual(13);
+  if(await page.locator('#fieldMessage').isVisible()){
+   const panel=await page.locator('.command').boundingBox(),message=await page.locator('#fieldMessage').boundingBox();
+   expect(message.y+message.height).toBeLessThanOrEqual(panel.y+panel.height);
+  }
+  await insideViewport(page);
+  await page.screenshot({path:test.info().outputPath(`adventure-${name}-${page.viewportSize().width}.png`)});
+ };
+ for(const viewport of [original,{width:320,height:568},{width:844,height:390}]){
+  await page.setViewportSize(viewport);await check('exploration');
+  const buttons=await page.locator('#actions button').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().y));
+  expect(new Set(buttons).size).toBe(1);
+  await page.locator('[data-screen="map"]').click();await expect(page.locator('#partyStatus')).toBeHidden();
+  await page.locator('#regions [data-action="move:home"]').click();await check('journey');
+  await expect(page.locator('#travelProgress')).toContainText('道中 0 / 3');
+  for(let i=0;i<3;i++)await page.locator('[data-action="travel-next"]').click();
+  await check('town');await expect(page.locator('#location')).toBeVisible();
+  await page.locator('[data-action="shop"]').click();await check('shop');
+  await page.locator('[data-action="buy:herb"]').click();await page.locator('[data-action="shop-close"]').click();
+  await page.locator('[data-action="rest"]').click();await check('rested');
+  await expect(page.locator('#fieldMessage')).toBeHidden();
+  await page.evaluate(()=>{state.companions[0].hp=1;render();});
+  await page.locator('[data-screen="bag"]').click();await page.locator('[data-action="use:herb"]:visible').click();
+  await check('healing');await page.locator('[data-ally-target="1"]').click();
+  expect(await page.evaluate(()=>state.companions[0].hp)).toBe(46);
+  await page.locator('[data-action="skill-back"]').click();
+  await page.locator('[data-action="routes"]').click();await page.locator('#regions [data-action="move:meadow"]').click();
+  for(let i=0;i<3;i++)await page.locator('[data-action="travel-next"]').click();
+ }
+ await page.evaluate(()=>{Math.random=()=>0;});
+ await page.locator('[data-action="explore"]').click();await toInput(page);
+ await page.locator('[data-action="items"]').click();await page.locator('[data-action="run"]').click();
+ for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
+ await expect(page.locator('.enemy-unit')).toHaveCount(0);await check('escaped');
+ await expect(page.locator('[data-action="explore"]')).toBeVisible();
+ expect(errors).toEqual([]);
+});
 test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操作する',async({page})=>{
  const errors=await setup(page);
  const before=await page.evaluate(()=>[state.mp,state.turn]);
