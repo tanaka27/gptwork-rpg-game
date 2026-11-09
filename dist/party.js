@@ -59,7 +59,7 @@ async function showBattleMessages(){
 }
 $('fieldMessage').onclick=advanceBattleMessage;
 $('screen-adventure').addEventListener('click',event=>{
- if(!battleMessageResolve||event.target.closest('#partyStatus'))return;
+ if(!battleMessageResolve)return;
  event.preventDefault();event.stopImmediatePropagation();advanceBattleMessage();
 },true);
 $('fieldMessage').onkeydown=event=>{
@@ -139,6 +139,24 @@ function characterPortrait(characterId){
  const file=Object.hasOwn(characterPortraitFiles,characterId)?characterPortraitFiles[characterId]:null;
  return file?`<img class="character-portrait" src="assets/characters/${file}.png" alt="" width="512" height="512" decoding="async" draggable="false">`:'';
 }
+function characterStatusCard(a,i,headingId='characterName'){
+ return `<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)],['うんのよさ',luck()]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`;
+}
+function canInspectBattleCharacter(){
+ return !!state.enemy&&!!commandResolve&&!busy&&skillMenuMode==='commands';
+}
+function openBattleCharacter(index){
+ if(!canInspectBattleCharacter()||!Number.isInteger(index))return;
+ const member=allies()[index];if(!member)return;
+ modal(member.name+'のステータス','');
+ $('modal').setAttribute('aria-labelledby','battleCharacterName');
+ $('modalContent').innerHTML=characterStatusCard(member,index,'battleCharacterName');
+}
+$('modal').addEventListener('close',()=>{$('modal').removeAttribute('aria-labelledby');});
+document.addEventListener('click',event=>{
+ const button=event.target.closest('[data-battle-character]');
+ if(button&&!button.disabled)openBattleCharacter(Number(button.dataset.battleCharacter));
+});
 function renderCharacterScreen(){
  const members=allies();
  $('partyListView').hidden=selectedCharacter!==null;
@@ -146,7 +164,7 @@ function renderCharacterScreen(){
  $('characterList').innerHTML=members.map((a,i)=>`<button type="button" class="character-row" data-character="${i}" aria-label="${a.name}のステータスを見る">${characterPortrait(a.characterId)}<span><strong>${a.name}</strong><small>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':i?'自動攻撃':'主人公'}</small></span><span class="character-row-hp">HP ${allyHP(i)} / ${maxhp()}<br>MP ${a.mp} / ${maxmp()}</span><span aria-hidden="true">›</span></button>`).join('');
  const selected=members.map((a,i)=>({a,i})).filter(({i})=>i===selectedCharacter);
 
- $('partyDetails').innerHTML=selected.map(({a,i})=>`<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="characterName">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)],['うんのよさ',luck()]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl></article>`).join('');
+ $('partyDetails').innerHTML=selected.map(({a,i})=>characterStatusCard(a,i)).join('');
 }
 const previousShowScreen=showScreen;
 showScreen=function(name){if(name!=='adventure'&&skillMenuMode!=='commands'){pendingItem=null;pendingSkill=null;skillMenuMode='commands';render(false);}if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
@@ -154,10 +172,11 @@ startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.vil
 render=function(persist=true){if(pendingItem&&(pendingItem.inBattle!==!!state.enemy||state.hp<=0)){pendingItem=null;skillMenuMode='commands';}allies();const enemies=battleEnemies();originalRender(false);
  if(pendingSkill){const skill=skillList.find(s=>s.id===pendingSkill.id);if(pendingSkill.inBattle!==!!state.enemy||!skill||state.lv<skill.lv||state.hp<=0){pendingItem=null;pendingSkill=null;skillMenuMode='commands';}}
  renderCharacterScreen();
- const healingSkill=pendingItem?consumables[pendingItem.id]:skillMenuMode==='detail'?skillList.find(s=>s.id===pendingSkill?.id&&s.effect==='heal'):null;
+ const healingSkill=busy?null:pendingItem?consumables[pendingItem.id]:skillMenuMode==='detail'?skillList.find(s=>s.id===pendingSkill?.id&&s.effect==='heal'):null;
  if(state.enemy&&!(enemies[selectedEnemy]?.hp>0))selectedEnemy=enemies.findIndex(e=>e.hp>0);
  $('attributes').innerHTML+=`<div>素早さ<b>${speedOf(0)}</b></div>`;
- $('partyStatus').innerHTML=allies().map((a,i)=>`<${healingSkill?'button':'div'} ${healingSkill?`type="button" data-ally-target="${i}" aria-label="${a.name}に${healingSkill.name}を使う" ${busy||!(pendingItem?(state.items[pendingItem.id]>0&&validItemTarget(pendingItem.id,i)):validSkillTarget(healingSkill,i))?'disabled':''}`:''} class="party-member ${allyHP(i)<=0?'fallen':''}">${characterPortrait(a.characterId)}<strong>${healingSkill?'<span class="ally-target-marker" aria-hidden="true">▼</span>':''}${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</${healingSkill?'button':'div'}>`).join('');
+ const inspectCharacter=canInspectBattleCharacter();
+ $('partyStatus').innerHTML=allies().map((a,i)=>`<${healingSkill||inspectCharacter?'button':'div'} ${healingSkill?`type="button" data-ally-target="${i}" aria-label="${a.name}に${healingSkill.name}を使う" ${busy||!(pendingItem?(state.items[pendingItem.id]>0&&validItemTarget(pendingItem.id,i)):validSkillTarget(healingSkill,i))?'disabled':''}`:inspectCharacter?`type="button" data-battle-character="${i}" aria-haspopup="dialog" aria-label="${a.name}のステータスを見る"`:''} class="party-member ${allyHP(i)<=0?'fallen':''}">${characterPortrait(a.characterId)}<strong>${healingSkill?'<span class="ally-target-marker" aria-hidden="true">▼</span>':''}${a.name}${allyHP(i)<=0?' · 戦闘不能':''}</strong>${meter('HP',allyHP(i),maxhp())}${meter('MP',a.mp,maxmp(),'mp')}</${healingSkill||inspectCharacter?'button':'div'}>`).join('');
  if(state.enemy){$('enemy').innerHTML=enemies.map((e,i)=>`<button class="enemy-unit ${e.hp<=0?'fallen':''}" data-target="${i}" aria-pressed="${!healingSkill&&i===selectedEnemy}" aria-label="${e.name}を攻撃対象に選択" ${e.hp<=0||busy||healingSkill?'disabled':''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`).join('');$('battleOrder').textContent='行動順：'+roundOrder().map(a=>a.name).join(' → ');$('commandTitle').textContent=partyNames[0]+'の行動を選択（仲間は自動攻撃）';}else $('battleOrder').textContent=state.journey?'道中では戦闘・何もなし・素材入手が起こります。':'';
  renderSkillMenu();renderAdventureLayout();
  const waiting=!!battleMessageResolve;
@@ -266,5 +285,5 @@ document.addEventListener('click',event=>{const button=event.target.closest('[da
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 const originalResetAdventure=resetAdventure;
 resetAdventure=function(){if(busy||roundActive)return;pendingItem=null;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
-$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
+$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。主人公のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵や仲間の自動行動中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。宿屋で全員回復します。</p>';});
 allies();render();if(state.enemy)scheduleRound();

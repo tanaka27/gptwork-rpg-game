@@ -1,0 +1,41 @@
+const {test,expect}=require('@playwright/test');
+test('コマンド中だけ味方のステータスを開き、自動行動中の味方クリックはメッセージを送る',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
+ await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
+ await page.addInitScript(()=>{Math.random=()=>0;});
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.locator('#partyStatus img').first().click();await expect(page.locator('#modal')).not.toBeVisible();
+ await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>{c.hp=maxhp();c.mp=maxmp();});render();});
+ await page.locator('[data-action="explore"]').click();
+ await expect(page.locator('#messageNext')).toBeVisible();
+ const message=await page.locator('#latestLog').textContent();
+ await page.locator('#partyStatus img').nth(1).click();
+ await expect(page.locator('#latestLog')).not.toHaveText(message);await expect(page.locator('#modal')).not.toBeVisible();
+ for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#partyStatus img').nth(2).click();
+ await expect(page.locator('[data-action="attack"]')).toBeEnabled();
+ await page.evaluate(()=>{state.companions[2].hp=0;render(false);});
+ const before=await page.evaluate(()=>JSON.stringify(state));
+ for(let i=0;i<4;i++){
+  const trigger=page.locator(`[data-battle-character="${i}"]`);
+  if(i===1){await trigger.focus();await page.keyboard.press('Enter');}else await trigger.locator('img').click();
+  await expect(page.locator('#modal')).toBeVisible();
+  await expect(page.locator('#battleCharacterName')).toHaveText(['アステル','リナ','ガルド','ノエル'][i]);
+  await expect(page.locator('#modal dt')).toHaveText(['HP','MP','攻撃力','守備力','賢さ','素早さ','うんのよさ']);
+  if(i===3)await expect(page.locator('#modal .character-heading')).toContainText('戦闘不能');
+  await page.screenshot({path:test.info().outputPath(`battle-status-${i}.png`)});
+  if(i%2)await page.keyboard.press('Escape');else await page.locator('#closeModal').click();
+  await expect(trigger).toBeFocused();
+  expect(await page.evaluate(()=>JSON.stringify(state))).toBe(before);
+ }
+ await page.locator('[data-action="skills"]').click();await expect(page.locator('[data-battle-character]')).toHaveCount(0);
+ await page.locator('[data-action="skill-back"]').click();
+ await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
+ await page.locator('[data-action="items"]').click();await page.locator('[data-action="use:herb"]:visible').click();
+ await expect(page.locator('[data-battle-character]')).toHaveCount(0);
+ await page.locator('[data-ally-target="1"] img').click();await expect(page.locator('#modal')).not.toBeVisible();
+ await expect(page.locator('#messageNext')).toBeVisible();
+ await page.locator('#partyStatus img').nth(0).click();
+ expect(await page.evaluate(()=>state.companions[0].hp)).toBe(46);
+ expect(errors).toEqual([]);
+});

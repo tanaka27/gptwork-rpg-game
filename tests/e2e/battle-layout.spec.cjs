@@ -108,8 +108,8 @@ test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操�
  expect(await page.evaluate(()=>state.mp)).toBe(before[0]);
  const announcement=await page.locator('#latestLog').textContent();
  await page.locator('.party-member').first().click();
- await expect(page.locator('#latestLog')).toHaveText(announcement);
- await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).not.toHaveText(announcement);
+ await expect(page.locator('#modal')).not.toBeVisible();
  expect(await page.evaluate(()=>state.mp)).toBe(before[0]-4);
  expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(1000);
  await toInput(page);

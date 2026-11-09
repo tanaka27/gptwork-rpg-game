@@ -312,3 +312,11 @@ tests/game.test.cjsの既存効果処理テストは、scheduleRoundを止め、
 ## 2Dアニメ調のキャラクター画像（2026-11-08）
 
 dist/party.jsのcharacterPortraitFiles/characterPortraitで固定IDとdist/assets/characters/*.pngを対応付けます。公開定義や戦闘中セーブに画像フィールドを追加せず、既存4人はそのまま表示できます。未知の固定IDは画像なし。画像は隣接する名前と重複するためalt=""。CSSはworkspace.css末尾で、PCは顔左／HP・MP右、スマホは顔上／名前・HP・MP下。メッセージ位置は実測の味方欄の高さに追従します。制作プロンプトと画像パスはCHARACTER_ART.md。キャッシュはworkspace.css?v=31、bootstrap.js?v=10、動的JSはbackend-10。
+
+## 戦闘中のステータスポップアップ（2026-11-09）
+
+主人公の通常コマンド入力待ちに限り、フィールドの味方4人の顔画像・名前・HP/MP欄をクリックすると、その人のステータスをポップアップで確認できます。HP・MP・攻撃力・守備力・賢さ・素早さ・うんのよさを仲間詳細と共通の表示で示します。「閉じる」・Escで戻り、HP/MP・道具・ターンは消費しません。戦闘不能の仲間も確認可能です。
+
+敵や仲間の自動行動・行動開始/結果メッセージ中はポップアップを開かず、味方欄のクリックでもメッセージを1件進めます。非戦闘時やスキル・道具選択中は開きません。回復対象選択は従来どおりです。保存キー・形式は維持します。
+
+実装は `dist/party.js` の `canInspectBattleCharacter`・`openBattleCharacter`・`characterStatusCard`。状態欄は通常コマンド時だけダイアログボタンとなり、busy時の回復対象ボタンは通常表示に戻してメッセージ送りを妨げません。詳細カードは仲間画面と共有します。

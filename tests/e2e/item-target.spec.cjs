@@ -33,7 +33,8 @@ test('道具で味方を選び、取消・HP/MP回復・戦闘の開始確認を
  await page.locator('#fieldMessage').click();
  expect(await page.evaluate(()=>[state.companions[0].hp,state.items.herb])).toEqual([46,1]);
  await expect(page.locator('#skillDetail')).toContainText('残り 1 個');
- await expect(page.locator('[data-ally-target="1"]')).toBeDisabled();
+ await expect(page.locator('[data-ally-target]')).toHaveCount(0);
+ await expect(page.locator('[data-battle-character]')).toHaveCount(0);
  await page.screenshot({path:test.info().outputPath('item-healed.png')});
  for(let i=0;i<80&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
  await expect(page.locator('#skillDetail')).toBeVisible();

@@ -76,7 +76,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   const staged=boot(null,true,true);
   staged.run("startBattle();state.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=1000;e.max=1000;e.atk=20;e.def=0;});render()");
   const hpState=app=>app.run('JSON.stringify({hp:state.hp,mp:state.mp,allies:state.companions,enemies:state.enemies.map(e=>e.hp),turn:state.turn})');
-  const hpView=app=>JSON.stringify({allies:app.nodes.partyStatus.innerHTML,bars:app.nodes.enemy.innerHTML.match(/<span class="enemy-hp bar"[^]*?<\/span>/g)});
+  const hpView=app=>JSON.stringify({allies:app.nodes.partyStatus.innerHTML.match(/<div class="meter-head"[^]*?<\/div><div class="bar[^]*?<\/div>/g),bars:app.nodes.enemy.innerHTML.match(/<span class="enemy-hp bar"[^]*?<\/span>/g)});
   const order=JSON.parse(staged.run('JSON.stringify(roundOrder())'));
   let beforeHP=hpState(staged),beforeView=hpView(staged);
   const stagedRound=staged.run("partyRound('attack')");
