@@ -336,3 +336,9 @@ Lv.2で「鼓舞」を習得します（MP4・戦闘専用）。スキル一覧�
 バフとMPは行動開始メッセージを送るまで変化せず、反映直前に対象とMPを再確認します。対象が戦闘不能になった場合などはMPを消費せず見送ります。戻る・Esc・非戦闘使用・MP不足も消費なし。ターン境界の既存自動保存へ効果と残数を含め、戦闘中の再読み込みは従来と同じ確定済みターンから再開します。古いセーブはバフなしとして読み込み、進行を消去しません。
 
 実装の入口：shared/rules.jsのactiveBuffs/allyAttack/applyAttackBuff/tickBuffs/normalizeBuffs/validateBuffs。state.buffsは省略可の配列（characterId/skillId/remainingTurns/appliedTurn）で、効果と名前は戦闘定義から参照します。party.jsが物理攻撃にallyAttack(i)を渡し、tickBuffsはターン末・turn加算前に一度だけ呼びます。表示はbuffIcons/buffDetails、詳細カードは仲間画面と共通。game.jsの起動時とpartyの描画で不正/非戦闘のバフを除去。セーブv:2・キーは維持。公開定義が変わってもSaveRulesは検証済みbattleContentのスキルでバフを検証します。
+
+## 補正後の攻撃力の色（2026-11-09）
+
+キャラクター画像から開くポップアップと仲間の個別詳細では、補正後の攻撃力を表示します。レベルと装備から算出した基本攻撃力と比べ、上昇中は青、下降中は赤、同じなら通常の文字色です。バフ解除後は基本値と通常色に戻ります。数字の読み上げとツールチップにも実効値・基本値・増減方向を示します。HP/MPの消費は能力下降として色分けしません。攻撃下降の特技自体はまだ追加していません。
+
+実装はparty.jsのstatusValueMarkupとcharacterStatusCard。攻撃力行はallyAttack(i)・attack()の実効/基本値を渡し、有限数の比較でstat-up/stat-downをddへ付けます。CSSは.character-card ddに限定。バフ計算・ダメージ・保存/APIは変更しません。

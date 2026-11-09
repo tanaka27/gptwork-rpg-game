@@ -375,3 +375,6 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 .adventure-layout .party-member>.buff-icon>span{font-size:inherit}
 @media(max-height:450px) and (min-width:600px){.adventure-layout .party-member>.buff-icon,.adventure-layout .party-member>.buff-icon>b{font-size:7px}}
 @media(max-height:680px) and (max-width:450px){.adventure-layout.battle-menu #enemy .enemy-unit svg{height:52px}}
+
+.character-card dd.stat-up{color:#77baff}
+.character-card dd.stat-down{color:#ff8f8f}

@@ -10,6 +10,6 @@
  }catch(error){if(preview){document.querySelector('main').textContent='プレビューを開けませんでした。元の進行は変更していません。';document.getElementById('loadingMessage')?.remove();return;}}
  if(!preview){try{const saved=JSON.parse(localStorage.getItem('starlight-rpg-v1'));if(saved?.enemy&&saved.battleContent&&!GameContent.validate(saved.battleContent).length)window.GameData=saved.battleContent;if(saved?.v===2&&saved.node&&(!GameData.nodes.some(n=>n.id===saved.node)||saved.owned?.some(id=>!GameData.items.some(item=>item.id===id)))){document.getElementById('loadingMessage').textContent='現在の進行に必要なゲームデータを取得できませんでした。再読み込みしてください。進行は保持されています。';return;}}catch{}}
  if(preview){const note=document.createElement('p');note.className='preview-banner';note.textContent='定義のプレビュー（進行は通常プレイと別保存）';document.querySelector('header').append(note);}
- for(const src of ['storage.js','combat.js','game.js','party.js','cloud-save.js'])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src+'?v=backend-13';script.onload=resolve;script.onerror=reject;document.body.append(script);});
+ for(const src of ['storage.js','combat.js','game.js','party.js','cloud-save.js'])await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=src+'?v=backend-14';script.onload=resolve;script.onerror=reject;document.body.append(script);});
  document.getElementById('loadingMessage')?.remove();document.documentElement.dataset.gameReady='true';
 })();

@@ -152,8 +152,13 @@ function buffDetails(index){
  const buffs=GameRules.activeBuffs(state,GameData,index);
  return '<section class="buff-details" aria-label="バフの詳細"><h3>バフ</h3>'+ (buffs.length?buffs.map(buff=>`<p><strong>${buff.skill.name}</strong> · 攻撃力${buff.effect.multiplier}倍<br><span>残り${buff.remainingTurns}ターン</span>（付与したターンを除き、ターン終了時に減少）</p>`).join(''):'<p>有効なバフはありません。</p>')+'</section>';
 }
+function statusValueMarkup(label,value,base){
+ const direction=Number.isFinite(value)&&Number.isFinite(base)?value>base?'up':value<base?'down':'':'';
+ const description=direction?`${label} ${value}（基本値 ${base}より${direction==='up'?'上昇':'下降'}）`:'';
+ return `<dd${direction?` class="stat-${direction}" title="${description}" aria-label="${description}"`:''}>${value}</dd>`;
+}
 function characterStatusCard(a,i,headingId='characterName'){
- return `<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',allyAttack(i)],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)],['うんのよさ',luck()]].map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>${buffDetails(i)}</article>`;
+ return `<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i)<=0?'戦闘不能':'行動可能'}</span></div><p>${i?'仲間 · 自動で通常攻撃':'主人公 · コマンド操作'}</p><dl>${[['HP',`${allyHP(i)} / ${maxhp()}`],['MP',`${a.mp} / ${maxmp()}`],['攻撃力',allyAttack(i),attack()],['守備力',defense()],['賢さ',wisdom()],['素早さ',speedOf(i)],['うんのよさ',luck()]].map(([label,value,base])=>`<div><dt>${label}</dt>${statusValueMarkup(label,value,base)}</div>`).join('')}</dl>${buffDetails(i)}</article>`;
 }
 function canInspectCharacter(){
  return !busy&&skillMenuMode==='commands'&&(state.enemy?!!commandResolve:!roundActive);
@@ -306,5 +311,5 @@ document.addEventListener('click',event=>{const button=event.target.closest('[da
 $('backToParty').onclick=()=>{const index=selectedCharacter;selectedCharacter=null;renderCharacterScreen();document.querySelector(`[data-character="${index}"]`)?.focus();};
 const originalResetAdventure=resetAdventure;
 resetAdventure=function(){if(busy||roundActive)return;pendingItem=null;pendingSkill=null;skillMenuMode='commands';originalResetAdventure();};
-$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の主人公のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵や仲間の自動行動中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。戦闘終了・戦闘不能で解除されます。宿屋で全員回復します。</p>';});
+$('help').addEventListener('click',()=>{$('modalContent').innerHTML+='<p>旅団は最大4人、敵は最大4体。仲間3人は自動攻撃。戦闘開始後は素早さ順に進み、アステルの番でコマンドを選択します。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の主人公のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵や仲間の自動行動中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次のアステルの番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。攻撃力は補正後の値を表示し、上昇中は青、下降中は赤になります。戦闘終了・戦闘不能で解除されます。宿屋で全員回復します。</p>';});
 allies();render();if(state.enemy)scheduleRound();
