@@ -73,7 +73,8 @@ PC・スマホ幅で画面切替、画像、はみ出し、戦闘と保存を確
 
 | 文書 | 内容 |
 | --- | --- |
-| [AGENTS.md](AGENTS.md) | 開発ルール。**Markdown更新・GitHubへのpushを必須化** |
+| [AGENTS.md](AGENTS.md) | 開発ルール。設計・別エージェントレビュー・レビュー担当エージェント承認、Markdown更新・push・デプロイを必須化 |
+| [IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md) | 実装前の設計・レビュー・承認、設計書テンプレート |
 | [HANDOFF.md](docs/HANDOFF.md) | 最初に読む引き継ぎ、構成、状態管理、注意点 |
 | [GAME_SPEC.md](docs/GAME_SPEC.md) | ゲーム仕様、マップ、能力値、戦闘式、素材 |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | 開発・検証・push・Sites公開の手順 |
