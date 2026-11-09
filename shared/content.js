@@ -1,7 +1,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.GameContent=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
 'use strict';
 const categories=['characters','zones','monsters','items','skills','nodes','rarities','materials','shops'];
-const effectTypes=['physicalDamage','magicDamage','magicHeal','restoreHP','restoreMP'];
+const effectTypes=['physicalDamage','magicDamage','magicHeal','restoreHP','restoreMP','attackBuff'];
 const safeId=id=>typeof id==='string'&&/^[a-z][a-z0-9_-]{0,63}$/.test(id);
 function validate(data){
  const errors=[];const add=(path,message)=>errors.push(path+': '+message);
@@ -23,6 +23,7 @@ function validate(data){
  const effects=(entry,path)=>{if(!Array.isArray(entry.effects)||!entry.effects.length){add(path+'.effects','効果を1つ以上指定してください');return;}
   entry.effects.forEach((effect,i)=>{if(!effect||!effectTypes.includes(effect.type)){add(path+'.effects['+i+']','未対応の効果です');return;}
    if(['restoreHP','restoreMP'].includes(effect.type)&&!effect.full&&(!Number.isFinite(effect.amount)||effect.amount<0))add(path+'.effects['+i+'].amount','回復量が必要です');
+   if(effect.type==='attackBuff'&&(!Number.isFinite(effect.multiplier)||effect.multiplier<=1||effect.multiplier>3||!Number.isSafeInteger(effect.turns)||effect.turns<1||effect.turns>99))add(path+'.effects['+i+']','攻撃上昇は倍率1超〜3・継続ターン1〜99の整数が必要です');
    for(const field of ['amount','base','power'])if(effect[field]!=null&&(!Number.isFinite(effect[field])||effect[field]<0||effect[field]>100000000))add(path+'.effects['+i+'].'+field,'非負の数値が必要です');
   });};
  for(const e of data.characters||[])if(!Number.isFinite(e.speed)||e.speed<0)add('characters.'+e.id+'.speed','素早さが必要です');
@@ -32,8 +33,8 @@ function validate(data){
  for(const e of data.materials||[])ref('rarities',e.rarity,'materials.'+e.id+'.rarity');
  for(const e of data.rarities||[])if(!Number.isFinite(e.rate)||e.rate<0||e.rate>1)add('rarities.'+e.id+'.rate','確率は0〜1です');
  for(const e of data.shops||[]){ref('nodes',e.nodeId,'shops.'+e.id+'.nodeId');if(!data.nodes?.find(n=>n.id===e.nodeId)?.town)add('shops.'+e.id,'街にだけお店を配置できます');if(!Array.isArray(e.itemIds))add('shops.'+e.id+'.itemIds','商品IDの配列が必要です');else e.itemIds.forEach(id=>ref('items',id,'shops.'+e.id+'.itemIds'));}
- for(const e of data.skills||[]){effects(e,'skills.'+e.id);if(!['damage','heal'].includes(e.effect)||!['physical','magic'].includes(e.type))add('skills.'+e.id,'攻撃/回復と物理/魔法の分類が必要です');for(const effect of e.effects||[])if(e.effect==='heal'?effect.type!=='magicHeal':!['physicalDamage','magicDamage'].includes(effect.type))add('skills.'+e.id+'.effects','対象の種類と効果が一致しません');}
- for(const e of data.items||[]){if(!['gear','consumable'].includes(e.category))add('items.'+e.id+'.category','gearまたはconsumableが必要です');if(e.category==='consumable')effects(e,'items.'+e.id);else if(!['weapon','armor'].includes(e.type))add('items.'+e.id+'.type','weaponまたはarmorが必要です');}
+ for(const e of data.skills||[]){effects(e,'skills.'+e.id);if(!['damage','heal','buff'].includes(e.effect)||!['physical','magic'].includes(e.type))add('skills.'+e.id,'攻撃/回復/補助と物理/魔法の分類が必要です');if(e.effect==='buff'&&(e.effects?.length!==1||e.type!=='physical'))add('skills.'+e.id+'.effects','補助特技には攻撃力上昇を1件指定してください');for(const effect of Array.isArray(e.effects)?e.effects:[])if(e.effect==='buff'?effect?.type!=='attackBuff':e.effect==='heal'?effect?.type!=='magicHeal':!['physicalDamage','magicDamage'].includes(effect?.type))add('skills.'+e.id+'.effects','対象の種類と効果が一致しません');}
+ for(const e of data.items||[]){if(!['gear','consumable'].includes(e.category))add('items.'+e.id+'.category','gearまたはconsumableが必要です');if(e.category==='consumable'){effects(e,'items.'+e.id);if(Array.isArray(e.effects)&&e.effects.some(effect=>effect?.type==='attackBuff'))add('items.'+e.id+'.effects','攻撃力上昇はスキル専用です');}else if(!['weapon','armor'].includes(e.type))add('items.'+e.id+'.type','weaponまたはarmorが必要です');}
  const r=data.rules;if(!r?.growth||!r.travel||!r.battle||!r.inn)add('rules','成長・道中・戦闘・宿屋の設定が必要です');
  else {if(!r.normalAttack||!Number.isFinite(r.normalAttack.power)||r.normalAttack.power<0)add('rules.normalAttack','通常攻撃の倍率が必要です');if(!Number.isSafeInteger(r.battle.guardMPRestore)||r.battle.guardMPRestore<0)add('rules.battle.guardMPRestore','防御時のMP回復量が必要です');for(const key of ['baseHP','hpPerLevel','baseMP','mpPerLevel','baseAttack','attackPerLevel','baseDefense','defensePerLevel','baseWisdom','wisdomPerLevel','baseExperience','experiencePerLevel','maxLevel'])if(!Number.isSafeInteger(r.growth[key])||r.growth[key]<0)add('rules.growth.'+key,'非負の整数が必要です');for(const key of ['baseLuck','luckPerLevel'])if(key in r.growth&&(!Number.isSafeInteger(r.growth[key])||r.growth[key]<0||r.growth[key]>100000000))add('rules.growth.'+key,'範囲内の非負の整数が必要です');if(!r.growth.baseHP||!r.growth.maxLevel)add('rules.growth','HPとレベル上限は1以上です');if(!Number.isInteger(r.battle.strongEvery)||r.battle.strongEvery<1)add('rules.battle.strongEvery','1以上の整数が必要です');if(!Number.isSafeInteger(r.inn.price)||r.inn.price<0)add('rules.inn.price','宿代は非負の整数です');for(const [section,values]of Object.entries(r)){for(const [key,value]of Object.entries(values))if(typeof value==='number'&&(!Number.isFinite(value)||value<0))add('rules.'+section+'.'+key,'非負の数値が必要です');}
  if(!Number.isInteger(r.travel.steps)||r.travel.steps<1)add('rules.travel.steps','1以上の整数が必要です');

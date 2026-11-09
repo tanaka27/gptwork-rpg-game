@@ -9,3 +9,25 @@ test('malformed drafts and stale publication revisions are rejected without acti
 test('two writers with the same revision cannot duplicate a save update',async()=>{const app=setup();await app.call('/api/save','PUT',{state:fixture(),revision:0});const results=await Promise.all([app.call('/api/save','PUT',{state:{...fixture(),gold:31},revision:1}),app.call('/api/save','PUT',{state:{...fixture(),gold:32},revision:1})]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);assert.equal((await app.call('/api/save')).body.revision,2);assert.equal((await app.call('/api/save/history')).body.history.length,1);app.DB.close();});
 test('SQLite data survives closing and reopening the database',async()=>{const fs=await import('node:fs');const os=await import('node:os');const path=await import('node:path');const directory=fs.mkdtempSync(path.join(os.tmpdir(),'rpg-db-')),file=path.join(directory,'save.sqlite');try{let DB=openDatabase(file);await DB.prepare('INSERT INTO saves(owner_id,state,revision,updated_at) VALUES (?,?,1,?)').bind('owner',JSON.stringify(fixture()),new Date().toISOString()).run();DB.close();DB=openDatabase(file);assert.equal(JSON.parse((await DB.prepare('SELECT state FROM saves WHERE owner_id=?').bind('owner').first()).state).gold,30);DB.close();}finally{fs.rmSync(directory,{recursive:true,force:true});}});
 test('verified owner email can authorize a site-scoped identity without using an account ID as its key',async()=>{const DB=openDatabase();try{const env={DB,OWNER_EMAIL:'owner@example.test'};const request=new Request('https://rpg.test/api/content',{headers:{'oai-authenticated-user-id':'site-scoped-identity','oai-authenticated-user-email':'owner@example.test'}});assert.equal((await handleApi(request,env)).status,200);const stranger=new Request('https://rpg.test/api/content',{headers:{'oai-authenticated-user-id':'other-site-identity','oai-authenticated-user-email':'stranger@example.test'}});assert.equal((await handleApi(stranger,env)).status,403);}finally{DB.close();}});
+
+test('attack buffs publish as immutable definitions and battle snapshots preserve save compatibility',async()=>{
+ const app=setup();try{
+  const data=structuredClone(seed),skill=data.skills.find(s=>s.id==='inspire');assert.ok(skill);
+  skill.effects[0].multiplier=1.75;
+  const created=await app.call('/api/admin/drafts','POST',{data,label:'buff definitions'});assert.equal(created.status,201);
+  const id=created.body.id;assert.deepEqual((await app.call('/api/admin/versions/'+id+'/validate','POST',{})).body.errors,[]);
+  assert.equal((await app.call('/api/admin/versions/'+id+'/publish','POST',{revision:1})).status,200);
+  assert.equal((await app.call('/api/content')).body.data.skills.find(s=>s.id==='inspire').effects[0].multiplier,1.75);
+  const save=fixture();save.lv=2;save.enemy={name:'テスト敵',hp:100,max:100};save.battleContent=structuredClone(data);save.buffs=[{characterId:data.rules.party[0],skillId:'inspire',remainingTurns:3,appliedTurn:save.turn}];
+  assert.equal((await app.call('/api/save','PUT',{state:save,revision:0})).status,200);
+  const next=structuredClone(data);next.skills=next.skills.filter(s=>s.id!=='inspire');
+  const nextDraft=await app.call('/api/admin/drafts','POST',{data:next,label:'remove buff for new battles'});assert.equal(nextDraft.status,201);
+  assert.equal((await app.call('/api/admin/versions/'+nextDraft.body.id+'/publish','POST',{revision:1})).status,200,'valid snapshot survives publication removing skill');
+  assert.equal((await app.call('/api/save','PUT',{state:save,revision:1})).status,200);
+  assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:1,data})).status,409,'published buff definition remains immutable');
+  const bad=structuredClone(data);bad.skills.find(s=>s.id==='inspire').effects[0].turns=0;
+  assert.equal((await app.call('/api/admin/drafts','POST',{data:bad})).status,422);
+  save.buffs[0].remainingTurns=4;assert.equal((await app.call('/api/save','PUT',{state:save,revision:2})).status,422);
+  assert.equal((await app.call('/api/save')).body.state.buffs[0].remainingTurns,3,'rejected buff cannot overwrite save');
+ }finally{app.DB.close();}
+});

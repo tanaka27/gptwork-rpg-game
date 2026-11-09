@@ -1,4 +1,6 @@
 (function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.SaveRules=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
+const contentRules=typeof module==='object'?require('./content.js'):globalThis.GameContent;
+const gameRules=typeof module==='object'?require('./rules.js'):globalThis.GameRules;
 function validate(state,content){
  const errors=[];if(JSON.stringify(state)?.includes('<'))errors.push('セーブにHTMLを含めることはできません');if(!state||typeof state!=='object')return ['セーブが不正です'];
  if(![1,2].includes(state.v))errors.push('未対応のセーブ形式です');
@@ -14,6 +16,12 @@ function validate(state,content){
  if(!Array.isArray(state.log)||state.log.some(s=>typeof s!=='string'||s.length>2000)||state.log.length>100)errors.push('ログが不正です');
  if(state.journey&&(!nodes.has(state.journey.from)||!nodes.has(state.journey.to)||!Number.isInteger(state.journey.step)||state.journey.step<0||state.journey.step>content.rules.travel.steps))errors.push('道中が不正です');
  if(state.enemies&&(!Array.isArray(state.enemies)||state.enemies.length>16||state.enemies.some(e=>!e||!Number.isFinite(e.hp)||e.hp<0||!Number.isFinite(e.max)||e.max<e.hp||typeof e.name!=='string')))errors.push('敵の状態が不正です');
+ let buffContent=content;
+ if(state.enemy&&state.battleContent){
+  if(contentRules.validate(state.battleContent).length)errors.push('戦闘中の定義が不正です');
+  else buffContent=state.battleContent;
+ }
+ errors.push(...gameRules.validateBuffs(state,buffContent));
  return errors;
 }
 return {validate};

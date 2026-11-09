@@ -533,6 +533,23 @@
           "base": 30
         }
       ]
+    },
+    {
+      "id": "inspire",
+      "name": "鼓舞",
+      "type": "physical",
+      "effect": "buff",
+      "lv": 2,
+      "cost": 4,
+      "desc": "味方1人の攻撃力を1.5倍にする（3ターン）。同じ効果は重ならず残りターンを更新",
+      "icon": "⚔↑",
+      "effects": [
+        {
+          "type": "attackBuff",
+          "multiplier": 1.5,
+          "turns": 3
+        }
+      ]
     }
   ],
   "nodes": [

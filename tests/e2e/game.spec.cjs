@@ -297,7 +297,7 @@ test('横向きでもスキル一覧・詳細と戻るが画面内に収まる',
   await page.setViewportSize({width:844,height:390});await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(save,{lv:7,hp:182,mp:44});save.companions[0].hp=1;localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));});
   await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await readBattleRound(page);await page.locator('[data-action="explore"]').click();await readBattleRound(page);await page.locator('[data-action="skills"]').click();
-  await expect(page.locator('.skill-list button')).toHaveCount(4);
+  await expect(page.locator('.skill-list button')).toHaveCount(5);
   for(const selector of ['#skillMenu','[data-action="skill-back"]']){
     const b=await page.locator(selector).boundingBox();expect(b.x).toBeGreaterThanOrEqual(0);expect(b.y).toBeGreaterThanOrEqual(0);expect(b.x+b.width).toBeLessThanOrEqual(844);expect(b.y+b.height).toBeLessThanOrEqual(390);
   }
