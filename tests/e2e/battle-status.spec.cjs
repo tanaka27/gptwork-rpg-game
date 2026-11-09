@@ -5,7 +5,7 @@ test('コマンド中だけ味方のステータスを開き、自動行動中�
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
- await page.locator('#partyStatus img').first().click();await expect(page.locator('#modal')).not.toBeVisible();
+ await page.locator('#partyStatus img').first().click();await expect(page.locator('#modal')).toBeVisible();await page.locator('#closeModal').click();
  await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>{c.hp=maxhp();c.mp=maxmp();});render();});
  await page.locator('[data-action="explore"]').click();
  await expect(page.locator('#messageNext')).toBeVisible();
