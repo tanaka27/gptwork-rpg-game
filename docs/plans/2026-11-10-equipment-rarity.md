@@ -1,6 +1,6 @@
 # 装備レアリティと追加能力
 
-- 状態：検証済み
+- 状態：反映完了
 - 設計版：v2
 - 要求・背景：装備にノーマル／レア／エピック／レジェンドの4段階を設ける。ショップにはノーマルとレアだけを並べ、エピックとレジェンドは敵のドロップで取得する。レア以上の装備にはレア1個、エピック2個、レジェンド3個の追加効果を付け、装備時の能力へ反映する。装備詳細から基礎補正と追加効果を確認できるようにする。「装備の小お菜画面」は「装備の詳細画面」の誤記と解釈する。
 - 設計作成者（子）：/root/equipment_rarity
@@ -108,4 +108,4 @@
 - 設計との差異・未検証事項：承認済みv2からの差異なし。スマホ幅はPC上のChromiumで確認し、iOS/Android実機と本番所有者操作は未確認。
 - 子の実装・検証記録：`npm test` 成功（API 11/11含む。以降はヘルプ文・cache query・文書・E2Eテストのみ変更）。`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --workers=2` はPC1440×900/スマホ390×844で78/78通過。追加導線のpageerror/console error、横はみ出しを確認し、画像を `work/rarity-qa/desktop/` と `work/rarity-qa/mobile/` に保存して目視確認。変更JSの `node --check`、`git diff --check` 成功。`npm run package:site` 成功、`work/site.tar.gz`（8,884,446 bytes、SHA-256 `29da3c58f4b8db7653eca4e7f4729f22f6d6c69d21b77ec3d89dd28f43d26d25`）を生成。Worker bundleは12,139,221 bytes、埋め込みasset 23件。
 - 親エージェントの実装レビュー・承認記録：/root・2026-11-10 16:52 JST・設計v2の実装を承認。定義・共通計算・ドロップ/購入処理・個別装備・互換/API・管理UI・文書とテスト差分をレビュー。子のnpm test/API11件・Playwright78件・構文・パッケージ成功を引継ぎ、親がPC/スマホ幅の実画像とgit diff --checkを独立確認。途中指摘は解消、阻害事項なし。
-- 親が行うコミット・push・デプロイ結果：親の最終レビュー後に実施。未実施。
+- 親が行うコミット・push・デプロイ結果：GitHub f75f8eaをmainへpush。全追跡ソース一致を確認しSitesソース53349f2へ同期・push。同一アプリ成果物でデプロイappgdep_6af2cd7a751881919d6cf3c382da5d89がsucceeded。既存Site ID・D1 DB・所有者限定を維持。反映記録もpushし同じ成果物を再反映する。

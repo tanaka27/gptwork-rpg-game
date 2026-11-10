@@ -6,7 +6,8 @@
 - 管理バリデーションは効果数・stat・量・重複と、shop/drop参照を検証。旧公開定義はraw保持し、実行・クラウドsave・公開切替の参照検証に互換補完cloneを適用。save key `starlight-rpg-v1`、形式 `v:2`、公開DB snapshot、migrationは変更なし。
 - README・GAME_SPEC・HANDOFF・BACKEND・DEVELOPMENTに現行説明を反映し、設計・実装記録は[案件計画](docs/plans/2026-11-10-equipment-rarity.md)へ記録。
 - 検証：`npm test` 成功（SQLite API 11/11）。Playwright 78/78（1440×900 / 390×844）成功。レア購入・装備加算、epic/legend戦闘勝利取得、重複ether変換、詳細表示・保存再読込を操作し、console/pageerrorなし。スクリーンショットは`work/rarity-qa/`で目視確認。変更JSの構文、`git diff --check`、`npm run package:site`成功（`work/site.tar.gz`、8,884,446 bytes）。
-- 未確認：iOS/Android実機、本番所有者操作。親エージェントが実装最終レビュー後、GitHub mainへのpushと既存Sites反映を行う。
+- 公開：親が実装承認。GitHub `f75f8ea`をmainへpushし、Sitesソース`53349f2`と同一アプリ成果物でデプロイ`appgdep_6af2cd7a751881919d6cf3c382da5d89`がsucceeded。既存Site ID・D1・所有者限定を維持。反映記録もpushし、同じ成果物で再反映する。
+- 未確認：iOS/Android実機、本番所有者操作。
 
 ## 2026-11-10 — 現行文書の整理
 
