@@ -34,7 +34,7 @@ npm run test:e2e
 
 `npm test` は `tests/content.test.cjs`、`tests/game.test.cjs`、`tests/party-control.test.cjs`、`tests/backend/api.test.mjs` の定義・ゲーム・パーティ操作・SQLite APIテストを実行します。変更に関係するチェックを選び、実施したものだけを報告してください。
 
-`npm run test:e2e` はPlaywright設定に従い、`127.0.0.1:4173` へテスト専用のNode/SQLiteサーバーを起動します。DBは `work/playwright.sqlite` で、通常の開発DBと分離されています。既定でChromiumの1440×900と390×844を実行します。Playwright付属Chromiumをセットアップする場合は `npx playwright install chromium` を使い、既存Chromiumを指定する場合は `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` を設定します。実ブラウザでの確認が必須となる動作・表示変更の条件は[AGENTS.md](../AGENTS.md)に従い、PC幅とスマホ幅、操作後の状態、表示、console errorを確認します。スマホ幅の確認はiOS/Android実機確認と区別してください。
+`npm run test:e2e` はPlaywright設定に従い、`127.0.0.1:4173` へテスト専用のNode/SQLiteサーバーを起動します。DBは `work/playwright.sqlite` で、通常の開発DBと分離されています。既定でChromiumの1440×900と390×844を実行します。装備レアリティの購入・詳細・能力・勝利ドロップ確認は `tests/e2e/equipment-rarity.spec.cjs` にあります。Playwright付属Chromiumをセットアップする場合は `npx playwright install chromium` を使い、既存Chromiumを指定する場合は `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` を設定します。実ブラウザでの確認が必須となる動作・表示変更の条件は[AGENTS.md](../AGENTS.md)に従い、PC幅とスマホ幅、操作後の状態、表示、console errorを確認します。スマホ幅の確認はiOS/Android実機確認と区別してください。
 
 ## コンテンツ検査、ビルド、パッケージ
 

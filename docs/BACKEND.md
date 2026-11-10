@@ -7,7 +7,7 @@
 - `content/game.json` は初期定義とbundled fallbackです。`shared/content.js` が定義を検証し、`shared/rules.js` がゲーム計算を行います。
 - `dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は `npm run content:sync` が生成します。生成物を直接編集せず、`content/` と `shared/` を変更してください。
 - DBで公開版が選ばれている場合、その版がゲーム定義の正本です。公開先は `app_settings.active_content` と `content_versions` で管理します。bundledを選んでいる場合、または公開設定がない場合は同梱定義を使います。
-- `dist/bootstrap.js` はAPIから定義を取得・検証・キャッシュし、`GameContent.withJobs` で互換補完します。通常取得に失敗した場合は検証済みキャッシュ、次に同梱定義を使います。ゲーム側のUI形式への変換は `GameContent.legacy` が行います。
+- `GET /api/content` は公開中またはbundled定義のcloneへ `GameContent.withJobs` の後方互換補完を適用して返します。`dist/bootstrap.js` は受け取った定義を検証・キャッシュし、冪等な互換補完を実行します。通常取得に失敗した場合は検証済みキャッシュ、次に同梱定義を使います。ゲーム側のUI形式への変換は `GameContent.legacy` が行います。
 - プレビューは指定版を取得できなければ通常進行へ進まず停止し、通常保存やクラウド保存を変更しません。
 - `server/api.mjs` をNode開発サーバーとCloudflare Workerで共有します。開発時はNode.js 24のSQLite、本番はWorker ESMとD1を使用します。
 
@@ -30,7 +30,7 @@
 
 | API | 用途 |
 | --- | --- |
-| `GET /api/content` | 現在の公開版またはbundled定義 |
+| `GET /api/content` | 現在の公開版またはbundled定義の実行用clone（旧定義の互換補完済み） |
 | `GET /api/admin/versions`、`POST /api/admin/drafts` | 定義版の一覧・下書き作成 |
 | `GET/PUT /api/admin/versions/:id` | 下書きの取得・更新 |
 | `POST /api/admin/versions/:id/validate`、`POST /api/admin/versions/:id/publish` | 検証・公開またはbundledへの切替 |
@@ -38,11 +38,11 @@
 | `GET/PUT /api/save` | クラウド進行の取得・明示保存 |
 | `GET /api/save/history`、`GET /api/save/history/:id` | 保存履歴の一覧・取得 |
 
-公開済み定義は複製して編集します。APIが使うrevisionが現在値と一致しない更新・保存は競合として拒否します。公開版の切替では、既存クラウドセーブを壊す定義を拒否します。
+公開済み定義は複製して編集します。管理版取得・JSON exportはDB正本のraw定義を返し、実行用互換補完で公開snapshotを書き換えません。APIが使うrevisionが現在値と一致しない更新・保存は競合として拒否します。公開版の切替では、互換補完した検証用cloneに対して既存クラウドセーブの参照を調べ、既存進行を壊す定義を拒否します。
 
 ## セーブと互換性
 
-ローカルの保存キーは `starlight-rpg-v1`、現在の形式は `v:2` です。旧 `v:1` 保存からの移行を維持し、IDや配列順で旧仲間データを対応づける互換条件も変更時に保ちます。`shared/save.js` はクラウド保存時に `v:1` と `v:2` のデータを公開定義に照らして検証します。移行は進行を初期化せず、不整合時も元のデータを保護してください。
+ローカルの保存キーは `starlight-rpg-v1`、現在の形式は `v:2` です。旧 `v:1` 保存からの移行を維持し、IDや配列順で旧仲間データを対応づける互換条件も変更時に保ちます。`shared/save.js` はクラウド保存時に `v:1` と `v:2` のデータを定義に照らして検証します。APIはクラウド保存と公開切替の参照検証に互換補完済みのcloneを使うため、旧公開版から実行時に補完されたIDも通常の定義参照として確認できます。raw公開定義・DB snapshotは変更せず、セーブ形式も更新しません。移行は進行を初期化せず、不整合時も元のデータを保護してください。
 
 既存のクラウド進行を更新する前に確認を表示し、更新前の内容はAPIが `save_history` に保存します。クラウドから復元する前には現在のローカル進行をブラウザ内バックアップへ退避します。リセットが削除するのはローカル保存だけで、クラウド保存は保持します。プレビューは専用キーを使い、クラウド保存操作を無効にします。ローカルの自動保存とクラウド保存は別で、自動同期はありません。既存戦闘の `battleContent` は再開時にもruntimeとstateへ互換補完済み定義をそろえて通常の保存経路で保持し、戦闘中に公開版の差し替えを受けません。利用者向けの操作と実装詳細は `dist/cloud-save.js`、`dist/game.js`、`dist/storage.js` を参照してください。
 

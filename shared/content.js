@@ -2,6 +2,8 @@
 'use strict';
 const categories=['characters','zones','monsters','items','skills','nodes','rarities','materials','shops'];
 const effectTypes=['physicalDamage','magicDamage','magicHeal','restoreHP','restoreMP','attackBuff'];
+const equipmentRarities=['normal','rare','epic','legend'];
+const bonusEffectStats=['maxHP','maxMP','attack','defense','wisdom','speed','luck'];
 const safeId=id=>typeof id==='string'&&/^[a-z][a-z0-9_-]{0,63}$/.test(id);
 function validate(data){
  const errors=[];const add=(path,message)=>errors.push(path+': '+message);
@@ -33,13 +35,13 @@ function validate(data){
   else for(const [key,value]of Object.entries(e.stats))if(!allowed.includes(key)||!Number.isSafeInteger(value)||value<(key==='baseHP'?1:0)||value>100000000)add('characters.'+e.id+'.stats.'+key,'範囲内の個別成長値が必要です');
  }
  for(const e of data.monsters||[]){ref('zones',e.zoneId,'monsters.'+e.id+'.zoneId');if(!Number.isFinite(e.hp)||e.hp<=0)add('monsters.'+e.id+'.hp','HPは正の値が必要です');if(!Array.isArray(e.drops))add('monsters.'+e.id+'.drops','素材IDの配列が必要です');else e.drops.forEach(id=>ref('materials',id,'monsters.'+e.id+'.drops'));}
- for(const e of data.zones||[])ref('monsters',e.bossId,'zones.'+e.id+'.bossId');
+ for(const e of data.zones||[]){ref('monsters',e.bossId,'zones.'+e.id+'.bossId');if(e.bonusItemId!==undefined){ref('items',e.bonusItemId,'zones.'+e.id+'.bonusItemId');if(!data.items?.some(item=>item.id===e.bonusItemId&&item.category==='gear'))add('zones.'+e.id+'.bonusItemId','装備IDが必要です');}if(e.equipmentDropIds!==undefined){if(!Array.isArray(e.equipmentDropIds)||!e.equipmentDropIds.length)add('zones.'+e.id+'.equipmentDropIds','装備IDを1つ以上指定してください');else{if(new Set(e.equipmentDropIds).size!==e.equipmentDropIds.length)add('zones.'+e.id+'.equipmentDropIds','装備IDは重複できません');for(const id of e.equipmentDropIds){ref('items',id,'zones.'+e.id+'.equipmentDropIds');if(!data.items?.some(item=>item.id===id&&item.category==='gear'))add('zones.'+e.id+'.equipmentDropIds','装備IDが必要です: '+id);}}}}
  for(const e of data.nodes||[]){ref('zones',e.zoneId,'nodes.'+e.id+'.zoneId');if(!Array.isArray(e.links))add('nodes.'+e.id+'.links','接続先の配列が必要です');else for(const id of e.links){ref('nodes',id,'nodes.'+e.id+'.links');const other=data.nodes.find(n=>n.id===id);if(other&&!other.links?.includes(e.id))add('nodes.'+e.id+'.links','接続は双方向にしてください: '+id);}}
  for(const e of data.materials||[])ref('rarities',e.rarity,'materials.'+e.id+'.rarity');
  for(const e of data.rarities||[])if(!Number.isFinite(e.rate)||e.rate<0||e.rate>1)add('rarities.'+e.id+'.rate','確率は0〜1です');
- for(const e of data.shops||[]){ref('nodes',e.nodeId,'shops.'+e.id+'.nodeId');if(!data.nodes?.find(n=>n.id===e.nodeId)?.town)add('shops.'+e.id,'街にだけお店を配置できます');if(!Array.isArray(e.itemIds))add('shops.'+e.id+'.itemIds','商品IDの配列が必要です');else e.itemIds.forEach(id=>ref('items',id,'shops.'+e.id+'.itemIds'));}
+ for(const e of data.shops||[]){ref('nodes',e.nodeId,'shops.'+e.id+'.nodeId');if(!data.nodes?.find(n=>n.id===e.nodeId)?.town)add('shops.'+e.id,'街にだけお店を配置できます');if(!Array.isArray(e.itemIds))add('shops.'+e.id+'.itemIds','商品IDの配列が必要です');else e.itemIds.forEach(id=>{ref('items',id,'shops.'+e.id+'.itemIds');const item=data.items.find(row=>row.id===id);if(item?.category==='gear'&&['epic','legend'].includes(item.rarity??'normal'))add('shops.'+e.id+'.itemIds','ショップにはノーマル/レア装備だけを置けます: '+id);});}
  for(const e of data.skills||[]){effects(e,'skills.'+e.id);if(e.characterId!==undefined)ref('characters',e.characterId,'skills.'+e.id+'.characterId');if(e.target!==undefined&&(e.effect!=='buff'||!['ally','self'].includes(e.target)))add('skills.'+e.id+'.target','補助技能の対象はallyまたはselfです');if(!['damage','heal','buff'].includes(e.effect)||!['physical','magic'].includes(e.type))add('skills.'+e.id,'攻撃/回復/補助と物理/魔法の分類が必要です');if(e.effect==='buff'&&(e.effects?.length!==1||e.type!=='physical'))add('skills.'+e.id+'.effects','補助特技には攻撃力上昇を1件指定してください');for(const effect of Array.isArray(e.effects)?e.effects:[])if(e.effect==='buff'?effect?.type!=='attackBuff':e.effect==='heal'?effect?.type!=='magicHeal':!['physicalDamage','magicDamage'].includes(effect?.type))add('skills.'+e.id+'.effects','対象の種類と効果が一致しません');}
- for(const e of data.items||[]){if(!['gear','consumable'].includes(e.category))add('items.'+e.id+'.category','gearまたはconsumableが必要です');if(e.category==='consumable'){effects(e,'items.'+e.id);if(Array.isArray(e.effects)&&e.effects.some(effect=>effect?.type==='attackBuff'))add('items.'+e.id+'.effects','攻撃力上昇はスキル専用です');}else if(!['weapon','armor'].includes(e.type))add('items.'+e.id+'.type','weaponまたはarmorが必要です');}
+ for(const e of data.items||[]){if(!['gear','consumable'].includes(e.category))add('items.'+e.id+'.category','gearまたはconsumableが必要です');if(e.category==='consumable'){effects(e,'items.'+e.id);if(Array.isArray(e.effects)&&e.effects.some(effect=>effect?.type==='attackBuff'))add('items.'+e.id+'.effects','攻撃力上昇はスキル専用です');}else{if(!['weapon','armor'].includes(e.type))add('items.'+e.id+'.type','weaponまたはarmorが必要です');const hasRarity=Object.hasOwn(e,'rarity'),hasBonus=Object.hasOwn(e,'bonusEffects'),path='items.'+e.id;if(hasRarity!==hasBonus)add(path,'rarityとbonusEffectsを両方指定してください');if(hasRarity||hasBonus){if(!equipmentRarities.includes(e.rarity))add(path+'.rarity','normal/rare/epic/legendのいずれかが必要です');if(!Array.isArray(e.bonusEffects))add(path+'.bonusEffects','追加効果の配列が必要です');else{const required={normal:0,rare:1,epic:2,legend:3}[e.rarity];if(required!==undefined&&e.bonusEffects.length!==required)add(path+'.bonusEffects','レアリティに合う個数の追加効果が必要です');const seen=new Set();e.bonusEffects.forEach((effect,i)=>{if(!effect||typeof effect!=='object'||!bonusEffectStats.includes(effect.stat))add(path+'.bonusEffects['+i+'].stat','対応する能力値を指定してください');if(seen.has(effect?.stat))add(path+'.bonusEffects['+i+'].stat','能力値は重複できません');seen.add(effect?.stat);if(!Number.isSafeInteger(effect?.amount)||effect.amount<1||effect.amount>100000000)add(path+'.bonusEffects['+i+'].amount','1〜100000000の整数が必要です');});}}}}
  const r=data.rules;if(!r?.growth||!r.travel||!r.battle||!r.inn)add('rules','成長・道中・戦闘・宿屋の設定が必要です');
  else {if(!r.normalAttack||!Number.isFinite(r.normalAttack.power)||r.normalAttack.power<0)add('rules.normalAttack','通常攻撃の倍率が必要です');if(!Number.isSafeInteger(r.battle.guardMPRestore)||r.battle.guardMPRestore<0)add('rules.battle.guardMPRestore','防御時のMP回復量が必要です');for(const key of ['baseHP','hpPerLevel','baseMP','mpPerLevel','baseAttack','attackPerLevel','baseDefense','defensePerLevel','baseWisdom','wisdomPerLevel','baseExperience','experiencePerLevel','maxLevel'])if(!Number.isSafeInteger(r.growth[key])||r.growth[key]<0)add('rules.growth.'+key,'非負の整数が必要です');for(const key of ['baseLuck','luckPerLevel'])if(key in r.growth&&(!Number.isSafeInteger(r.growth[key])||r.growth[key]<0||r.growth[key]>100000000))add('rules.growth.'+key,'範囲内の非負の整数が必要です');if(!r.growth.baseHP||!r.growth.maxLevel)add('rules.growth','HPとレベル上限は1以上です');if(!Number.isInteger(r.battle.strongEvery)||r.battle.strongEvery<1)add('rules.battle.strongEvery','1以上の整数が必要です');if(!Number.isSafeInteger(r.inn.price)||r.inn.price<0)add('rules.inn.price','宿代は非負の整数です');for(const [section,values]of Object.entries(r)){for(const [key,value]of Object.entries(values))if(typeof value==='number'&&(!Number.isFinite(value)||value<0))add('rules.'+section+'.'+key,'非負の数値が必要です');}
  if(!Number.isInteger(r.travel.steps)||r.travel.steps<1)add('rules.travel.steps','1以上の整数が必要です');
@@ -52,6 +54,32 @@ function collisionId(id,used){for(let suffix=1;;suffix++){const tail='_builtin'+
 function withJobs(data,defaults=data){
  const errors=validate(data);if(errors.length)throw new Error(errors.join('\n'));const defaultErrors=validate(defaults);if(defaultErrors.length)throw new Error(defaultErrors.join('\n'));
  const result=JSON.parse(JSON.stringify(data)),defaultCharacters=new Map(defaults.characters.map(character=>[character.id,character])),party=new Set(result.rules.party);
+ const legacyGearIds=new Set(result.items.filter(item=>item.category==='gear'&&!Object.hasOwn(item,'rarity')&&!Object.hasOwn(item,'bonusEffects')).map(item=>item.id));
+ const oldEquipment=legacyGearIds.size>0&&result.items.filter(item=>item.category==='gear').every(item=>legacyGearIds.has(item.id))&&result.zones.every(zone=>zone.equipmentDropIds===undefined);
+ const builtinIds=new Set(['moonsteel_blade','starward_armor','eclipse_robe','starlight_blade']),usedItemIds=new Set(result.items.map(item=>item.id)),builtinItemIds=new Map();
+ for(const item of result.items.filter(row=>row.category==='gear'))if(!Object.hasOwn(item,'rarity')&&!Object.hasOwn(item,'bonusEffects')){item.rarity='normal';item.bonusEffects=[];}
+ for(const fallback of defaults.items.filter(item=>item.category==='gear'&&builtinIds.has(item.id))){
+  const existing=result.items.find(item=>item.id===fallback.id);let id=fallback.id;
+  const carried=result.items.find(item=>item.category==='gear'&&item.id.startsWith(fallback.id+'_builtin')&&Object.hasOwn(item,'rarity')&&Object.hasOwn(item,'bonusEffects'));
+  if(carried){builtinItemIds.set(fallback.id,carried.id);continue;}
+  if(existing){if(existing.category==='gear'&&!legacyGearIds.has(existing.id)&&Object.hasOwn(existing,'rarity')&&Object.hasOwn(existing,'bonusEffects')){builtinItemIds.set(fallback.id,id);continue;}id=collisionId(id,usedItemIds);}
+  const addition=JSON.parse(JSON.stringify(fallback));addition.id=id;result.items.push(addition);usedItemIds.add(id);builtinItemIds.set(fallback.id,id);
+ }
+ for(const zone of result.zones){
+  if(zone.equipmentDropIds!==undefined)continue;
+  const standard=defaults.zones.find(row=>row.id===zone.id);if(!standard?.equipmentDropIds)continue;
+  const candidates=[...(zone.bonusItemId?[zone.bonusItemId]:[]),...standard.equipmentDropIds.map(id=>builtinItemIds.get(id)||id)];
+  const validCandidates=[...new Set(candidates)].filter(id=>result.items.some(item=>item.id===id&&item.category==='gear'));if(validCandidates.length)zone.equipmentDropIds=validCandidates;
+ }
+ if(oldEquipment){
+  const shopDefaults=new Map(defaults.shops.map(shop=>[shop.nodeId,shop]));
+  for(const shop of result.shops){
+   if(!['luna','forge'].includes(shop.nodeId))continue;
+   const standard=shopDefaults.get(shop.nodeId);if(!standard)continue;
+   const additions=standard.itemIds.filter(id=>builtinIds.has(id)&&['rare'].includes(defaults.items.find(item=>item.id===id)?.rarity)).map(id=>builtinItemIds.get(id)||id);
+   shop.itemIds=[...new Set([...shop.itemIds,...additions])];
+  }
+ }
  const owner=(skill,rules)=>skill.characterId??rules.party[0];
  for(const character of result.characters){if(character.job!==undefined)continue;const standard=defaultCharacters.get(character.id);character.job=standard?.job||'冒険者';if(!standard?.job||!party.has(character.id))continue;
   for(const fallback of defaults.skills.filter(skill=>owner(skill,defaults.rules)===character.id)){
@@ -61,9 +89,10 @@ function withJobs(data,defaults=data){
    const addition=JSON.parse(JSON.stringify(fallback));addition.id=id;addition.characterId=character.id;result.skills.push(addition);
   }
  }
+ const resultErrors=validate(result);if(resultErrors.length)throw new Error(resultErrors.join('\n'));
  return result;
 }
 function legacy(data){const errors=validate(data);if(errors.length)throw new Error(errors.join('\n'));const dict=rows=>Object.fromEntries(rows.map(e=>[e.id,{...e}]));const zoneIndex=id=>data.zones.findIndex(z=>z.id===id);
  return {zones:data.zones,gear:dict(data.items.filter(e=>e.category==='gear')),consumables:dict(data.items.filter(e=>e.category==='consumable')),shopStock:Object.fromEntries(data.shops.map(e=>[e.nodeId,e.itemIds])),skillList:data.skills,mapNodes:data.nodes.map(e=>({...e,zone:zoneIndex(e.zoneId)})),rarities:dict(data.rarities),materials:dict(data.materials),bestiary:data.zones.map(z=>data.monsters.filter(e=>e.zoneId===z.id&&!e.boss)),normalAttack:data.rules.normalAttack};}
-return {validate,legacy,withJobs,categories,effectTypes};
+return {validate,legacy,withJobs,categories,effectTypes,equipmentRarities,bonusEffectStats};
 });

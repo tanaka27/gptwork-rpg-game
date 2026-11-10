@@ -1,6 +1,6 @@
 # 星灯りの旅団 — Starlight Chronicle
 
-日本語で遊べる、オリジナルのターン制ブラウザRPGです。
+日本語で遊べる、オリジナルのターン制ブラウザRPGです。装備はノーマル・レア・エピック・レジェンドの4段階で、レア以上には装備中に能力へ加算される追加効果があります。装備の詳細画面では基礎補正と追加効果を確認できます。
 
 - [ゲームを開く](https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site)（現在は所有者限定）
 - [GitHub](https://github.com/tanaka27/gptwork-rpg-game)（`main`）

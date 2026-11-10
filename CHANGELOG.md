@@ -1,5 +1,13 @@
 # 変更履歴
 
+## 2026-11-10 — 装備レアリティと追加効果
+
+- 装備にノーマル／レア／エピック／レジェンドを追加。旧6装備はノーマルとして維持し、レア2件はルナ／ヴァルで販売、エピック／レジェンド各1件は遺跡／火山の通常敵から取得する。レアリティ別の追加効果を装備中の人物能力へ反映し、ショップ・もちものから装備詳細を開ける。
+- 管理バリデーションは効果数・stat・量・重複と、shop/drop参照を検証。旧公開定義はraw保持し、実行・クラウドsave・公開切替の参照検証に互換補完cloneを適用。save key `starlight-rpg-v1`、形式 `v:2`、公開DB snapshot、migrationは変更なし。
+- README・GAME_SPEC・HANDOFF・BACKEND・DEVELOPMENTに現行説明を反映し、設計・実装記録は[案件計画](docs/plans/2026-11-10-equipment-rarity.md)へ記録。
+- 検証：`npm test` 成功（SQLite API 11/11）。Playwright 78/78（1440×900 / 390×844）成功。レア購入・装備加算、epic/legend戦闘勝利取得、重複ether変換、詳細表示・保存再読込を操作し、console/pageerrorなし。スクリーンショットは`work/rarity-qa/`で目視確認。変更JSの構文、`git diff --check`、`npm run package:site`成功（`work/site.tar.gz`、8,884,446 bytes）。
+- 未確認：iOS/Android実機、本番所有者操作。親エージェントが実装最終レビュー後、GitHub mainへのpushと既存Sites反映を行う。
+
 ## 2026-11-10 — 現行文書の整理
 
 現行文書を入口・正本・履歴に分け、過去に日付追記されていた引き継ぎ・検証・公開の資料を[整理前スナップショット](docs/history/2026-11-10-development-documents.md)へ保存しました。現行文書の索引は[docs/README.md](docs/README.md)です。詳細な過去記録は変更せず保全し、現行の説明から外しました。

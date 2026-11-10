@@ -84,7 +84,8 @@
         "fang",
         "seed"
       ],
-      "bonusItemId": "iron"
+      "bonusItemId": "iron",
+      "equipmentDropIds": ["iron"]
     },
     {
       "name": "月影の遺跡",
@@ -100,7 +101,8 @@
         "shard",
         "pearl"
       ],
-      "bonusItemId": "leather"
+      "bonusItemId": "leather",
+      "equipmentDropIds": ["leather", "eclipse_robe"]
     },
     {
       "name": "紅蓮の火山",
@@ -116,7 +118,8 @@
         "scale",
         "ruby"
       ],
-      "bonusItemId": "star"
+      "bonusItemId": "star",
+      "equipmentDropIds": ["star", "starlight_blade"]
     }
   ],
   "monsters": [
@@ -411,7 +414,9 @@
       "value": 0,
       "icon": "⚔",
       "price": 0,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
     },
     {
       "id": "iron",
@@ -420,7 +425,9 @@
       "value": 6,
       "icon": "⚔",
       "price": 70,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
     },
     {
       "id": "star",
@@ -429,7 +436,9 @@
       "value": 14,
       "icon": "⚔",
       "price": 220,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
     },
     {
       "id": "cloth",
@@ -438,7 +447,9 @@
       "value": 0,
       "icon": "♢",
       "price": 0,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
     },
     {
       "id": "leather",
@@ -447,7 +458,9 @@
       "value": 4,
       "icon": "♢",
       "price": 55,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
     },
     {
       "id": "moon",
@@ -456,7 +469,53 @@
       "value": 10,
       "icon": "♢",
       "price": 180,
-      "category": "gear"
+      "category": "gear",
+      "rarity": "normal",
+      "bonusEffects": []
+    },
+    {
+      "id": "moonsteel_blade",
+      "name": "月鋼の剣",
+      "type": "weapon",
+      "value": 10,
+      "icon": "⚔",
+      "price": 420,
+      "category": "gear",
+      "rarity": "rare",
+      "bonusEffects": [{"stat":"luck","amount":2}]
+    },
+    {
+      "id": "starward_armor",
+      "name": "星守りの鎧",
+      "type": "armor",
+      "value": 7,
+      "icon": "♢",
+      "price": 360,
+      "category": "gear",
+      "rarity": "rare",
+      "bonusEffects": [{"stat":"maxHP","amount":12}]
+    },
+    {
+      "id": "eclipse_robe",
+      "name": "月蝕のローブ",
+      "type": "armor",
+      "value": 13,
+      "icon": "♢",
+      "price": 0,
+      "category": "gear",
+      "rarity": "epic",
+      "bonusEffects": [{"stat":"maxHP","amount":20},{"stat":"wisdom","amount":4}]
+    },
+    {
+      "id": "starlight_blade",
+      "name": "星灯りの剣",
+      "type": "weapon",
+      "value": 20,
+      "icon": "⚔",
+      "price": 0,
+      "category": "gear",
+      "rarity": "legend",
+      "bonusEffects": [{"stat":"attack","amount":5},{"stat":"speed","amount":4},{"stat":"luck","amount":6}]
     },
     {
       "id": "herb",
@@ -960,7 +1019,8 @@
         "herb",
         "ether",
         "iron",
-        "leather"
+        "leather",
+        "moonsteel_blade"
       ]
     },
     {
@@ -971,7 +1031,8 @@
         "ether",
         "potion",
         "star",
-        "moon"
+        "moon",
+        "starward_armor"
       ]
     }
   ],

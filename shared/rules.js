@@ -10,7 +10,9 @@ function stats(state,data,index=0){
  const character=data.characters.find(c=>c.id===data.rules.party[index]);
  const g={...data.rules.growth,...characterDefaults[character?.id],...character?.stats},level=state.lv-1,member=memberState(state,data,index);
  const weapon=data.items.find(e=>e.id===(member.weapon??state.weapon)),armor=data.items.find(e=>e.id===(member.armor??state.armor));
- return {maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,luck:(g.baseLuck??10)+level*(g.luckPerLevel??2),speed:(character?.speed??0)+level,threshold:data.rules.growth.baseExperience+state.lv*data.rules.growth.experiencePerLevel};
+ const result={maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,luck:(g.baseLuck??10)+level*(g.luckPerLevel??2),speed:(character?.speed??0)+level,threshold:data.rules.growth.baseExperience+state.lv*data.rules.growth.experiencePerLevel};
+ for(const item of [weapon,armor])for(const effect of item?.bonusEffects||[])if(Object.hasOwn(result,effect.stat))result[effect.stat]+=effect.amount;
+ return result;
 }
 function skillOwnerId(skill,data){return skill?.characterId??data?.rules?.party?.[0]??null;}
 function skillOwnerIndex(skill,data){return data?.rules?.party?.indexOf(skillOwnerId(skill,data))??-1;}

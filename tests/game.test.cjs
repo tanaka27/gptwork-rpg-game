@@ -62,7 +62,7 @@ function boot(saved = null, party = false, manualMessages = false) {
    assert.equal(exit.run('state.enemy'),null);assert.equal(exit.run('state.buffs.length'),0,outcome+' clears buffs');
   }
   const invalidBuff=boot(null,true,true);
-  invalidBuff.run("state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();partySpeeds[0]=999;startBattle();state.enemies.forEach(e=>{e.hp=10000;e.max=10000;e.atk=0;});render(false)");
+  invalidBuff.run("state.lv=7;state.hp=maxhp();state.mp=maxmp();GameData.characters[0].speed=999;allies();startBattle();state.enemies.forEach(e=>{e.hp=10000;e.max=10000;e.atk=0;});render(false)");
   const invalidMP=invalidBuff.run('state.mp'),invalidRound=invalidBuff.run("partyRound('skill','inspire',null,1)");
   for(let i=0;i<10;i++)await Promise.resolve();
   assert.equal(invalidBuff.run('state.buffs.length'),0);assert.equal(invalidBuff.run('state.mp'),invalidMP);
@@ -440,15 +440,17 @@ function boot(saved = null, party = false, manualMessages = false) {
   const ordered=boot(JSON.stringify(reordered),true);
   assert.equal(ordered.run('JSON.stringify(state.kills)'),JSON.stringify([2,3,7]),'zone progress follows stable IDs after reordering');
   const shops = boot();
-  const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather'],forge:['herb','ether','potion','star','moon']};
+  const expectedStock = {home:['herb','leather'],luna:['herb','ether','iron','leather','moonsteel_blade'],forge:['herb','ether','potion','star','moon','starward_armor']};
   for (const [town, ids] of Object.entries(expectedStock)) {
     shops.run(`state.node='${town}';state.village=true;state.enemy=null;state.gold=10000;action('shop')`);
-    for (const id of ['herb','ether','potion','iron','leather','star','moon']) {
+    for (const id of ['herb','ether','potion','iron','leather','star','moon','moonsteel_blade','starward_armor','eclipse_robe','starlight_blade']) {
       assert.equal(shops.nodes.shopItems.innerHTML.includes('data-action="buy:'+id+'"'),ids.includes(id),town+' displays '+id);
       const before = shops.run('JSON.stringify(state)');
       shops.run(`action('buy:${id}')`);
       if (!ids.includes(id)) assert.equal(shops.run('JSON.stringify(state)'),before,'reject unlisted '+id+' in '+town);
     }
+    assert.ok(!shops.nodes.shopItems.innerHTML.includes('data-action="buy:eclipse_robe"'));
+    assert.ok(!shops.nodes.shopItems.innerHTML.includes('data-action="buy:starlight_blade"'));
   }
   shops.run("action('shop-close')");
   assert.equal(shops.nodes.shopMenu.hidden,true,'close restores town commands');
@@ -597,7 +599,19 @@ function boot(saved = null, party = false, manualMessages = false) {
   const legacyData=critical.run('GameData');delete legacyData.rules.growth.baseLuck;delete legacyData.rules.growth.luckPerLevel;
   assert.equal(critical.run('luck()'),18,'old published and battle definitions use compatible defaults');
   assert.equal(migrated.run('luck()'),18,'old saves retain level and gain derived luck');
+  const equipment=boot(null,true);equipment.run("allies();state.owned.push('moonsteel_blade','starward_armor','eclipse_robe','starlight_blade');state.weapon='moonsteel_blade';state.armor='starward_armor';state.companions[0].weapon='starlight_blade';state.companions[0].armor='eclipse_robe'");
+  const baseHero=equipment.run("GameRules.stats({lv:1,weapon:'twig',armor:'cloth'},GameData,0)"),heroGear=equipment.run('GameRules.stats(state,GameData,0)'),baseRina=equipment.run("GameRules.stats({lv:1,weapon:'twig',armor:'cloth'},GameData,1)"),rinaGear=equipment.run('GameRules.stats(state,GameData,1)');
+  assert.equal(heroGear.attack,baseHero.attack+10);assert.equal(heroGear.defense,baseHero.defense+7);assert.equal(heroGear.maxHP,baseHero.maxHP+12);assert.equal(heroGear.luck,baseHero.luck+2);
+  assert.equal(rinaGear.attack,baseRina.attack+25);assert.equal(rinaGear.defense,baseRina.defense+13);assert.equal(rinaGear.maxHP,baseRina.maxHP+20);assert.equal(rinaGear.wisdom,baseRina.wisdom+4);assert.equal(rinaGear.speed,baseRina.speed+4);assert.equal(rinaGear.luck,baseRina.luck+6);
+  assert.equal(equipment.run('speedOf(1)'),rinaGear.speed,'equipment speed is used in turn order');assert.equal(equipment.run("GameRules.stats(state,GameData,2).attack"),equipment.run("GameRules.stats({lv:1,weapon:'twig',armor:'cloth'},GameData,2).attack"),'un-equipped allies do not receive another character’s effects');
+  equipment.run("state.armor='cloth';state.hp=61;state.mp=9;action('equip:starward_armor')");assert.equal(equipment.run('state.hp'),61,'equipping added max HP does not heal or clamp current HP');assert.equal(equipment.run('state.mp'),9);
+  const equipmentDrops=boot();equipmentDrops.run('state.zone=1');assert.equal(equipmentDrops.run('rollEquipmentDrop({boss:false},()=>.13)'),null,'13% boundary does not drop');
+  equipmentDrops.run('rolls=[.129,.99]');assert.equal(equipmentDrops.run('rollEquipmentDrop({boss:false},()=>rolls.shift())'),'eclipse_robe');assert.ok(equipmentDrops.run("state.owned.includes('eclipse_robe')"));
+  equipmentDrops.run('duplicateRolls=[0,.99]');const etherBefore=equipmentDrops.run('state.items.ether');assert.equal(equipmentDrops.run('rollEquipmentDrop({boss:false},()=>duplicateRolls.shift())'),'eclipse_robe');assert.equal(equipmentDrops.run('state.items.ether'),etherBefore+1,'duplicate gear converts to one star dew without reroll');
+  const bossEther=equipmentDrops.run('state.items.ether');assert.equal(equipmentDrops.run('rollEquipmentDrop({boss:true},()=>0)'),null);assert.equal(equipmentDrops.run('state.items.ether'),bossEther,'boss battles do not use the normal enemy equipment roll');
+  const winningDrop=boot();winningDrop.run("state.zone=2;state.enemy={name:'装備試験',hp:0,max:1,xp:0,gold:0,boss:false};let drops=[.99,.99,.99,.99,.99,0,.99];Math.random=()=>drops.shift()??.99;win()");assert.ok(winningDrop.run("state.owned.includes('starlight_blade')"),'normal-enemy win grants a configured legendary candidate');
   console.log('PASS: luck growth, legacy defaults, critical boundary and cap, defense bypass, party MP and critical log, magic exclusion');
+  console.log('PASS: rare/epic/legend equipment stats, individual equipment effects, max HP preservation, equipment drop boundaries and duplicate conversion');
   console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, DQ-style base, normal attacks without critical hits, glancing hits, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
   console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});

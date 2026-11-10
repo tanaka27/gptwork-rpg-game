@@ -1,14 +1,14 @@
 'use strict';
 // 主人公の既存フィールドは保持し、仲間と敵隊列を追加する。
 const initialParty=GameData.rules.party.map(id=>GameData.characters.find(c=>c.id===id));
-const partyNames=initialParty.map(c=>c.name),partySpeeds=initialParty.map(c=>c.speed);
+const partyNames=initialParty.map(c=>c.name);
 function allies(){
  const previous=state.companions||[],hasIds=previous.some(c=>c.characterId);
  state.companions=initialParty.slice(1).map((character,i)=>{
   const saved=previous.find(c=>c.characterId===character.id)||(!hasIds?previous[i]:null);
   return {...saved,characterId:character.id,name:character.name,weapon:saved?.weapon??state.weapon,armor:saved?.armor??state.armor,hp:saved?.hp??allyStats(i+1).maxHP,mp:saved?.mp??allyStats(i+1).maxMP,speed:character.speed};
  });
- return [{characterId:initialParty[0].id,name:partyNames[0],hp:state.hp,mp:state.mp,speed:partySpeeds[0]},...state.companions];
+ return [{characterId:initialParty[0].id,name:partyNames[0],hp:state.hp,mp:state.mp,speed:initialParty[0].speed},...state.companions];
 }
 function allyStats(i=actingAlly){return GameRules.stats(state,GameData,i);}
 function allyMP(i=actingAlly){return i?state.companions[i-1].mp:state.mp;}
@@ -21,7 +21,7 @@ function setAllyHP(i,hp){
 }
 function allyAttack(i){return GameRules.allyAttack(state,GameData,i);}
 function skillTargetsAlly(skill){return skill.effect==='heal'||skill.effect==='buff';}
-function speedOf(i){return partySpeeds[i]+state.lv-1;}
+function speedOf(i){return allyStats(i).speed;}
 function battleEnemies(){if(!state.enemy){state.enemies=[];return [];}if(!state.enemies?.some(e=>e.hp>0))state.enemies=[state.enemy];state.enemies.forEach((e,i)=>{e.speed??=8+state.zone*4+i*3;});state.enemy=state.enemies.find(e=>e.hp>0)||state.enemy;return state.enemies;}
 function activeEnemies(){return battleEnemies().filter(e=>e.hp>0);}
 function roundOrder(){return [...allies().map((a,i)=>({side:'ally',index:i,name:a.name,speed:speedOf(i),hp:allyHP(i)})),...battleEnemies().map((e,i)=>({side:'enemy',index:i,name:e.name,speed:e.speed,hp:e.hp}))].filter(a=>a.hp>0).sort((a,b)=>b.speed-a.speed||(a.side===b.side?a.index-b.index:a.side==='ally'?-1:1));}
@@ -205,7 +205,7 @@ function renderCharacterScreen(){
  $('partyDetails').innerHTML=selected.map(({a,i})=>characterStatusCard(a,i)).join('');
 }
 const previousShowScreen=showScreen;
-showScreen=function(name){if(name!=='adventure'&&skillMenuMode!=='commands'){pendingItem=null;pendingSkill=null;skillMenuMode='commands';render(false);}if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
+showScreen=function(name){if(name!=='adventure'&&skillMenuMode!=='commands'){pendingItem=null;pendingSkill=null;skillMenuMode='commands';render(false);}if(name!=='bag'&&gearDetailOrigin==='bag'&&selectedGearId){selectedGearId=null;renderInventory();}if(name==='party'){selectedCharacter=null;renderCharacterScreen();}previousShowScreen(name);};
 startBattle=function(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;originalStart(boss,travelEncounter);if(!state.enemy)return;state.buffs=[];const first=state.enemy;state.enemies=[first,...Array.from({length:3},(_,i)=>{const e=bestiary[state.zone][i%bestiary[state.zone].length];return {...e,hp:e.hp,max:e.hp,boss:false};})];state.enemies.forEach((e,i)=>e.speed=(e.speed??((GameData.rules.battle.baseEnemySpeed??8)+state.zone*(GameData.rules.battle.enemySpeedPerZone??4)))+i*(GameData.rules.battle.slotSpeedStep??3));selectedEnemy=0;render();scheduleRound();};
 render=function(persist=true){GameRules.normalizeBuffs(state,GameData);if(pendingItem&&(pendingItem.inBattle!==!!state.enemy||allyHP(actingAlly)<=0)){pendingItem=null;skillMenuMode='commands';}allies();const enemies=battleEnemies();originalRender(false);
  if(pendingSkill){const skill=activeSkill(pendingSkill.id);if(pendingSkill.inBattle!==!!state.enemy||!skill||!ownsSkill(skill)||state.lv<skill.lv||allyHP(actingAlly)<=0){pendingItem=null;pendingSkill=null;skillMenuMode='commands';}}
@@ -329,7 +329,8 @@ renderInventory=function(){
   $('inventory').innerHTML=skillsForAlly().map(s=>itemRow(s,`${state.lv<s.lv?'Lv.'+s.lv+'で習得':skillDescription(s)} · MP ${s.cost}`,s.effect==='heal'||s.effect==='buff'?btn('使う','skill:'+s.id,'',busy||allyHP(actingAlly)<=0||state.lv<s.lv||allyMP()<s.cost||(s.effect==='buff'&&!state.enemy)):'')).join('')||'<p>この人物の特技はありません。</p>';
  }else if(tab==='bag'){
   const member=GameRules.memberState(state,GameData,actingAlly);
-  $('inventory').innerHTML=Object.entries(consumables).map(([id,a])=>itemRow(a,`${a.desc} · ${state.items[id]} 個`,btn('使う','use:'+id,'',busy||!state.items[id]||allyHP(actingAlly)<=0))).join('')+'<p>装備品（購入済み装備は全員が装着可能）</p>'+state.owned.map(id=>{const a=gear[id],equipped=member[a.type]===id;return itemRow(a,`${a.type==='weapon'?'攻撃':'守備'} +${a.value}`,btn(equipped?'装備中':'装備','equip:'+id,'',equipped||!!state.enemy||busy));}).join('');
+  if(selectedGearId&&gearDetailOrigin==='bag'&&gear[selectedGearId])$('inventory').innerHTML=gearDetailMarkup(selectedGearId,'bag');
+  else $('inventory').innerHTML=Object.entries(consumables).map(([id,a])=>itemRow(a,`${a.desc} · ${state.items[id]} 個`,btn('使う','use:'+id,'',busy||!state.items[id]||allyHP(actingAlly)<=0))).join('')+'<p>装備品（購入済み装備は全員が装着可能）</p>'+state.owned.map(id=>{const a=gear[id],equipped=member[a.type]===id;return itemRow(a,`${gearRarityLabels[equipmentRarity(a)]} · ${a.type==='weapon'?'攻撃':'守備'} +${a.value}`,btn(equipped?'装備中':'装備','equip:'+id,'',equipped||!!state.enemy||busy),btn('詳細','gear-detail:'+id));}).join('');
  }
  if(tab!=='materials')$('inventory').innerHTML=selector+$('inventory').innerHTML;
 };

@@ -1,7 +1,7 @@
 import contentModule from '../shared/content.js';
 import saveModule from '../shared/save.js';
 import seed from '../content/game.json' with {type:'json'};
-const {validate,categories}=contentModule;
+const {validate,categories,withJobs}=contentModule;
 const now=()=>new Date().toISOString();
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 class ApiError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -13,7 +13,7 @@ export async function handleApi(request,env){
  try{
   check(env.DB,503,'データベースが接続されていません');const owner=authorize(request,env),db=env.DB,url=new URL(request.url),path=url.pathname,method=request.method;
   if(path==='/api/health'&&method==='GET'){await db.prepare('SELECT 1 AS ready').first();return json({ok:true,database:'ready'});}
-  if(path==='/api/content'&&method==='GET'){const result=await active(db);return json({...result,categories});}
+  if(path==='/api/content'&&method==='GET'){const result=await active(db);return json({...result,data:withJobs(result.data,seed),categories});}
   if(path==='/api/admin/versions'&&method==='GET')return json({versions:[{id:'bundled',label:'初期定義',status:'published',revision:0},...(await db.prepare('SELECT id,label,status,revision,created_at,updated_at FROM content_versions ORDER BY created_at DESC LIMIT 100').all()).results],activeId:(await active(db)).id});
   if(path==='/api/admin/drafts'&&method==='POST'){
    const input=await body(request);const source=input.sourceId&&input.sourceId!=='bundled'?await db.prepare('SELECT data FROM content_versions WHERE id=?').bind(input.sourceId).first():null;
@@ -29,7 +29,7 @@ export async function handleApi(request,env){
    if(method==='PUT'&&!operation){const input=await body(request);check(row.status==='draft',409,'公開済みの定義は変更できません。複製して編集してください');const errors=validate(input.data);check(!errors.length,422,errors.join('\n'));check(input.revision===row.revision,409,'別の操作で更新されました。再読み込みしてください');
     const updated=await db.prepare("UPDATE content_versions SET data=?,label=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND status='draft'").bind(JSON.stringify(input.data),String(input.label||row.label).slice(0,100),now(),id,input.revision).run();check(updated.meta.changes===1,409,'更新が競合しました');return json({id,revision:row.revision+1});}
    if(method==='POST'&&operation==='publish'){const input=await body(request);check(input.revision===row.revision,409,'別の操作で更新されました');const errors=validate(JSON.parse(row.data));check(!errors.length,422,errors.join('\n'));
-    const saves=(await db.prepare('SELECT state FROM saves').all()).results;for(const saved of saves){const issues=saveModule.validate(JSON.parse(saved.state),JSON.parse(row.data));check(!issues.length,422,'既存セーブから参照されています: '+issues.join(', '));}
+    const runtimeData=withJobs(JSON.parse(row.data),seed),saves=(await db.prepare('SELECT state FROM saves').all()).results;for(const saved of saves){const issues=saveModule.validate(JSON.parse(saved.state),runtimeData);check(!issues.length,422,'既存セーブから参照されています: '+issues.join(', '));}
     if(id==='bundled'){await db.prepare("INSERT INTO app_settings(key,value) VALUES ('active_content','bundled') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();return json({id,published:true});}
     const published=await db.batch([db.prepare("UPDATE content_versions SET status='published',updated_at=? WHERE id=? AND revision=?").bind(now(),id,input.revision),db.prepare("INSERT INTO app_settings(key,value) SELECT 'active_content',id FROM content_versions WHERE id=? AND revision=? AND status='published' ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(id,input.revision)]);check(published[0].meta.changes===1,409,'公開対象が更新されています');return json({id,published:true});}
   }
@@ -37,7 +37,7 @@ export async function handleApi(request,env){
   if(path==='/api/admin/export'&&method==='GET'){const row=await active(db);return new Response(JSON.stringify(row.data,null,2),{headers:{'content-type':'application/json','content-disposition':'attachment; filename="game-content.json"','cache-control':'no-store'}});}
   if(path==='/api/save'&&method==='GET'){const row=await db.prepare('SELECT state,revision,updated_at FROM saves WHERE owner_id=?').bind(owner).first();return json(row?{state:JSON.parse(row.state),revision:row.revision,updatedAt:row.updated_at}:{state:null,revision:0});}
   if(path==='/api/save'&&method==='PUT'){
-   const input=await body(request),errors=saveModule.validate(input.state,(await active(db)).data);check(!errors.length,422,errors.join('\n'));check(Number.isSafeInteger(input.revision)&&input.revision>=0,400,'更新番号が不正です');const stamp=now(),serialized=JSON.stringify(input.state);
+   const input=await body(request),errors=saveModule.validate(input.state,withJobs((await active(db)).data,seed));check(!errors.length,422,errors.join('\n'));check(Number.isSafeInteger(input.revision)&&input.revision>=0,400,'更新番号が不正です');const stamp=now(),serialized=JSON.stringify(input.state);
    let result;if(input.revision===0)result=await db.prepare('INSERT INTO saves(owner_id,state,revision,updated_at) VALUES (?,?,1,?) ON CONFLICT(owner_id) DO NOTHING').bind(owner,serialized,stamp).run();
    else{const results=await db.batch([db.prepare('INSERT INTO save_history(id,owner_id,state,revision,created_at) SELECT ?,owner_id,state,revision,? FROM saves WHERE owner_id=? AND revision=?').bind(crypto.randomUUID(),stamp,owner,input.revision),db.prepare('UPDATE saves SET state=?,revision=revision+1,updated_at=? WHERE owner_id=? AND revision=?').bind(serialized,stamp,owner,input.revision)]);result=results[1];}
    check(result.meta.changes===1,409,'クラウドセーブが更新されています。読み直してから選択してください');return json({revision:input.revision+1,updatedAt:stamp});

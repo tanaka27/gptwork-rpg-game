@@ -45,3 +45,27 @@ test('attack buffs publish as immutable definitions and battle snapshots preserv
   assert.equal((await app.call('/api/save')).body.state.buffs[0].remainingTurns,3,'rejected buff cannot overwrite save');
  }finally{app.DB.close();}
 });
+
+test('legacy published equipment stays raw while runtime and cloud saves receive compatibility equipment',async()=>{
+ const app=setup();try{
+  const legacy=structuredClone(seed),builtins=['moonsteel_blade','starward_armor','eclipse_robe','starlight_blade'];
+  legacy.items=legacy.items.filter(item=>!builtins.includes(item.id));for(const item of legacy.items.filter(item=>item.category==='gear')){delete item.rarity;delete item.bonusEffects;}
+  for(const zone of legacy.zones)delete zone.equipmentDropIds;for(const shop of legacy.shops)shop.itemIds=shop.itemIds.filter(id=>!['moonsteel_blade','starward_armor'].includes(id));
+  const created=await app.call('/api/admin/drafts','POST',{data:legacy,label:'old equipment fixture'});assert.equal(created.status,201);
+  assert.equal((await app.call('/api/admin/versions/'+created.body.id+'/publish','POST',{revision:1})).status,200);
+  const runtime=(await app.call('/api/content')).body.data;
+  assert.ok(runtime.items.some(item=>item.id==='moonsteel_blade'&&item.rarity==='rare'));
+  assert.ok(runtime.items.some(item=>item.id==='eclipse_robe'&&item.rarity==='epic'));
+  assert.ok(runtime.shops.find(shop=>shop.nodeId==='luna').itemIds.includes('moonsteel_blade'));
+  assert.ok(runtime.zones.find(zone=>zone.id==='volcano').equipmentDropIds.includes('starlight_blade'));
+  const raw=(await app.call('/api/admin/versions/'+created.body.id)).body.data,exported=await app.call('/api/admin/export');
+  assert.equal(raw.items.some(item=>builtins.includes(item.id)),false,'version API keeps the immutable raw definition');
+  assert.equal(raw.items.find(item=>item.id==='twig').rarity,undefined);
+  assert.equal(raw.zones[0].equipmentDropIds,undefined);
+  assert.equal(exported.body.items.some(item=>builtins.includes(item.id)),false,'export remains the raw public definition');
+  const save={...fixture(),weapon:'starlight_blade',owned:['twig','cloth','starlight_blade']};
+  assert.equal((await app.call('/api/save','PUT',{state:save,revision:0})).status,200,'runtime-supplemented IDs pass cloud save validation');
+  const second=await app.call('/api/admin/drafts','POST',{data:legacy,label:'old compatibility publish'});
+  assert.equal((await app.call('/api/admin/versions/'+second.body.id+'/publish','POST',{revision:1})).status,200,'republishing the old raw shape validates against compatibility data');
+ }finally{app.DB.close();}
+});
