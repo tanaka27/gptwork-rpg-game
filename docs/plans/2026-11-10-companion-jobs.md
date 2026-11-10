@@ -1,6 +1,6 @@
 # 仲間のジョブと固有特技
 
-- 状態：実装・検証承認済み（反映待ち）
+- 状態：反映完了
 - 設計版：v3
 - 対象ベース：`b1d243b`（2026-11-10の`origin/main`。v1の対象`274f6a2`から更新）
 - 要求：仲間それぞれにジョブを持たせ、ジョブに合う別々の特技を習得・使用可能にする。
@@ -95,4 +95,4 @@
 - 子の実装・検証記録（`/root/implement_jobs`）：`npm test`通過（content/game/party-control/API、APIテスト10件）、`npm run content:check`通過、`npm run build`通過（Worker bundle 12,117,100 bytes・23 embedded assets）、変更JSの`node --check`と`git diff --check`通過。Playwrightの対象12件はdesktop/mobileとも12/12通過。仲間job/技能詳細、所有者限定メニュー、気合い本人対象・MP/バフ、旧battleContent再読込と進行維持、管理画面のjob/owner/self fields、仲間一覧、320×568縦・844×390横を操作・確認。各ケースでconsole/pageerrorを収集し、エラーなし。`test-results/`のリナ詳細、ノエル下部技能、ガルド状態popup、管理画面スクリーンショットを目視確認。初回の全E2E runは68/72通過で、失敗4件は新aria label/data-characterに対する古いselectorだったため修正し、関連対象12件を再実行して通過を確認した。親の重複検証ではアプリ起動待ちが既定5秒に達する一時失敗が1件あったため、E2Eのready待ちを15秒へ調整。最終小画面ケースはdesktop/mobileとも2/2通過（親実行、14.1秒）。
 - API/公開データ確認：ローカルAPIテストで旧定義snapshotと気合いを含む新snapshotのPUT/GET往復を確認。親による本番D1の読み取り確認では`app_settings`が`rows=[]`、`active_content`未設定でbundledが利用されていた。作業中に本番DBへ書込み・公開定義変更はしていない。
 - 親エージェントの実装レビュー・承認記録：`/root`・2026-11-10 11:47 JST・設計v3の実装を明示承認。手動操作と個別能力維持、人物別技能/MP/対象の実行時再検証、定義/セーブ互換、管理UI・文書を確認。親の独立npm test（API10/10）/content:check、初回E2E68/72→修正後子12/12、親追加9/10（起動待ち1件）→ready待機調整後小画面2/2、各画面スクリーンショット、package:siteを確認。阻害指摘なし。スマホ実機・音声・長時間バランス・本番実操作は未検証。
-- 親が行うコミット・push・デプロイ結果：未実施
+- 親の反映結果：GitHub `31e6eb10f90362a594d45a37784b22d8f1b0ff2d`をmainへpush済み。同一の全追跡ソースをSites `18232ece76445e3ec3d4771d79cd4a7918782b35`へ同期・pushし、検証済みWorkerアーカイブを公開。デプロイ`appgdep_6af2b13d28008191abce53f6d30b63f2`は`succeeded`。URL：https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site 。既存Site ID・所有者限定・D1を維持。本記録のみの追記後も、アプリ配信内容を変えず同じWorkerを再同期・再デプロイする。
