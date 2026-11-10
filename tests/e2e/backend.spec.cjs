@@ -11,6 +11,12 @@ test('管理画面で編集・検証・プレビュー・公開・旧版への�
   await page.locator('#versions').selectOption('bundled');await expect(page.locator('#status')).toHaveText('定義を読み込みました。');
   await page.locator('#create').click();await expect(page.locator('#status')).toHaveText('下書きを作成しました。');
   const draft=await page.locator('#versions').inputValue();
+  await page.locator('#category').selectOption('characters');await page.locator('#search').fill('リナ');await page.locator('#entries button').filter({hasText:'リナ'}).click();
+  await expect(page.locator('#editor [data-field="job"]')).toHaveValue('弓使い');
+  await page.locator('#category').selectOption('skills');await page.locator('#search').fill('気合い');await page.locator('#entries button').filter({hasText:'気合い'}).click();
+  await expect(page.locator('#editor [data-field="characterId"]')).toHaveValue('gald');
+  await expect(page.locator('#editor [data-field="target"]')).toHaveValue('self');
+  await page.locator('#search').fill('');await page.locator('#category').selectOption('monsters');
   await page.locator('#editor [data-field="name"]').fill('検証用リーフジェリー');
   await page.locator('#validate').click();await expect(page.locator('#status')).toContainText('検証に合格');
   await page.locator('#save').click();await expect(page.locator('#status')).toHaveText('下書きを保存しました。');

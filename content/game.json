@@ -4,11 +4,13 @@
     {
       "id": "astel",
       "name": "アステル",
+      "job": "星剣士",
       "speed": 12
     },
     {
       "id": "rina",
       "name": "リナ",
+      "job": "弓使い",
       "speed": 18,
       "stats": {
         "baseHP": 64,
@@ -28,6 +30,7 @@
     {
       "id": "gald",
       "name": "ガルド",
+      "job": "戦士",
       "speed": 7,
       "stats": {
         "baseHP": 100,
@@ -47,6 +50,7 @@
     {
       "id": "noel",
       "name": "ノエル",
+      "job": "僧侶",
       "speed": 14,
       "stats": {
         "baseHP": 68,
@@ -504,6 +508,7 @@
     {
       "id": "flame",
       "name": "火花の魔法",
+      "characterId": "astel",
       "type": "magic",
       "effect": "damage",
       "power": 1.8,
@@ -523,6 +528,7 @@
     {
       "id": "heal",
       "name": "星のいやし",
+      "characterId": "astel",
       "type": "magic",
       "effect": "heal",
       "power": 1.5,
@@ -542,6 +548,7 @@
     {
       "id": "slash",
       "name": "流星斬り",
+      "characterId": "astel",
       "type": "physical",
       "effect": "damage",
       "power": 2.4,
@@ -560,6 +567,7 @@
     {
       "id": "nova",
       "name": "星光の魔法",
+      "characterId": "astel",
       "type": "magic",
       "effect": "damage",
       "power": 2.7,
@@ -579,6 +587,7 @@
     {
       "id": "inspire",
       "name": "鼓舞",
+      "characterId": "astel",
       "type": "physical",
       "effect": "buff",
       "lv": 2,
@@ -590,6 +599,122 @@
           "type": "attackBuff",
           "multiplier": 1.5,
           "turns": 3
+        }
+      ]
+    },
+    {
+      "id": "rina_aimed_shot",
+      "name": "ねらい撃ち",
+      "characterId": "rina",
+      "type": "physical",
+      "effect": "damage",
+      "power": 1.6,
+      "lv": 2,
+      "cost": 3,
+      "desc": "狙いを定めた物理攻撃。威力1.6倍",
+      "icon": "➶",
+      "effects": [
+        {
+          "type": "physicalDamage",
+          "power": 1.6,
+          "base": 0
+        }
+      ]
+    },
+    {
+      "id": "rina_comet_arrow",
+      "name": "彗星の矢",
+      "characterId": "rina",
+      "type": "physical",
+      "effect": "damage",
+      "power": 2.2,
+      "lv": 5,
+      "cost": 6,
+      "desc": "彗星のごとく放つ物理攻撃。威力2.2倍",
+      "icon": "☄",
+      "effects": [
+        {
+          "type": "physicalDamage",
+          "power": 2.2,
+          "base": 0
+        }
+      ]
+    },
+    {
+      "id": "gald_kiai",
+      "name": "気合い",
+      "characterId": "gald",
+      "type": "physical",
+      "effect": "buff",
+      "target": "self",
+      "lv": 2,
+      "cost": 3,
+      "desc": "自分の攻撃力を1.5倍にする（3ターン）",
+      "icon": "気↑",
+      "effects": [
+        {
+          "type": "attackBuff",
+          "multiplier": 1.5,
+          "turns": 3
+        }
+      ]
+    },
+    {
+      "id": "gald_full_power_slash",
+      "name": "渾身斬り",
+      "characterId": "gald",
+      "type": "physical",
+      "effect": "damage",
+      "power": 2.5,
+      "lv": 5,
+      "cost": 7,
+      "desc": "渾身の一撃を放つ物理攻撃。威力2.5倍",
+      "icon": "⚔",
+      "effects": [
+        {
+          "type": "physicalDamage",
+          "power": 2.5,
+          "base": 0
+        }
+      ]
+    },
+    {
+      "id": "noel_prayer_light",
+      "name": "祈りの光",
+      "characterId": "noel",
+      "type": "magic",
+      "effect": "heal",
+      "power": 1.3,
+      "base": 20,
+      "lv": 2,
+      "cost": 4,
+      "desc": "味方1人のHPを賢さに応じて回復",
+      "icon": "✧",
+      "effects": [
+        {
+          "type": "magicHeal",
+          "power": 1.3,
+          "base": 20
+        }
+      ]
+    },
+    {
+      "id": "noel_holy_light",
+      "name": "聖なる光",
+      "characterId": "noel",
+      "type": "magic",
+      "effect": "damage",
+      "power": 1.8,
+      "base": 12,
+      "lv": 5,
+      "cost": 6,
+      "desc": "聖なる光で攻撃する魔法。賢さ参照・守備力の影響なし",
+      "icon": "✦",
+      "effects": [
+        {
+          "type": "magicDamage",
+          "power": 1.8,
+          "base": 12
         }
       ]
     }

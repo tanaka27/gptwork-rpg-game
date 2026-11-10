@@ -1,10 +1,30 @@
-const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {validate,legacy}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
+const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {validate,legacy,withJobs}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
 assert.deepEqual(validate(content),[]);assert.equal(legacy(content).bestiary[0].length,4);
+assert.deepEqual(content.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
+assert.deepEqual(content.rules.party.map(id=>rules.skillsForCharacter(content,id).length),[5,2,2,2]);
+assert.equal(content.skills.filter(s=>s.characterId===undefined).length,0,'all bundled skills state their owner');
+for(const mutate of [d=>d.skills[0].characterId='unknown',d=>d.skills[0].target='self',d=>d.skills.find(s=>s.id==='gald_kiai').target='enemy']){const changed=structuredClone(content);mutate(changed);assert.ok(validate(changed).length,'owner and target fields are checked');}
 for(const change of [d=>d.monsters[0].id=d.monsters[1].id,d=>d.monsters[0].zoneId='missing',d=>d.nodes[0].links=['dragon'],d=>d.shops[0].itemIds=['missing'],d=>d.skills[0].effects[0].type='eval',d=>d.monsters[0].name='<img src=x>',d=>d.monsters[0].hp=-1,d=>d.rarities[0].rate=2]){const altered=structuredClone(content);change(altered);assert.ok(validate(altered).length);}
 const c={Math};vm.createContext(c);vm.runInContext(fs.readFileSync('dist/combat.js','utf8')+';this.rules=CombatRules',c);
 assert.equal(rules.skillAmount(content.skills[0],{wisdom:18,attack:10,defense:1},c.rules),42);
 assert.equal(rules.enemy(content,0,true).id,'grass_guardian');assert.equal(rules.travelEvent(content.rules.travel,false,.29),'battle');
 const state={lv:1,weapon:'twig',armor:'cloth'};assert.equal(rules.stats(state,content).maxHP,80);
+// Legacy definitions receive standard jobs and skills only when job is missing.
+const oldDefinition=structuredClone(content);oldDefinition.skills=oldDefinition.skills.filter(s=>!['rina_aimed_shot','rina_comet_arrow','gald_kiai','gald_full_power_slash','noel_prayer_light','noel_holy_light'].includes(s.id));for(const character of oldDefinition.characters)delete character.job;for(const skill of oldDefinition.skills)delete skill.characterId;
+const supplemented=withJobs(oldDefinition,content);
+assert.deepEqual(supplemented.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
+assert.deepEqual(supplemented.rules.party.map(id=>rules.skillsForCharacter(supplemented,id).length),[5,2,2,2]);
+assert.equal(oldDefinition.skills.some(s=>s.id==='rina_aimed_shot'),false,'fallback does not mutate input');
+supplemented.skills.find(s=>s.id==='gald_kiai').effects[0].turns=88;assert.equal(content.skills.find(s=>s.id==='gald_kiai').effects[0].turns,3,'nested fallback effects are independent copies');
+const custom=structuredClone(oldDefinition);custom.characters.find(c=>c.id==='rina').job='野伏';custom.skills=custom.skills.filter(s=>!['rina_aimed_shot','rina_comet_arrow'].includes(s.id));const customResult=withJobs(custom,content);
+assert.equal(customResult.characters.find(c=>c.id==='rina').job,'野伏');assert.equal(rules.skillsForCharacter(customResult,'rina').length,0,'explicit custom job preserves deliberate skill removal');
+const unknown=structuredClone(oldDefinition);unknown.characters[1]={id:'traveler',name:'旅人',speed:9};unknown.rules.party[1]='traveler';const unknownResult=withJobs(unknown,content);
+assert.equal(unknownResult.characters[1].job,'冒険者');assert.equal(rules.skillsForCharacter(unknownResult,'traveler').length,0);
+const colliding=structuredClone(oldDefinition);colliding.skills.push({...structuredClone(content.skills.find(s=>s.id==='rina_aimed_shot')),characterId:'astel'});
+const collisionResult=withJobs(colliding,content),fallbackCollision=collisionResult.skills.find(s=>s.characterId==='rina'&&s.name==='ねらい撃ち');
+assert.ok(fallbackCollision&&fallbackCollision.id!=='rina_aimed_shot'&&fallbackCollision.id.length<=64&&/^[a-z][a-z0-9_-]*$/.test(fallbackCollision.id));
+assert.equal(collisionResult.skills.find(s=>s.id==='rina_aimed_shot').characterId,'astel','custom collision owner is untouched');
+assert.deepEqual(withJobs(collisionResult,content),collisionResult,'fallback is deterministic and idempotent');
 console.log('PASS: content IDs, references, links, effects, numeric ranges, HTML rejection and pure game rules');
 
 const expanded=structuredClone(content);expanded.characters.push({...expanded.characters[0],id:'new_hero',name:'新しい仲間'});expanded.zones.push({...expanded.zones[0],id:'new_zone',bossId:'new_boss'});expanded.monsters.push({...expanded.monsters[0],id:'new_monster',zoneId:'new_zone'},{...expanded.monsters.find(m=>m.boss),id:'new_boss',zoneId:'new_zone'});expanded.items.push({...expanded.items[0],id:'new_sword'});expanded.nodes.push({id:'new_node',name:'新しい地点',zoneId:'new_zone',x:50,y:50,links:['home']});expanded.nodes[0].links.push('new_node');assert.deepEqual(validate(expanded),[]);assert.equal(legacy(expanded).zones.length,4);assert.ok(legacy(expanded).gear.new_sword);console.log('PASS: additional characters, areas, monsters, items and bidirectional map nodes are data-only changes');
@@ -38,6 +58,12 @@ buffed.turn=2;rules.tickBuffs(buffed,content);assert.equal(buffed.buffs[0].remai
 buffed.turn=3;rules.tickBuffs(buffed,content);assert.equal(buffed.buffs[0].remainingTurns,1);
 buffed.turn=4;const expired=rules.tickBuffs(buffed,content);assert.equal(expired.length,1);assert.equal(expired[0].skill.name,'鼓舞');assert.equal(buffed.buffs.length,0);assert.equal(rules.allyAttack(buffed,content,1),rules.stats(buffed,content,1).attack);
 assert.equal(rules.applyAttackBuff(buffed,content,0,inspire),true);assert.equal(rules.allyAttack(buffed,content,0),Math.floor(baseAttack*1.5));
+const galdBuff=buffState(),kiai=content.skills.find(s=>s.id==='gald_kiai');
+assert.equal(rules.applyAttackBuff(galdBuff,content,2,kiai,2),true,'the owner may apply a self-only buff to themself');
+assert.equal(rules.allyAttack(galdBuff,content,2),Math.floor(rules.stats(galdBuff,content,2).attack*1.5));
+assert.equal(rules.applyAttackBuff(galdBuff,content,1,kiai,2),false,'self-only buff cannot target another ally');
+assert.equal(rules.applyAttackBuff(galdBuff,content,2,kiai,0),false,'another actor cannot invoke Gald’s skill');
+const misplaced=structuredClone(galdBuff);misplaced.buffs[0].characterId='noel';assert.deepEqual(rules.normalizeBuffs(misplaced,content),[],'self-only buff snapshots cannot be assigned to another character');
 const slash=content.skills.find(s=>s.id==='slash'),flame=content.skills.find(s=>s.id==='flame');
 const effective=rules.allyAttack(buffed,content,0);
 assert.ok(rules.skillResult(slash,{attack:effective,defense:0,luck:512,criticalRoll:0,roll:.5},c.rules).amount>rules.skillResult(slash,{attack:baseAttack,defense:0,luck:512,criticalRoll:0,roll:.5},c.rules).amount);

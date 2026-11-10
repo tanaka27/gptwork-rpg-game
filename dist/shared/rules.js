@@ -12,6 +12,9 @@ function stats(state,data,index=0){
  const weapon=data.items.find(e=>e.id===(member.weapon??state.weapon)),armor=data.items.find(e=>e.id===(member.armor??state.armor));
  return {maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,luck:(g.baseLuck??10)+level*(g.luckPerLevel??2),speed:(character?.speed??0)+level,threshold:data.rules.growth.baseExperience+state.lv*data.rules.growth.experiencePerLevel};
 }
+function skillOwnerId(skill,data){return skill?.characterId??data?.rules?.party?.[0]??null;}
+function skillOwnerIndex(skill,data){return data?.rules?.party?.indexOf(skillOwnerId(skill,data))??-1;}
+function skillsForCharacter(data,characterId){return data.skills.filter(skill=>skillOwnerId(skill,data)===characterId);}
 function enemy(data,zone,boss,rng=Math.random){const area=data.zones[zone];const pool=data.monsters.filter(e=>e.zoneId===area.id&&!e.boss);const template=boss?data.monsters.find(e=>e.id===area.bossId):pool[Math.floor(rng()*pool.length)];return {...template,hp:template.hp,max:template.hp,boss:!!boss};}
 function loot(data,enemy,zone){const template=data.monsters.find(e=>e.id===enemy.id||e.name===enemy.name);const fallback=data.monsters.find(e=>e.zoneId===data.zones[zone].id);return (template||fallback).drops.map(id=>({id,rate:data.rarities.find(r=>r.id===data.materials.find(m=>m.id===id).rarity).rate}));}
 function effectAmount(effect,context,combat){switch(effect.type){case'attackBuff':return 0;case'physicalDamage':return combat.physicalDamage({attack:context.attack,defense:context.defense,power:effect.power,roll:context.roll,critical:context.critical});case'magicDamage':case'magicHeal':return combat.magicAmount(context.wisdom,effect);case'restoreHP':return effect.full?context.maxHP:effect.amount;case'restoreMP':return effect.full?context.maxMP:effect.amount;default:throw new Error('未対応の効果: '+effect.type);}}
@@ -34,7 +37,7 @@ function attackBuffEffect(skill){
 function buffRecord(state,data,record){
  if(!record||typeof record!=='object'||Array.isArray(record))return null;
  const index=data.rules.party.indexOf(record.characterId),skill=data.skills.find(s=>s.id===record.skillId),effect=attackBuffEffect(skill);
- if(index<0||!effect||!(allyHealth(state,data,index)>0)||!Number.isSafeInteger(record.remainingTurns)||record.remainingTurns<1||record.remainingTurns>effect.turns||!Number.isSafeInteger(record.appliedTurn)||record.appliedTurn<1||record.appliedTurn>state.turn)return null;
+ if(index<0||!effect||record.skillId===skill?.id&&skill?.target==='self'&&record.characterId!==skillOwnerId(skill,data)||!(allyHealth(state,data,index)>0)||!Number.isSafeInteger(record.remainingTurns)||record.remainingTurns<1||record.remainingTurns>effect.turns||!Number.isSafeInteger(record.appliedTurn)||record.appliedTurn<1||record.appliedTurn>state.turn)return null;
  return {...record,skill,effect};
 }
 function validateBuffs(state,data){
@@ -67,9 +70,9 @@ function allyAttack(state,data,index){
  const multiplier=activeBuffs(state,data,index).reduce((value,buff)=>value*buff.effect.multiplier,1);
  return Math.floor(stats(state,data,index).attack*multiplier);
 }
-function applyAttackBuff(state,data,index,skill){
+function applyAttackBuff(state,data,index,skill,casterIndex=skillOwnerIndex(skill,data)){
  const known=data.skills.find(s=>s.id===skill?.id),effect=attackBuffEffect(known);
- if(!state.enemy||!effect||!Number.isInteger(index)||index<0||index>=data.rules.party.length||!(allyHealth(state,data,index)>0)||!Number.isSafeInteger(state.turn)||state.turn<1)return false;
+ if(!state.enemy||!effect||!Number.isInteger(index)||index<0||index>=data.rules.party.length||!Number.isInteger(casterIndex)||casterIndex<0||casterIndex>=data.rules.party.length||data.rules.party[casterIndex]!==skillOwnerId(known,data)||(known.target==='self'&&index!==casterIndex)||!(allyHealth(state,data,index)>0)||!Number.isSafeInteger(state.turn)||state.turn<1)return false;
  normalizeBuffs(state,data);
  const characterId=data.rules.party[index];
  state.buffs=state.buffs.filter(record=>record.characterId!==characterId);
@@ -85,5 +88,5 @@ function tickBuffs(state,data){
  state.buffs=state.buffs.filter(record=>record.remainingTurns>0);return expired;
 }
 function travelEvent(rules,fought,roll){if(!fought&&roll<rules.battleRate)return 'battle';if(roll<(fought?rules.materialRate:rules.battleRate+rules.materialRate))return 'material';return 'none';}
-return {characterDefaults,memberState,stats,enemy,loot,effectAmount,skillResult,skillAmount,travelEvent,activeBuffs,allyAttack,applyAttackBuff,tickBuffs,normalizeBuffs,validateBuffs};
+return {characterDefaults,memberState,stats,skillOwnerId,skillOwnerIndex,skillsForCharacter,enemy,loot,effectAmount,skillResult,skillAmount,travelEvent,activeBuffs,allyAttack,applyAttackBuff,tickBuffs,normalizeBuffs,validateBuffs};
 });

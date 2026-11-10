@@ -159,7 +159,7 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
   for(let i=1;i<boxes.length;i++){expect(boxes[i].y).toBeGreaterThanOrEqual(boxes[i-1].bottom);expect(boxes[i].x).toBe(boxes[0].x);}
   await page.screenshot({path:test.info().outputPath('character-list.png')});
   for(const [i,name,speed] of [[0,'アステル',12],[1,'リナ',18],[2,'ガルド',7],[3,'ノエル',14]]){
-    await page.getByRole('button',{name:name+'のステータスを見る'}).click();
+    await page.locator(`[data-character="${i}"]`).click();
     await expect(page.locator('#partyListView')).toBeHidden();
     await expect(page.locator('.character-card')).toHaveCount(1);
     await expect(page.locator('#characterName')).toHaveText(name);

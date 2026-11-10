@@ -17,6 +17,14 @@ HP・MP・攻撃力・守備力・賢さ・素早さ・うんのよさと装備�
 
 保存キーstarlight-rpg-v1、形式v:2と既存進行を維持。仲間の装備をcompanions[].weapon/armorへ保存し、旧セーブでは主人公の装備を初回だけ継承します。ID照合を優先し、IDなし旧形式は配列順で移行。旧現在HP/MPが新上限を超えても読み込みで切り捨てず、防御・宿泊でも減らしません。新規人物は本人の上限で初期化。宿泊・救助・レベルアップ・ボス撃破は各自の上限へ回復します。宿代不足は各自の現在値を維持し最低半分まで回復します。
 
+## 仲間のジョブと固有特技（2026-11-10）
+
+アステルは星剣士、リナは弓使い、ガルドは戦士、ノエルは僧侶。標準特技はアステル5種、他3人が各2種の計11種で、習得Lv・MP・効果は[ゲーム仕様](GAME_SPEC.md)を参照します。レベル・経験値は旅団共通です。仲間一覧、個別詳細、戦闘中の味方ステータス表示にジョブ名を表示し、個別詳細には本人の全特技と習得状況・必要Lv・MP・効果を表示します。戦闘と「もちもの」のスキル一覧は操作中の本人が所有するものだけを出します。戦闘では各人が自分の番にコマンドを手動選択します。
+
+初期定義は`content/game.json`の`characters[].job`と`skills[].characterId`が所有者の正本です。省略された技能所有者は互換性のため初期隊列の先頭人物として扱います。`GameRules.skillOwnerId` / `skillsForCharacter`は所有者の解決と人物別一覧、`GameContent.withJobs`は旧定義に対する非破壊の標準補完を行います。ジョブ未指定の既知人物だけに標準ジョブ・不足する標準特技を補い、明示ジョブのカスタム定義は技能構成を変更しません。未知人物にはジョブ名のみ「冒険者」と補い、標準特技は追加しません。定義で明示された技能は保持します。標準技能IDが衝突した場合は既存内容を保って別IDを採ります。bootstrapは選択済みのbundled/公開/キャッシュ/戦闘定義に補完コピーを適用し、管理画面の読込も同じ処理を通します。管理画面ではジョブ名、技能使用者、補助対象も編集でき、共通バリデーターが参照と値を検証します。
+
+セーブキー`starlight-rpg-v1`、形式`v:2`、既存進行は維持し、技能習得リストは保存しません。戦闘中の既存`battleContent`は起動時にゲーム定義として復元し、そこへ`withJobs`の標準補完を適用します。戦闘中の状態snapshotも補完済み定義へ差し替え、通常の既存save経路で保持するため、再読込後も補完済み定義で同じ戦闘を続けられます。クラウドセーブも同じ定義検証経路で扱い、公開DB定義・マイグレーションは直接変更しません。本番`app_settings`は読取時に`rows=[]`で、現在はbundled定義が使われています。
+
 
 更新日：2026-11-10（日本時間）。この文書は実装の入口です。具体的な数値は[ゲーム仕様](GAME_SPEC.md)、作業手順は[開発手順](DEVELOPMENT.md)、必須ルールは[AGENTS.md](../AGENTS.md)を参照してください。
 
@@ -64,7 +72,8 @@ bootstrap.jsが公開定義・キャッシュ・戦闘中の定義を選び、st
 | 装備・消耗品 | `gear`, `consumables`, `action`, `useItem`, `renderInventory` |
 | 素材と抽選 | `rarities`, `materials`, `lootTable`, `rollMaterials`, `renderMaterials` |
 | 能力値 | `maxhp`, `maxmp`, `attack`, `defense`, `wisdom`, `threshold` |
-| スキル | `skillList`, `normalAttack`, `skillTypeLabel`, `useSkill` |
+| ジョブ・人物別スキル | `content/game.json`の`characters[].job` / `skills[].characterId`、`GameContent.withJobs`、`GameRules.skillsForCharacter`、`dist/party.js`の`skillsForAlly` / `renderSkillMenu` / `characterSkillsMarkup` |
+| スキル計算・操作 | `skillList`, `normalAttack`, `skillTypeLabel`, `useSkill`, `castPendingSkill` |
 | ダメージ式 | `dist/combat.js` の `physicalDamage`, `magicAmount` |
 | ターンと敵行動 | `combat`, `win` |
 | 保存と移行 | `initial`、ロード直後の移行処理、`save` |

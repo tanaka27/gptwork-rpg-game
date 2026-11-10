@@ -52,7 +52,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   const outsideMP=buffed.run('state.mp');assert.equal(buffed.run("useSkill('inspire',0)"),false);assert.equal(buffed.run('state.mp'),outsideMP);
   const compareRound=async(boost,id,index=0)=>{const app=boot(null,true);app.run("state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();startBattle();state.enemies.forEach(e=>{e.hp=10000;e.max=10000;e.atk=0;e.def=0;});render(false)");if(boost)app.run(`GameRules.applyAttackBuff(state,GameData,${index},skillList.find(s=>s.id==='inspire'))`);await app.run(id?`partyRound('skill','${id}',null,0)`:'partyRound(\'attack\')');return app.run('state.enemies.reduce((sum,e)=>sum+10000-e.hp,0)');};
   assert.ok(await compareRound(true)>await compareRound(false),'hero normal attack uses effective attack');
-  assert.ok(await compareRound(true,null,3)>await compareRound(false),'companion auto attack uses its own effective attack');
+  assert.ok(await compareRound(true,null,3)>await compareRound(false),'a manually selected companion attack uses its own effective attack');
   assert.ok(await compareRound(true,'slash')>await compareRound(false,'slash'),'physical skill uses effective attack');
   assert.equal(await compareRound(true,'flame'),await compareRound(false,'flame'),'magic ignores attack buff');
   for(const outcome of ['escape','defeat']){
@@ -71,7 +71,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   assert.equal(invalidBuff.run('state.buffs.length'),0,'death after announcement prevents buff');assert.equal(invalidBuff.run('state.mp'),invalidMP,'invalid target spends no MP');
   for(let i=0;i<80&&invalidBuff.run('busy');i++){invalidBuff.nodes.fieldMessage.onclick();for(let j=0;j<6;j++)await Promise.resolve();}
   await invalidRound;
-  const learnBuff=boot();learnBuff.run("state.xp=threshold()-1;startBattle();state.enemy.xp=1;win()");assert.ok(learnBuff.run("state.log.some(t=>t.includes('新スキル「鼓舞」'))"));assert.ok(learnBuff.run("state.log.some(t=>t.includes('新スキル「火花の魔法」'))"));
+  const learnBuff=boot();learnBuff.run("state.xp=threshold()-1;startBattle();state.enemy.xp=1;win()");for(const entry of ['アステルは「鼓舞」を覚えた！','アステルは「火花の魔法」を覚えた！','リナは「ねらい撃ち」を覚えた！','ガルドは「気合い」を覚えた！','ノエルは「祈りの光」を覚えた！'])assert.ok(learnBuff.run(`state.log.includes('${entry}')`),entry);
   console.log('PASS: buff skill rounds, target attack, display, refresh, expiry, death/victory, save reload and physical/magic integration');
 
   const reader=boot(null,true,true);

@@ -384,3 +384,12 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 .member-selector select{font:inherit;padding:8px;max-width:100%;background:#f5f1e7;color:#243d3f;border:1px solid #a3afa5;border-radius:4px}
 .member-selector small{flex-basis:100%;font-size:11px;line-height:1.5}
 .character-card dd{overflow-wrap:anywhere}
+
+.character-skills{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);min-width:0}
+.character-skills h3{margin:0 0 6px;font-size:14px;color:var(--gold)}
+.character-skill{padding:8px 0;border-bottom:1px solid #34414888;min-width:0}
+.character-skill>div{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.character-skill strong{font-size:13px}
+.character-skill span{font-size:11px;color:var(--gold)}
+.character-skill p{margin:4px 0 0;font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.character-row small{line-height:1.5}
