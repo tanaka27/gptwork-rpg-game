@@ -1,86 +1,51 @@
-# データ中心のRPG基盤
+# バックエンド仕様
 
-利用者1人を想定。既存のHTML/CSS/JSの画面と戦闘のクリック送りを維持し、定義・計算・保存を分離する。
+この文書は現在のデータ正本、DB、認証、API、保存の流れを説明します。起動・テスト・公開手順は[DEVELOPMENT.md](DEVELOPMENT.md)を、構成の入口は[HANDOFF.md](HANDOFF.md)を参照してください。
 
-## 正本と構成
+## データの正本と構成
 
-- `content/game.json`：初期定義。全レコードに固定ID。初回DB未公開時と静的配信のフォールバック。
-- `shared/content.js`：ID重複、参照、双方向接続、数値、効果、HTML混入の検証と旧UI向け変換。
-- `shared/rules.js`：能力・敵生成・ドロップ・道中抽選・効果量の純粋関数。乱数を注入して検証可能。
-- `shared/save.js`：クラウドへ取り込むセーブの検証。
-- `dist/game.js`, `dist/party.js`：入力・画面・行動の進行制御。ゲーム処理の全部をサーバーへ移すものではない。
-- `server/api.mjs`：定義・公開版・セーブAPI。ローカル/本番で同じコード。
-- `server/local-db.mjs`：Node.js 24のSQLiteをD1と同じインターフェースで使用。
-- `server/worker.mjs`：本番Worker。ESMスターターの構成を拡張し、静的素材もWorker内へ埋め込む。
-- `dist/admin/`：所有者向け定義編集。個別のフォーム、参照先の選択、効果の編集、検索、複製、削除検証。
-- `db/schema.ts`, `drizzle/`：Drizzleのスキーマと生成済みSQL/メタデータ。
-
-DB公開後は、公開版がゲーム定義の正本になる。JSONは初期値またはエクスポート/インポート用で、GitのJSON編集がDB公開版を上書きすることはない。ソース変更時はcontent:syncで生成物を揃える。
+- `content/game.json` は初期定義とbundled fallbackです。`shared/content.js` が定義を検証し、`shared/rules.js` がゲーム計算を行います。
+- `dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は `npm run content:sync` が生成します。生成物を直接編集せず、`content/` と `shared/` を変更してください。
+- DBで公開版が選ばれている場合、その版がゲーム定義の正本です。公開先は `app_settings.active_content` と `content_versions` で管理します。bundledを選んでいる場合、または公開設定がない場合は同梱定義を使います。
+- `dist/bootstrap.js` はAPIから定義を取得・検証・キャッシュし、`GameContent.withJobs` で互換補完します。通常取得に失敗した場合は検証済みキャッシュ、次に同梱定義を使います。ゲーム側のUI形式への変換は `GameContent.legacy` が行います。
+- プレビューは指定版を取得できなければ通常進行へ進まず停止し、通常保存やクラウド保存を変更しません。
+- `server/api.mjs` をNode開発サーバーとCloudflare Workerで共有します。開発時はNode.js 24のSQLite、本番はWorker ESMとD1を使用します。
 
 ## DB
 
 | テーブル | 用途 |
 | --- | --- |
-| content_versions | 定義全体のスナップショット。下書きはrevisionで競合検出、公開後は不変 |
-| app_settings | 現在の公開版ID |
-| saves | 所有者の進行JSONと更新番号 |
-| save_history | 更新前のクラウドセーブ。不変のバックアップ |
+| `content_versions` | 下書きrevisionと公開済み定義snapshot |
+| `app_settings` | 現在選択中の公開版ID |
+| `saves` | 所有者ごとのクラウド進行とrevision |
+| `save_history` | クラウド進行更新前の履歴 |
 
-定義は関連をIDで表すJSON集約として保存する。定義ごとのテーブルへの分割は今後の検索要件に応じて実施できる。公開の切替はDB batchで処理し、現在のクラウドセーブが参照するデータを無効にする公開を拒否する。
+スキーマは `db/schema.ts`、適用SQLとDrizzleメタデータは `drizzle/` にあります。適用済みmigrationを編集せず、新規migrationで拡張してください。定義はID参照を含むJSON集約として保存し、公開時は共通validatorと既存セーブへの参照を検証します。
 
-## 認証・API
+## 認証とAPI
 
-本番はSitesが注入するoai-authenticated-user-idと、環境変数OWNER_ID（サイト内認証ID）またはOWNER_EMAIL（認証済みメール）を照合する。APIは匿名・他人を拒否し、書き込みは同一Originも確認する。サービスアクセス用トークンは利用者IDの代わりにしない。認証情報をブラウザへ渡さない。
+本番はSitesが付与する `oai-authenticated-user-id` と、Sites環境変数 `OWNER_ID` または `OWNER_EMAIL` を照合します。APIは匿名・所有者以外を拒否し、書き込み時は同一Originも確認します。メールアドレスは認可判定だけに使い、DB上のセーブ所有者キーはSites内ユーザーIDです。認証情報はブラウザへ渡さず、文書・ソース・ログにも保存しません。
 
-ローカル開発サーバーだけは127.0.0.1に限定しlocal-ownerを注入する。本番Workerにこの処理を含めない。
+ローカル開発サーバーは `127.0.0.1` だけで待ち受け、開発専用の所有者IDを注入します。この認証経路を本番Workerへ持ち込みません。
 
-- GET /api/content：公開版（初回は同梱定義）
-- GET /api/admin/versions：版一覧
-- POST /api/admin/drafts：公開版の複製またはJSON取り込み
-- GET/PUT /api/admin/versions/:id：取得・下書き更新
-- POST /api/admin/versions/:id/validate：検証
-- POST /api/admin/versions/:id/publish：公開/旧版への切替
-- GET /api/admin/preview?version=:id：プレビュー用定義
-- GET /api/admin/export：公開JSON
-- GET/PUT /api/save：取得/明示的な保存。PUTはrevisionの一致が必要
-- GET /api/save/history と /api/save/history/:id：バックアップ一覧/内容
+| API | 用途 |
+| --- | --- |
+| `GET /api/content` | 現在の公開版またはbundled定義 |
+| `GET /api/admin/versions`、`POST /api/admin/drafts` | 定義版の一覧・下書き作成 |
+| `GET/PUT /api/admin/versions/:id` | 下書きの取得・更新 |
+| `POST /api/admin/versions/:id/validate`、`POST /api/admin/versions/:id/publish` | 検証・公開またはbundledへの切替 |
+| `GET /api/admin/preview?version=:id`、`GET /api/admin/export` | プレビュー・公開JSONの出力 |
+| `GET/PUT /api/save` | クラウド進行の取得・明示保存 |
+| `GET /api/save/history`、`GET /api/save/history/:id` | 保存履歴の一覧・取得 |
 
-クラウドは手動バックアップ・復元。ブラウザの自動保存は維持する。同じ更新番号による再送/競合は409となり、二重適用しない。更新前データの履歴作成と更新はトランザクションで実行する。
+公開済み定義は複製して編集します。APIが使うrevisionが現在値と一致しない更新・保存は競合として拒否します。公開版の切替では、既存クラウドセーブを壊す定義を拒否します。
 
-## 互換性と表示
+## セーブと互換性
 
-保存キーstarlight-rpg-v1、形式v:2を維持する。仲間はcharacterIdを補い、エリア討伐数と解放はzoneIdsで並び替えに対応する。古いv1/v2は従来の移行処理を使用する。移行時に旧進行を勝手に消さない。
+ローカルの保存キーは `starlight-rpg-v1`、現在の形式は `v:2` です。旧 `v:1` 保存からの移行を維持し、IDや配列順で旧仲間データを対応づける互換条件も変更時に保ちます。`shared/save.js` はクラウド保存時に `v:1` と `v:2` のデータを公開定義に照らして検証します。移行は進行を初期化せず、不整合時も元のデータを保護してください。
 
-戦闘開始時に定義のスナップショットをセーブへ含め、戦闘終了後の確定保存で外す。APIの公開版は起動時に取得し、起動後やクリック待ち中に差し替えない。画面は従来の行動開始→クリック→結果→クリックの順で進める。
+既存のクラウド進行を更新する前に確認を表示し、更新前の内容はAPIが `save_history` に保存します。クラウドから復元する前には現在のローカル進行をブラウザ内バックアップへ退避します。リセットが削除するのはローカル保存だけで、クラウド保存は保持します。プレビューは専用キーを使い、クラウド保存操作を無効にします。ローカルの自動保存とクラウド保存は別で、自動同期はありません。既存戦闘の `battleContent` は再開時にもruntimeとstateへ互換補完済み定義をそろえて通常の保存経路で保持し、戦闘中に公開版の差し替えを受けません。利用者向けの操作と実装詳細は `dist/cloud-save.js`、`dist/game.js`、`dist/storage.js` を参照してください。
 
-定義のプレビューは別キーへ保存し、通常キー・クラウド進行を更新しない。取得済みの公開定義はブラウザへキャッシュする。必要なIDが手元にない場合は進行の初期化ではなく、読み込みを停止する。
+## Sitesとの関係
 
-## 開発・運用
-
-Node.js 24以上。npm ci → npm run content:sync → npm run dev。
-
-npm testはデータ検証・既存ゲーム・実SQLiteのAPIテスト。npm run test:e2eは実ブラウザでゲームと編集/公開/クラウド復元を検証する。E2EのDBはwork/playwright.sqliteで、通常の.local/rpg.sqliteと分離。
-
-スキーマ変更時はnpm run db:generateを実行し、SQLとDrizzleメタデータをレビューしてコミットする。データの投入はAPIで行い、スキーマのマイグレーションへ混ぜない。適用済みSQLは編集しない。ローカルは起動時に未適用分を処理する。本番はSites公開時に適用する。
-
-npm run buildでWorkerアーカイブを作る。既存Site IDと所有者限定の閲覧範囲を維持し、OWNER_EMAILをSites環境変数へ設定する。.openai/hosting.jsonのd1を文字列"DB"として宣言する（オブジェクト形式ではない）。画像は既存の見た目を保つため元のPNGを埋め込み、生成Workerは約9.6MB。将来画像が増える場合はR2などの素材配信へ分離する。
-
-現在の表示は初期隊列4人・敵最大4体を維持。新しい属性/状態異常などの効果種類は共通効果処理を追加して拡張する。定義の追加だけで未対応の効果が実装されるわけではない。独立したキャラクター別レベルやリアルタイム対戦は今回の対象外。
-
-認証上の注意：Sitesのoai-authenticated-user-idはサイトごとのIDであり、アクセス設定のaccount_user_idとは同一と仮定しない。本番はSitesアクセス設定で確認した所有者のメールをOWNER_EMAILへ設定して認可し、保存レコードの所有者キーにはリクエストのサイト内認証IDを使用する。メールをDBの所有者キーにはしない。
-
-## 公開アーカイブと本番確認
-
-npm run package:siteはビルドし、work/site.tar.gzを生成する。アーカイブ内は`.openai/hosting.json`・`dist/server/index.js`・`drizzle/`を保持する。`server/index.js`だけをルートへ配置する形式はSitesに認識されないため使用しない。生成物を確定したSitesソースのcommit_shaと組み合わせて保存/デプロイする。
-
-本番反映済み：GitHub実装6aaf43e、認証調整ab577e3と同じアプリをSitesソース8cf8240240272f32cd627e9d5fc67de3f1b65873として公開。デプロイappgdep_6aee040c319881919f4bdc57d1625c6eはsucceeded。D1のDBにapp_settings/content_versions/save_history/savesの4テーブルを確認。所有者限定を維持。
-
-Playwrightはローカルの編集/公開/復元を含む全34件、4画面サイズの追加12件と更新後の追加8件を通過。認証修正後も管理/クラウド/オフラインの6件とSQLite API8件が通過。本番URLでも1440×900・390×844でゲーム表示・4敵・クリック待機/送り・寸法を確認。公開URLのブラウザ確認は実行環境のCAを信頼するPlaywrightのHTTP取得を使い、TLS検証を無効にせずレスポンスをブラウザへ渡した。
-
-本番のテスト接続は利用者のログインIDを持たないため、管理API/公開定義APIが401で拒否されることを確認。本番の所有者ログイン後の管理/クラウド書き込みと、iOS/Android実端末は未確認。ローカルでは本番と同じAPIコードを実SQLiteで操作検証している。本番の書き込みテストで実データを上書きしていない。
-
-## バフ定義・保存の拡張（2026-11-09）
-
-skill.effect:'buff' / type:'physical'とeffects:[{type:'attackBuff',multiplier:1.5,turns:3}]を追加。倍率は1超〜3、ターンは1〜99の整数、補助特技には攻撃上昇1件のみを許可し、消耗品へのバフ混入を拒否します。管理画面で倍率・継続ターンを編集できます。状態は任意のstate.buffs配列で、対象・スキル参照・残数・付与ターン・重複を検証。戦闘中は独立して検証したbattleContentを参照し、公開版変更/旧版への切替でも既存戦闘の保存を維持します。旧セーブの欠落は空扱い、ローカルの不正バフは進行を消さず除去します。
-
-今回、本番D1のapp_settingsに行がないことを読み取り確認し、active()がbundledを返すため同梱定義への追加だけで反映します。公開済みcontent_versions・本番の進行・DBスキーマの変更は行いません。すでに始まっている旧定義の戦闘には新特技を途中注入せず、新しい定義で始める次の戦闘から使えます。
+Site project IDとD1バインディングは[`.openai/hosting.json`](../.openai/hosting.json)が現在の設定元です。公開時はこのSite identity、既存D1、所有者限定の閲覧範囲を維持し、現行Sitesスキルと利用できるSitesツールの手順に従います。具体的なビルド・パッケージコマンドは[DEVELOPMENT.md](DEVELOPMENT.md)を正本とします。
