@@ -9,17 +9,59 @@
     {
       "id": "rina",
       "name": "リナ",
-      "speed": 18
+      "speed": 18,
+      "stats": {
+        "baseHP": 64,
+        "hpPerLevel": 14,
+        "baseMP": 24,
+        "mpPerLevel": 5,
+        "baseAttack": 12,
+        "attackPerLevel": 3,
+        "baseDefense": 6,
+        "defensePerLevel": 2,
+        "baseWisdom": 14,
+        "wisdomPerLevel": 5,
+        "baseLuck": 14,
+        "luckPerLevel": 3
+      }
     },
     {
       "id": "gald",
       "name": "ガルド",
-      "speed": 7
+      "speed": 7,
+      "stats": {
+        "baseHP": 100,
+        "hpPerLevel": 20,
+        "baseMP": 12,
+        "mpPerLevel": 2,
+        "baseAttack": 18,
+        "attackPerLevel": 5,
+        "baseDefense": 12,
+        "defensePerLevel": 3,
+        "baseWisdom": 6,
+        "wisdomPerLevel": 2,
+        "baseLuck": 8,
+        "luckPerLevel": 1
+      }
     },
     {
       "id": "noel",
       "name": "ノエル",
-      "speed": 14
+      "speed": 14,
+      "stats": {
+        "baseHP": 68,
+        "hpPerLevel": 14,
+        "baseMP": 32,
+        "mpPerLevel": 6,
+        "baseAttack": 10,
+        "attackPerLevel": 3,
+        "baseDefense": 7,
+        "defensePerLevel": 2,
+        "baseWisdom": 18,
+        "wisdomPerLevel": 6,
+        "baseLuck": 12,
+        "luckPerLevel": 2
+      }
     }
   ],
   "zones": [

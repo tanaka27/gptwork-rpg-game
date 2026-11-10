@@ -1,5 +1,5 @@
 const {test,expect}=require('@playwright/test');
-async function advanceToInput(page){for(let i=0;i<80;i++){if(!await page.locator('#messageNext').isVisible())return;await page.locator('#fieldMessage').click();}throw Error('input not reached');}
+const {heroInput:advanceToInput}=require('./party-helpers.cjs');
 for(const critical of [true,false])test(`うんのよさと物理スキルの${critical?'会心':'通常'}ダメージ・保存`,async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());

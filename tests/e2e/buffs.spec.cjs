@@ -7,7 +7,7 @@ async function setup(page){
  await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>{c.hp=maxhp();c.mp=maxmp();});render();});
  return errors;
 }
-async function toInput(page){for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();await expect(page.locator('[data-action="attack"]')).toBeEnabled();}
+const {heroInput:toInput}=require('./party-helpers.cjs');
 async function cast(page,index){await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:inspire"]:visible').click();await page.locator(`[data-ally-target="${index}"] img`).click();}
 test('鼓舞の対象・開始確認・アイコン・詳細・再使用・3ターン解除と保存再開',async({page})=>{
  test.setTimeout(120000);

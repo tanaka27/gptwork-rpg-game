@@ -1,9 +1,6 @@
 const {test,expect}=require('@playwright/test');
 
-async function toInput(page){
- for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
- await expect(page.locator('[data-action="attack"]')).toBeEnabled();
-}
+const {heroInput:toInput}=require('./party-helpers.cjs');
 async function setup(page){
  const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
@@ -28,6 +25,7 @@ async function insideViewport(page){
  }
 }
 test('探索・道中・街・回復・逃走後も同じ味方欄とコマンド配置を保つ',async({page})=>{
+ test.setTimeout(90000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());

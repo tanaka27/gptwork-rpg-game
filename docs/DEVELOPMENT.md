@@ -311,3 +311,13 @@ tests/e2e/buffs.spec.cjsはPC/スマホ幅で非戦闘使用拒否、キャン�
 tests/e2e/stat-colors.spec.cjsはPC1440×900/スマホ幅390×844で実UIから鼓舞を使い、画像クリック→補正後55（基本37）の青表示、未付与者の通常表示、仲間詳細との一致、解除後の37/通常色、開閉によるstate非消費を確認します。下降効果は未導入のため、使い捨てブラウザ内の表示getterだけを一時差替えし、32/赤と読み上げラベルを検証して復帰します。製品の計算・定義に下降効果は加えません。バフ・戦闘/非戦闘ポップアップの回帰も実行します。
 
 今回の結果：npm test・JS構文・Workerビルド・git diff --check通過。Playwrightはstat-colors/buffs/battle-status/field-statusの対象10件すべて通過（1.2分）。青/赤/通常のPC/スマホ幅スクリーンショットを確認し、対象操作のpageerror/console errorなし。赤は表示getterのテスト専用差替えによる確認で、製品への下降効果追加ではありません。
+
+## 全員の操作・個別能力の検証（2026-11-10）
+
+設計と承認はdocs/plans/2026-11-10-party-control.md。npm testにtests/party-control.test.cjsを追加。実際のcommandResolveを通して仲間の入力停止、MPの独立、主人公戦闘不能、防御と逃走を検証します。旧定義/旧セーブ/上限超過の保持、個別装備の保存、ID照合、無効な装備・成長設定、宿泊と回復上限も対象です。
+
+Playwrightのtests/e2e/command-timing.spec.cjsは全員の入力・仲間の魔法/回復/道具・防御・戦闘不能・全滅・装備変更をPC/スマホ幅で実操作します。従来の主人公対象の回帰テストはparty-helpers.cjsで仲間の通常攻撃を明示入力し、主人公の番まで進めます。自動攻撃を実装に戻す差し替えは使いません。道具選択は戦闘で次の人に移ると解除、非戦闘の連続使用は維持します。
+
+Browserプラグインの操作用jsツールがこの環境では提供されていないため、AGENTS.mdが要求する通常のPlaywrightと/usr/bin/chromiumを使用します。ブラウザ検証はPC上の1440×900/390×844で行い、iOS/Androidの実機検証と区別します。
+
+本環境にはSitesのsite-workflow.mjsが配置されておらず、skillリソースとしても読み出せませんでした。既存Siteのソース書き込み認証をhidden stdinからメモリへ受け取り、通常Gitで既存ソースをclone/pushします。認証はファイルに保存しません。既存manifestを保持し、GitHub正本の追跡ファイルを同期、アプリの全ファイル一致を確認して、npm run package:siteのWorkerアーカイブを使用します。

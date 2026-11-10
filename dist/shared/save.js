@@ -12,7 +12,7 @@ function validate(state,content){
  if(!Array.isArray(state.owned)||state.owned.some(id=>!items.has(id)))errors.push('装備リストが不正です');
  for(const [key,ids]of [['items',items],['materials',materials]]){if(!state[key]||typeof state[key]!=='object'||Array.isArray(state[key]))errors.push(key+'が不正です');else for(const [id,n]of Object.entries(state[key]))if(!ids.has(id)||!Number.isSafeInteger(n)||n<0)errors.push(key+'.'+id+'が不正です');}
  for(const key of ['kills','cleared'])if(!Array.isArray(state[key]))errors.push(key+'が不正です');
- if(state.companions&&(!Array.isArray(state.companions)||state.companions.length!==3||state.companions.some(e=>!Number.isSafeInteger(e.hp)||e.hp<0||!Number.isSafeInteger(e.mp)||e.mp<0)))errors.push('仲間の状態が不正です');
+ if(state.companions&&(!Array.isArray(state.companions)||state.companions.length!==3||state.companions.some(e=>!e||!Number.isSafeInteger(e.hp)||e.hp<0||!Number.isSafeInteger(e.mp)||e.mp<0)))errors.push('仲間の状態が不正です');
  if(!Array.isArray(state.log)||state.log.some(s=>typeof s!=='string'||s.length>2000)||state.log.length>100)errors.push('ログが不正です');
  if(state.journey&&(!nodes.has(state.journey.from)||!nodes.has(state.journey.to)||!Number.isInteger(state.journey.step)||state.journey.step<0||state.journey.step>content.rules.travel.steps))errors.push('道中が不正です');
  if(state.enemies&&(!Array.isArray(state.enemies)||state.enemies.length>16||state.enemies.some(e=>!e||!Number.isFinite(e.hp)||e.hp<0||!Number.isFinite(e.max)||e.max<e.hp||typeof e.name!=='string')))errors.push('敵の状態が不正です');
@@ -20,6 +20,14 @@ function validate(state,content){
  if(state.enemy&&state.battleContent){
   if(contentRules.validate(state.battleContent).length)errors.push('戦闘中の定義が不正です');
   else buffContent=state.battleContent;
+ }
+ if(Array.isArray(state.companions)){
+  const seen=new Set();
+  for(const member of state.companions){
+   if(!member||typeof member!=='object'){errors.push('仲間の状態が不正です');continue;}
+   if(member.characterId!==undefined){if(!buffContent.rules.party.slice(1).includes(member.characterId)||seen.has(member.characterId))errors.push('仲間のIDが不正です');seen.add(member.characterId);}
+   for(const key of ['weapon','armor'])if(member[key]!==undefined&&(!buffContent.items.some(e=>e.id===member[key]&&e.category==='gear'&&e.type===key)||!state.owned?.includes(member[key])))errors.push('仲間の'+key+'が不正です');
+  }
  }
  errors.push(...gameRules.validateBuffs(state,buffContent));
  return errors;

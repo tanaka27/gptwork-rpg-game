@@ -37,8 +37,9 @@ test('道具で味方を選び、取消・HP/MP回復・戦闘の開始確認を
  await expect(page.locator('[data-battle-character]')).toHaveCount(0);
  await page.screenshot({path:test.info().outputPath('item-healed.png')});
  for(let i=0;i<80&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
- await expect(page.locator('#skillDetail')).toBeVisible();
- await expect(page.locator('[data-ally-target="1"]')).toBeEnabled();
+ await expect(page.locator('#skillDetail')).toHaveCount(0);
+ await expect(page.locator('[data-ally-target="1"]')).toHaveCount(0);
+ await expect(page.locator('[data-action="attack"]')).toBeEnabled();
  await page.keyboard.press('Escape');
  await expect(page.locator('#skillMenu')).toBeHidden();
  expect(errors).toEqual([]);

@@ -378,3 +378,9 @@ button.party-member:is(:hover,:focus-visible) .ally-target-marker{display:inline
 
 .character-card dd.stat-up{color:#77baff}
 .character-card dd.stat-down{color:#ff8f8f}
+
+/* Individual member controls in inventory. */
+.member-selector{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0 14px;color:inherit}
+.member-selector select{font:inherit;padding:8px;max-width:100%;background:#f5f1e7;color:#243d3f;border:1px solid #a3afa5;border-radius:4px}
+.member-selector small{flex-basis:100%;font-size:11px;line-height:1.5}
+.character-card dd{overflow-wrap:anywhere}

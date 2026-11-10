@@ -6,69 +6,98 @@ async function seed(page,{fallen=false,lethal=false,weak=false}={}){
  await page.locator('[data-action="explore"]').click();
  await page.evaluate(({fallen,lethal,weak})=>{
   const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
-  s.hp=fallen?0:80;s.mp=10;s.companions.forEach(c=>{c.hp=80;c.mp=20;});
-  s.enemies.forEach((e,i)=>{Object.assign(e,{name:'敵'+i,hp:weak?1:1000,max:weak?1:1000,atk:lethal?10000:20,def:0,speed:[30,11,9,1][i]});});s.enemy=s.enemies[0];
+  s.hp=fallen?0:80;s.mp=10;s.lv=3;s.companions.forEach(c=>{c.hp=80;c.mp=20;});
+  s.enemies.forEach((e,i)=>Object.assign(e,{name:'敵'+i,hp:weak?1:1000,max:weak?1:1000,atk:lethal?10000:20,def:0,speed:[30,11,9,1][i]}));s.enemy=s.enemies[0];
   localStorage.setItem('starlight-rpg-v1',JSON.stringify(s));
  },{fallen,lethal,weak});
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
 }
-async function advance(page){await page.locator('#fieldMessage').click();}
-async function toInput(page){for(let i=0;i<100;i++){if(!await page.locator('#messageNext').isVisible())return;await advance(page);}throw Error('no input');}
-test('素早さ順に先行し、主人公の番で選択・取消・防御して次ラウンドへ進む',async({page})=>{
- const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await seed(page);
- const save=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
- const hp=()=>page.locator('#partyStatus').innerHTML();
- const before=await hp();
- await expect(page.locator('#latestLog')).toHaveText('敵0の攻撃！');
- await expect(page.locator('[data-action="guard"]')).toBeDisabled();
- expect(await page.evaluate(()=>combat('guard'))).toBe(false);
- await page.waitForTimeout(250);expect(await hp()).toBe(before);
- await page.screenshot({path:test.info().outputPath('before-action.png')});
- await advance(page);expect(await hp()).not.toBe(before);
- const damage=await page.evaluate(()=>80-state.hp);expect(damage).toBeGreaterThan(0);
- await advance(page);await expect(page.locator('#latestLog')).toHaveText('リナの攻撃！');
- await toInput(page);
- await expect(page.locator('#commandTitle')).toContainText('アステルの番');
- await expect(page.locator('#messageNext')).toBeHidden();
- await expect(page.locator('[data-action="guard"]')).toBeEnabled();
- expect(await page.evaluate(()=>state.lastRoundOrder)).toEqual(['敵0','リナ','ノエル']);
- expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(save);
- await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill-back"]').click();
- expect(await page.evaluate(()=>state.turn)).toBe(1);
- await page.screenshot({path:test.info().outputPath('choose-at-action.png')});
- await page.locator('[data-action="guard"]').click();
+async function toInput(page){
+ for(let i=0;i<100;i++){
+  const f=await page.evaluate(()=>({input:!!commandResolve,message:!!battleMessageResolve,enemy:!!state.enemy}));
+  if(f.input||!f.enemy)return;
+  if(f.message)await page.locator('#fieldMessage').click();else await page.waitForTimeout(10);
+ }
+ throw Error('input not reached');
+}
+test('全員の番で入力を待ち、仲間のスキル・回復・道具・防御を個別に反映する',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await seed(page);await toInput(page);
+ await expect(page.locator('#commandTitle')).toContainText('リナの番');
+ await expect(page.locator('.party-member.acting')).toContainText('リナ');
+ const saved=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
+ const before=await page.evaluate(()=>[state.companions[0].mp,state.mp,state.enemies[2].hp]);
+ await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:flame"]').click();
+ await page.keyboard.press('Escape');expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]);
+ await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:flame"]').click();await page.locator('[data-target="2"]').click();
+ await expect(page.locator('#latestLog')).toHaveText('リナの火花の魔法！');
+ expect(await page.evaluate(()=>[state.companions[0].mp,state.mp,state.enemies[2].hp])).toEqual(before);
  expect(await page.evaluate(()=>combat('attack'))).toBe(false);
- await expect(page.locator('#latestLog')).toHaveText('アステルは身を守る！');
- expect(await page.evaluate(()=>state.mp)).toBe(10);
- await advance(page);expect(await page.evaluate(()=>state.mp)).toBe(13);
- await toInput(page);
- await expect(page.locator('#turn')).toHaveText('TURN 2');
- const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
- expect(saved.turn).toBe(2);expect(saved.mp).toBe(13);
- expect(saved.lastRoundOrder).toEqual(['敵0','リナ','ノエル','アステル','敵1','敵2','ガルド','敵3']);
- const hits=saved.log.filter(t=>/^敵[1-3]の攻撃！ アステルに/.test(t));expect(hits).toHaveLength(3);
- for(const hit of hits)expect(Number(hit.match(/に(\d+)/)[1])).toBeLessThan(damage);
- await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
- await expect(page.locator('#latestLog')).toHaveText('敵0の攻撃！');
- expect(await page.evaluate(()=>state.hp)).toBe(saved.hp);
- expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(JSON.stringify(saved));
+ await page.locator('#fieldMessage').click();
+ expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]-4);expect(await page.evaluate(()=>state.mp)).toBe(before[1]);
+ expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(before[2]);
+ await toInput(page);await expect(page.locator('#commandTitle')).toContainText('ノエルの番');
+ await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
+ await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:heal"]').click();await page.locator('[data-ally-target="1"]').click();
+ await page.locator('#fieldMessage').click();expect(await page.evaluate(()=>state.companions[0].hp)).toBe(71);expect(await page.evaluate(()=>state.companions[2].mp)).toBe(15);
+ await toInput(page);await expect(page.locator('#commandTitle')).toContainText('アステルの番');
+ await page.locator('[data-action="guard"]').click();await page.locator('#fieldMessage').click();
+ expect(await page.evaluate(()=>state.mp)).toBe(13);
+ await toInput(page);await expect(page.locator('#commandTitle')).toContainText('ガルドの番');
+ await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
+ const herbs=await page.evaluate(()=>state.items.herb);
+ await page.locator('[data-action="items"]').click();await page.locator('[data-action="use:herb"]:visible').click();await page.locator('[data-ally-target="1"]').click();
+ expect(await page.evaluate(()=>state.items.herb)).toBe(herbs);await page.locator('#fieldMessage').click();
+ expect(await page.evaluate(()=>state.items.herb)).toBe(herbs-1);expect(await page.evaluate(()=>state.companions[0].hp)).toBe(46);
+ await toInput(page);await expect(page.locator('#commandTitle')).toContainText('リナの番');
+ await expect(page.locator('#skillMenu')).toBeHidden();
+ expect(await page.evaluate(()=>state.turn)).toBe(2);
+ expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).not.toBe(saved);
+ await page.screenshot({path:test.info().outputPath('all-ally-commands.png')});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
  expect(errors).toEqual([]);
 });
-test('主人公が先に倒れたら入力を飛ばし、仲間の行動と全滅まで進む',async({page})=>{
- await seed(page,{lethal:true});
- await advance(page);await expect(page.locator('#partyStatus')).toContainText('戦闘不能');
+test('主人公が戦闘不能でも仲間を操作して勝利できる',async({page})=>{
+ await seed(page,{fallen:true,weak:true});await toInput(page);
+ await expect(page.locator('#commandTitle')).toContainText('リナの番');
  for(let i=0;i<100;i++){
-  if(await page.locator('[data-action="rest"]').isVisible())break;
-  await expect(page.locator('#messageNext')).toBeVisible();
-  await expect(page.locator('[data-action="attack"]')).toBeDisabled();await advance(page);
+  const flags=await page.evaluate(()=>({input:!!commandResolve,message:!!battleMessageResolve,done:!busy&&!roundActive&&!state.enemy,actor:actingAlly}));
+  if(flags.done)break;
+  if(flags.input){expect(flags.actor).not.toBe(0);await page.locator('[data-action="attack"]').click();}
+  else if(flags.message)await page.locator('#fieldMessage').click();
+ }
+ expect(await page.evaluate(()=>state.enemy)).toBeNull();expect(await page.evaluate(()=>state.total)).toBe(4);
+});
+test('主人公が先に倒れても仲間で入力を続け、全滅時は各自の上限へ回復する',async({page})=>{
+ await seed(page,{lethal:true});await toInput(page);
+ await expect(page.locator('#partyStatus')).toContainText('戦闘不能');await expect(page.locator('#commandTitle')).toContainText('リナの番');
+ for(let i=0;i<180;i++){
+  const flags=await page.evaluate(()=>({input:!!commandResolve,message:!!battleMessageResolve,done:!busy&&!roundActive&&!state.enemy,actor:actingAlly}));
+  if(flags.done)break;
+  if(flags.input){expect(flags.actor).not.toBe(0);await page.locator('[data-action="attack"]').click();}
+  else if(flags.message)await page.locator('#fieldMessage').click();
  }
  await expect(page.locator('[data-action="rest"]')).toBeVisible();
- expect(await page.evaluate(()=>state.enemy)).toBeNull();expect(await page.evaluate(()=>state.hp)).toBe(80);
+ expect(await page.evaluate(()=>allies().map((a,i)=>[a.hp,allyStats(i).maxHP]))).toEqual([[114,114],[92,92],[140,140],[96,96]]);
 });
-test('主人公戦闘不能でも仲間だけで勝利し、入力待ちにならない',async({page})=>{
- await seed(page,{fallen:true,weak:true});
- for(let i=0;i<100;i++){if(await page.evaluate(()=>!busy&&!roundActive&&!state.enemy))break;await expect(page.locator('#messageNext')).toBeVisible();await advance(page);}
- await expect(page.locator('[data-action="explore"]')).toBeVisible();expect(await page.evaluate(()=>state.total)).toBe(4);
+test('もちものの人物を切り替え個別装備・能力・セーブを維持する',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.evaluate(()=>{state.owned.push('iron','leather');render();});
+ await page.locator('[data-screen="bag"]').click();await page.locator('#inventoryCharacter').selectOption('1');
+ await page.locator('[data-action="equip:iron"]').click();await page.locator('[data-action="equip:leather"]').click();
+ await page.locator('#inventoryCharacter').scrollIntoViewIfNeeded();
+ await expect(page.locator('#inventoryCharacter')).toHaveCSS('color','rgb(36, 61, 63)');
+ await page.screenshot({path:test.info().outputPath('inventory-member-selector.png')});
+ expect(await page.evaluate(()=>[state.weapon,state.armor,state.companions[0].weapon,state.companions[0].armor])).toEqual(['twig','cloth','iron','leather']);
+ await page.locator('[data-screen="party"]').click();await page.locator('[data-character="1"]').click();
+ await expect(page.locator('#partyDetails')).toContainText('コマンド操作');await expect(page.locator('#partyDetails')).toContainText('鉄のつるぎ');
+ await page.screenshot({path:test.info().outputPath('individual-stats-equipment.png')});
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ expect(await page.evaluate(()=>[state.companions[0].weapon,state.companions[0].armor])).toEqual(['iron','leather']);
+ expect(await page.evaluate(()=>allies().map((a,i)=>allyStats(i).maxHP))).toEqual([80,64,100,68]);
+ await page.locator('[data-action="explore"]').click();await toInput(page);
+ await page.locator('[data-screen="bag"]').click();await expect(page.locator('#inventoryCharacter')).toBeDisabled();
+ expect(errors).toEqual([]);
 });

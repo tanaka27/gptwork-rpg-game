@@ -30,13 +30,13 @@ for(const mutation of [
 const buffState=()=>({lv:2,weapon:'twig',armor:'cloth',turn:1,hp:97,mp:24,enemy:{hp:100},companions:content.rules.party.slice(1).map(characterId=>({characterId,hp:97,mp:24}))});
 let buffed=buffState();const baseAttack=rules.stats(buffed,content).attack;
 assert.equal(rules.applyAttackBuff(buffed,content,1,inspire),true);
-assert.equal(rules.allyAttack(buffed,content,1),Math.floor(baseAttack*1.5));
-assert.equal(rules.allyAttack(buffed,content,0),baseAttack);assert.equal(rules.allyAttack(buffed,content,2),baseAttack);
+assert.equal(rules.allyAttack(buffed,content,1),Math.floor(rules.stats(buffed,content,1).attack*1.5));
+assert.equal(rules.allyAttack(buffed,content,0),baseAttack);assert.equal(rules.allyAttack(buffed,content,2),rules.stats(buffed,content,2).attack);
 assert.equal(rules.skillAmount(inspire,{wisdom:50,attack:100},c.rules),0);
 assert.deepEqual(rules.tickBuffs(buffed,content),[]);assert.equal(buffed.buffs[0].remainingTurns,3,'applied round does not decrement');
 buffed.turn=2;rules.tickBuffs(buffed,content);assert.equal(buffed.buffs[0].remainingTurns,2);
 buffed.turn=3;rules.tickBuffs(buffed,content);assert.equal(buffed.buffs[0].remainingTurns,1);
-buffed.turn=4;const expired=rules.tickBuffs(buffed,content);assert.equal(expired.length,1);assert.equal(expired[0].skill.name,'鼓舞');assert.equal(buffed.buffs.length,0);assert.equal(rules.allyAttack(buffed,content,1),baseAttack);
+buffed.turn=4;const expired=rules.tickBuffs(buffed,content);assert.equal(expired.length,1);assert.equal(expired[0].skill.name,'鼓舞');assert.equal(buffed.buffs.length,0);assert.equal(rules.allyAttack(buffed,content,1),rules.stats(buffed,content,1).attack);
 assert.equal(rules.applyAttackBuff(buffed,content,0,inspire),true);assert.equal(rules.allyAttack(buffed,content,0),Math.floor(baseAttack*1.5));
 const slash=content.skills.find(s=>s.id==='slash'),flame=content.skills.find(s=>s.id==='flame');
 const effective=rules.allyAttack(buffed,content,0);

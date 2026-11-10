@@ -8,21 +8,22 @@ test('コマンド中だけ味方のステータスを開き、自動行動中�
  await page.locator('#partyStatus img').first().click();await expect(page.locator('#modal')).toBeVisible();await page.locator('#closeModal').click();
  await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>{c.hp=maxhp();c.mp=maxmp();});render();});
  await page.locator('[data-action="explore"]').click();
+ await page.locator('[data-action="attack"]').click();
  await expect(page.locator('#messageNext')).toBeVisible();
  const message=await page.locator('#latestLog').textContent();
  await page.locator('#partyStatus img').nth(1).click();
  await expect(page.locator('#latestLog')).not.toHaveText(message);await expect(page.locator('#modal')).not.toBeVisible();
  for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#partyStatus img').nth(2).click();
  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
- await page.evaluate(()=>{state.companions[2].hp=0;render(false);});
+ await page.evaluate(()=>{state.companions[1].hp=0;render(false);});
  const before=await page.evaluate(()=>JSON.stringify(state));
  for(let i=0;i<4;i++){
   const trigger=page.locator(`[data-battle-character="${i}"]`);
   if(i===1){await trigger.focus();await page.keyboard.press('Enter');}else await trigger.locator('img').click();
   await expect(page.locator('#modal')).toBeVisible();
   await expect(page.locator('#battleCharacterName')).toHaveText(['アステル','リナ','ガルド','ノエル'][i]);
-  await expect(page.locator('#modal dt')).toHaveText(['HP','MP','攻撃力','守備力','賢さ','素早さ','うんのよさ']);
-  if(i===3)await expect(page.locator('#modal .character-heading')).toContainText('戦闘不能');
+  await expect(page.locator('#modal dt')).toHaveText(['HP','MP','攻撃力','守備力','賢さ','素早さ','うんのよさ','武器','防具']);
+  if(i===2)await expect(page.locator('#modal .character-heading')).toContainText('戦闘不能');
   await page.screenshot({path:test.info().outputPath(`battle-status-${i}.png`)});
   if(i%2)await page.keyboard.press('Escape');else await page.locator('#closeModal').click();
   await expect(trigger).toBeFocused();

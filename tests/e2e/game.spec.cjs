@@ -1,12 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
-async function readBattleRound(page) {
-  for(let i=0;i<80;i++){
-    if(!await page.locator('#messageNext').isVisible())return;
-    await page.locator('#fieldMessage').click();
-  }
-  throw new Error('Battle messages did not finish');
-}
+const {heroInput:readBattleRound}=require('./party-helpers.cjs');
 
 test.beforeEach(async ({ page }) => {
   // 外部フォントに左右されず、ローカルの配信物だけを検証する。
@@ -171,7 +165,7 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
     await expect(page.locator('#characterName')).toHaveText(name);
     await expect(page.locator('.character-card dd').nth(5)).toHaveText(String(speed));
     if(i===1)await expect(page.locator('.character-card')).toContainText('戦闘不能');
-    if(i===2)await expect(page.locator('.character-card dd').first()).toHaveText('31 / 80');
+    if(i===2)await expect(page.locator('.character-card dd').first()).toHaveText('31 / 100');
     await page.screenshot({path:test.info().outputPath('character-'+i+'.png')});
     await page.getByRole('button',{name:'← 仲間一覧へ'}).click();
     await expect(page.locator('#partyListView')).toBeVisible();
@@ -390,6 +384,7 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
     save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
   await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+  await page.locator('[data-action="attack"]').click();
   const target=page.locator('[data-target="0"]');
   await expect(target).toHaveCSS('opacity','1');
   await expect(page.locator('#latestLog')).toHaveText('リナの攻撃！');
@@ -450,7 +445,7 @@ test('街名を上部に表示し、宿泊の成功メッセージを街の画�
     await expect(title).toHaveText(name);await expect(page.locator('#fieldMessage')).toBeHidden();
     const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
     expect(saved.hp).toBe(80);expect(saved.mp).toBe(20);expect(saved.gold).toBe(990);
-    expect(saved.companions.every(c=>c.hp===80&&c.mp===20)).toBe(true);
+    expect(saved.companions.map(c=>[c.hp,c.mp])).toEqual([[64,24],[100,12],[68,32]]);
     await page.screenshot({path:test.info().outputPath('town-'+node+'.png')});
     await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await readBattleRound(page);await expect(title).toBeVisible();await expect(page.locator('#fieldMessage')).toBeHidden();
     await page.locator('[data-action="shop"]').click();

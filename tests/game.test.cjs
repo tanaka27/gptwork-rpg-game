@@ -22,7 +22,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   if(party) {
     // Engine regressions supply a command at the hero's slot; controller timing is tested separately.
     vm.runInContext(fs.readFileSync('dist/party.js','utf8').replace('function scheduleRound(){return partyRound();}', 'function scheduleRound(){}'),context);
-    vm.runInContext(`commandResolve=()=>{};partyRound=function(kind,skillId,itemId,skillTargetIndex=selectedEnemy){if(busy||!state.enemy)return;return executePartyRound(()=>Promise.resolve({kind,skillId,itemId,skillTargetIndex}));};submitCommand=(...args)=>partyRound(...args);`,context);
+    vm.runInContext(`commandResolve=()=>{};partyRound=function(kind,skillId,itemId,skillTargetIndex=selectedEnemy){if(busy||!state.enemy)return;return executePartyRound(i=>Promise.resolve(i===0?{kind,skillId,itemId,skillTargetIndex}:{kind:'attack'}));};submitCommand=(...args)=>partyRound(...args);`,context);
   }
   if(party&&!manualMessages)vm.runInContext('waitForBattleMessage=()=>Promise.resolve()',context);
   return {run:code=>vm.runInContext(code,context), nodes, storage};
@@ -35,7 +35,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   await buffed.run("useSkill('inspire',3)");
   assert.equal(buffed.run('state.mp'),buffMP-4);
   assert.equal(buffed.run('state.buffs[0].remainingTurns'),3,'application round does not decrement');
-  assert.equal(buffed.run('allyAttack(3)'),Math.floor(baseAttack*1.5));
+  assert.equal(buffed.run('allyAttack(3)'),Math.floor(buffed.run('allyStats(3).attack')*1.5));
   assert.equal(buffed.run('allyAttack(0)'),baseAttack);
   assert.ok(buffed.nodes.partyStatus.innerHTML.includes('buff-icon'));
   buffed.run('selectedCharacter=3;renderCharacterScreen()');
@@ -44,9 +44,9 @@ function boot(saved = null, party = false, manualMessages = false) {
   await buffed.run("partyRound('skill','inspire',null,3)");assert.equal(buffed.run('state.buffs[0].remainingTurns'),3,'recast refreshes, does not stack');
   assert.equal(buffed.run('state.buffs.length'),1);
   const checkpoint=buffed.storage['starlight-rpg-v1'];
-  const buffResumed=boot(checkpoint,true);assert.equal(buffResumed.run('state.buffs[0].remainingTurns'),3);assert.equal(buffResumed.run('allyAttack(3)'),Math.floor(baseAttack*1.5));
+  const buffResumed=boot(checkpoint,true);assert.equal(buffResumed.run('state.buffs[0].remainingTurns'),3);assert.equal(buffResumed.run('allyAttack(3)'),Math.floor(buffed.run('allyStats(3).attack')*1.5));
   for(const remaining of [2,1,0]){await buffed.run("partyRound('guard')");assert.equal(buffed.run('state.buffs[0]?.remainingTurns||0'),remaining);}
-  assert.equal(buffed.run('allyAttack(3)'),baseAttack);assert.ok(buffed.run("state.log.some(t=>t.includes('効果が切れた'))"));
+  assert.equal(buffed.run('allyAttack(3)'),buffed.run('allyStats(3).attack'));assert.ok(buffed.run("state.log.some(t=>t.includes('効果が切れた'))"));
   buffed.run("GameRules.applyAttackBuff(state,GameData,3,skillList.find(s=>s.id==='inspire'));setAllyHP(3,0)");assert.equal(buffed.run('state.buffs.length'),0,'death removes buffs');
   buffed.run("GameRules.applyAttackBuff(state,GameData,0,skillList.find(s=>s.id==='inspire'));state.enemies.forEach((e,i)=>e.hp=i?0:1)");await buffed.run("partyRound('attack')");assert.equal(buffed.run('state.buffs.length'),0,'victory clears buffs');
   const outsideMP=buffed.run('state.mp');assert.equal(buffed.run("useSkill('inspire',0)"),false);assert.equal(buffed.run('state.mp'),outsideMP);
@@ -199,8 +199,8 @@ function boot(saved = null, party = false, manualMessages = false) {
   for(const index of [-1,4,1.5,NaN]){
     assert.equal(healingTargets.run(`useSkill('heal',${index})`),false,'invalid ally index');
   }
-  healingTargets.run("state.node='home';state.village=true;state.companions[0].hp=maxhp()-1;useSkill('heal',1)");
-  assert.equal(healingTargets.run('state.companions[0].hp'),114,'town healing caps at maximum HP');
+  healingTargets.run("state.node='home';state.village=true;state.companions[0].hp=allyStats(1).maxHP-1;useSkill('heal',1)");
+  assert.equal(healingTargets.run('state.companions[0].hp'),92,'town healing caps at maximum HP');
   healingTargets.run("moveTo('meadow');state.companions[0].hp=1;useSkill('heal',1)");
   assert.equal(healingTargets.run('state.journey.step'),0,'road healing does not advance the journey');
   assert.equal(healingTargets.run('state.companions[0].hp'),53);
@@ -242,7 +242,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   const fallbackTarget=boot(null,true);setupSkillBattle(fallbackTarget);
   fallbackTarget.run('state.enemies[2].hp=1');
   await fallbackTarget.run("useSkill('flame',2)");
-  assert.ok(fallbackTarget.run("state.log.some(t=>t.includes('の火花の魔法！ 敵0に'))"),'attack retargets if a faster companion defeats chosen enemy');
+  assert.equal(fallbackTarget.run('state.mp'),44,'invalidated attack skill target spends no MP');
   assert.equal(fallbackTarget.run('selectedEnemy'),0,'marker follows living target after selected enemy is defeated');
   const unavailable=boot(null,true);setupSkillBattle(unavailable);
   unavailable.run('state.mp=0');
@@ -423,7 +423,7 @@ function boot(saved = null, party = false, manualMessages = false) {
     assert.equal(townHeading.nodes.fieldMessage.hidden,true,'town does not show the rest success message');
     assert.equal(townHeading.nodes.latestLog.textContent,'');
     assert.equal(townHeading.run('state.hp'),townHeading.run('maxhp()'));
-    assert.equal(townHeading.run('state.companions[0].hp'),townHeading.run('maxhp()'));
+    assert.equal(townHeading.run('state.companions[0].hp'),townHeading.run('allyStats(1).maxHP'));
     assert.equal(townHeading.run('state.gold'),90,'inn payment is unchanged');
   }
   const townReload=boot(townHeading.storage['starlight-rpg-v1'],true);

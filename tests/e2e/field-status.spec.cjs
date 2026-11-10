@@ -11,7 +11,7 @@ test('探索・道中・街の味方ステータスと回復対象選択を両�
   const baseline=await page.evaluate(()=>({state:JSON.stringify(state),save:localStorage.getItem('starlight-rpg-v1')}));
   for(let i=0;i<4;i++){
    const trigger=page.locator(`[data-battle-character="${i}"]`);
-   const expected=await page.evaluate(i=>{const a=allies()[i];return [`${allyHP(i)} / ${maxhp()}`,`${a.mp} / ${maxmp()}`,attack(),defense(),wisdom(),speedOf(i),luck()].map(String);},i);
+   const expected=await page.evaluate(i=>{const a=allies()[i];return [`${allyHP(i)} / ${allyStats(i).maxHP}`,`${a.mp} / ${allyStats(i).maxMP}`,allyAttack(i),allyStats(i).defense,allyStats(i).wisdom,speedOf(i),allyStats(i).luck,gear[GameRules.memberState(state,GameData,i).weapon].name,gear[GameRules.memberState(state,GameData,i).armor].name].map(String);},i);
    if(i===0){await trigger.focus();await page.keyboard.press('Enter');}
    else if(i===1)await trigger.locator('strong').first().click();
    else if(i===2)await trigger.locator('.meter-head').first().click();

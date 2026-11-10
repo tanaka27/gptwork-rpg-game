@@ -1,6 +1,17 @@
 (function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.GameRules=api;})(typeof globalThis!=='undefined'?globalThis:this,()=>{
 'use strict';
-function stats(state,data){const g=data.rules.growth,level=state.lv-1,weapon=data.items.find(e=>e.id===state.weapon),armor=data.items.find(e=>e.id===state.armor);return {maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,luck:(g.baseLuck??10)+level*(g.luckPerLevel??2),threshold:g.baseExperience+state.lv*g.experiencePerLevel};}
+const characterDefaults={"rina": {"baseHP": 64, "hpPerLevel": 14, "baseMP": 24, "mpPerLevel": 5, "baseAttack": 12, "attackPerLevel": 3, "baseDefense": 6, "defensePerLevel": 2, "baseWisdom": 14, "wisdomPerLevel": 5, "baseLuck": 14, "luckPerLevel": 3}, "gald": {"baseHP": 100, "hpPerLevel": 20, "baseMP": 12, "mpPerLevel": 2, "baseAttack": 18, "attackPerLevel": 5, "baseDefense": 12, "defensePerLevel": 3, "baseWisdom": 6, "wisdomPerLevel": 2, "baseLuck": 8, "luckPerLevel": 1}, "noel": {"baseHP": 68, "hpPerLevel": 14, "baseMP": 32, "mpPerLevel": 6, "baseAttack": 10, "attackPerLevel": 3, "baseDefense": 7, "defensePerLevel": 2, "baseWisdom": 18, "wisdomPerLevel": 6, "baseLuck": 12, "luckPerLevel": 2}};
+function memberState(state,data,index=0){
+ if(index===0)return state;
+ const members=state.companions||[],identified=members.some(a=>a?.characterId);
+ return members.find(a=>a?.characterId===data.rules.party[index])||(!identified?members[index-1]:null)||{};
+}
+function stats(state,data,index=0){
+ const character=data.characters.find(c=>c.id===data.rules.party[index]);
+ const g={...data.rules.growth,...characterDefaults[character?.id],...character?.stats},level=state.lv-1,member=memberState(state,data,index);
+ const weapon=data.items.find(e=>e.id===(member.weapon??state.weapon)),armor=data.items.find(e=>e.id===(member.armor??state.armor));
+ return {maxHP:g.baseHP+level*g.hpPerLevel,maxMP:g.baseMP+level*g.mpPerLevel,attack:g.baseAttack+level*g.attackPerLevel+(weapon?.value||0),defense:g.baseDefense+level*g.defensePerLevel+(armor?.value||0),wisdom:g.baseWisdom+level*g.wisdomPerLevel,luck:(g.baseLuck??10)+level*(g.luckPerLevel??2),speed:(character?.speed??0)+level,threshold:data.rules.growth.baseExperience+state.lv*data.rules.growth.experiencePerLevel};
+}
 function enemy(data,zone,boss,rng=Math.random){const area=data.zones[zone];const pool=data.monsters.filter(e=>e.zoneId===area.id&&!e.boss);const template=boss?data.monsters.find(e=>e.id===area.bossId):pool[Math.floor(rng()*pool.length)];return {...template,hp:template.hp,max:template.hp,boss:!!boss};}
 function loot(data,enemy,zone){const template=data.monsters.find(e=>e.id===enemy.id||e.name===enemy.name);const fallback=data.monsters.find(e=>e.zoneId===data.zones[zone].id);return (template||fallback).drops.map(id=>({id,rate:data.rarities.find(r=>r.id===data.materials.find(m=>m.id===id).rarity).rate}));}
 function effectAmount(effect,context,combat){switch(effect.type){case'attackBuff':return 0;case'physicalDamage':return combat.physicalDamage({attack:context.attack,defense:context.defense,power:effect.power,roll:context.roll,critical:context.critical});case'magicDamage':case'magicHeal':return combat.magicAmount(context.wisdom,effect);case'restoreHP':return effect.full?context.maxHP:effect.amount;case'restoreMP':return effect.full?context.maxMP:effect.amount;default:throw new Error('未対応の効果: '+effect.type);}}
@@ -54,7 +65,7 @@ function activeBuffs(state,data,index){
 }
 function allyAttack(state,data,index){
  const multiplier=activeBuffs(state,data,index).reduce((value,buff)=>value*buff.effect.multiplier,1);
- return Math.floor(stats(state,data).attack*multiplier);
+ return Math.floor(stats(state,data,index).attack*multiplier);
 }
 function applyAttackBuff(state,data,index,skill){
  const known=data.skills.find(s=>s.id===skill?.id),effect=attackBuffEffect(known);
@@ -74,5 +85,5 @@ function tickBuffs(state,data){
  state.buffs=state.buffs.filter(record=>record.remainingTurns>0);return expired;
 }
 function travelEvent(rules,fought,roll){if(!fought&&roll<rules.battleRate)return 'battle';if(roll<(fought?rules.materialRate:rules.battleRate+rules.materialRate))return 'material';return 'none';}
-return {stats,enemy,loot,effectAmount,skillResult,skillAmount,travelEvent,activeBuffs,allyAttack,applyAttackBuff,tickBuffs,normalizeBuffs,validateBuffs};
+return {characterDefaults,memberState,stats,enemy,loot,effectAmount,skillResult,skillAmount,travelEvent,activeBuffs,allyAttack,applyAttackBuff,tickBuffs,normalizeBuffs,validateBuffs};
 });

@@ -3,7 +3,7 @@ test('背景と無効コマンドの座標でメッセージを一件ずつ送�
  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
- await page.locator('[data-action="explore"]').click();
+ await page.locator('[data-action="explore"]').click();await page.locator('[data-action="attack"]').click();
  for(const viewport of [page.viewportSize(),{width:320,height:568},{width:844,height:390}]){
   await page.setViewportSize(viewport);await page.evaluate(()=>render(false));
   await expect(page.locator('.arena #fieldMessage')).toBeVisible();
@@ -23,7 +23,7 @@ test('背景と無効コマンドの座標でメッセージを一件ずつ送�
  const result=await page.locator('#latestLog').textContent();
  await expect(page.locator('[data-action="attack"]')).toBeDisabled();
  await clickAt('[data-action="attack"]');await expect(page.locator('#latestLog')).not.toHaveText(result);
- const next=await page.locator('#latestLog').textContent();await clickAt('[data-action="items"]');await expect(page.locator('#latestLog')).not.toHaveText(next);
+ await require('./party-helpers.cjs').heroInput(page);await page.locator('[data-action="attack"]').click();const next=await page.locator('#latestLog').textContent();await clickAt('[data-action="items"]');await expect(page.locator('#latestLog')).not.toHaveText(next);
  await page.screenshot({path:test.info().outputPath('after.png')});
  for(let i=0;i<80&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
