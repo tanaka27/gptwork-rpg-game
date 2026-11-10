@@ -71,10 +71,12 @@ PC・スマホ幅で画面切替、画像、はみ出し、戦闘と保存を確
 
 ## 開発ドキュメント
 
+開発作業は、子サブエージェントが調査・設計書作成・実装・テスト・必要文書更新を行い、親エージェントが設計と実装結果をレビュー・承認する役割分担です。親は実装コードを直接書かず、指摘があれば子へ返して修正・再検証を依頼します。子を起動するときは `fork_turns=none`、`model=gpt-6-luna`、`reasoning_effort=max` を指定し、必要なコンテキストを渡します。指定モデル・effortが使えない場合は代替せず阻害要因を報告します。親の実装承認後、親がGitHubへのpushと既存Sitesへの反映を行います。作業ごとのユーザー確認は不要です。
+
 | 文書 | 内容 |
 | --- | --- |
-| [AGENTS.md](AGENTS.md) | 開発ルール。設計・別エージェントレビュー・レビュー担当エージェント承認、Markdown更新・push・デプロイを必須化 |
-| [IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md) | 実装前の設計・レビュー・承認、設計書テンプレート |
+| [AGENTS.md](AGENTS.md) | 開発ルール、親子の役割、設計・実装レビュー、Markdown更新・push・デプロイ |
+| [IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md) | 子による設計・実装・検証、親のレビュー・承認、設計書テンプレート |
 | [HANDOFF.md](docs/HANDOFF.md) | 最初に読む引き継ぎ、構成、状態管理、注意点 |
 | [GAME_SPEC.md](docs/GAME_SPEC.md) | ゲーム仕様、マップ、能力値、戦闘式、素材 |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | 開発・検証・push・Sites公開の手順 |
