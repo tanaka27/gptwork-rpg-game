@@ -7,7 +7,8 @@
 | 文書 | 正本にする内容 |
 | --- | --- |
 | [README.md](../README.md) | ゲームとリポジトリの利用者向け入口 |
-| [AGENTS.md](../AGENTS.md) | エージェントの必須開発ルール、担当、検証、反映条件 |
+| [AGENTS.md](../AGENTS.md) | Codex向けの必須開発ルール、担当、検証、反映条件（Codex専用） |
+| [CLAUDE.md](../CLAUDE.md) | Claude Code向けの開発ルール（Claude Code専用。他のエージェントは確認不要） |
 | [HANDOFF.md](HANDOFF.md) | 現行構成、コード変更箇所、保存互換性、既知の制約 |
 | [GAME_SPEC.md](GAME_SPEC.md) | 現行ゲーム仕様、数値、計算式、データ |
 | [BACKEND.md](BACKEND.md) | 現行の定義/DB/API/認証/保存の仕組み |
@@ -21,7 +22,7 @@
 
 ## 最小の読み順
 
-- 開発作業の入口: [README.md](../README.md) → [AGENTS.md](../AGENTS.md) → この索引。
+- 開発作業の入口: [README.md](../README.md) → エージェントごとのルール（Codexは[AGENTS.md](../AGENTS.md)、Claude Codeは[CLAUDE.md](../CLAUDE.md)） → この索引。
 - ゲームルールの変更: [GAME_SPEC.md](GAME_SPEC.md)、必要な場合は[HANDOFF.md](HANDOFF.md)。
 - API/DB/認証の変更: [BACKEND.md](BACKEND.md)、[DEVELOPMENT.md](DEVELOPMENT.md)。
 - 実装コードの変更: [IMPLEMENTATION_WORKFLOW.md](IMPLEMENTATION_WORKFLOW.md)と案件の`docs/plans/`設計書。

@@ -1,5 +1,12 @@
 # 変更履歴
 
+## 2026-11-11 — Claude Code向けルール文書を追加
+
+- `CLAUDE.md` を新規作成。Claude Code専用で他のエージェントは確認不要と明記し、AGENTS.mdのうちツールに依存しない共通ルール（文書更新、Git、実装・検証の約束）だけを取り込んだ。Codex固有の内容（サブエージェントのモデル指定、親子の承認フロー、mainへの確認なしpush、毎回のSitesデプロイ）は除外した。
+- Sitesへのデプロイは、Codexのハーネスに付属するskill・ツールが前提のため、Claude Codeでは行わず、未反映であることを報告する方針を記載。
+- `docs/README.md` の正本一覧と読み順に、AGENTS.md（Codex専用）とCLAUDE.md（Claude Code専用）の区別を追加。
+- 文書のみの変更。相対リンクを確認。アプリ・生成物は変更なし。Sitesへの反映は未実施（Claude Codeの環境にSitesツールがないため）。
+
 ## 2026-11-11 — テスト運用とPlaywright MCP
 
 - [案件計画](docs/plans/2026-11-11-testing-strategy.md) v2の承認に沿って、Playwright E2Eを78件・2 viewportのままgame/admin・desktop/mobile各専用server/SQLiteへ分離。E2E共通fixtureにconsole/pageerror監視と現在の `baseURL` origin制限を集め、意味的な初期画面確認を追加。
