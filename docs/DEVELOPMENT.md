@@ -33,7 +33,7 @@ npm run test:e2e
 npm run qa:e2e-fixtures
 ```
 
-`npm test` は `tests/content.test.cjs`、`tests/game.test.cjs`、`tests/party-control.test.cjs`、`tests/backend/api.test.mjs` の定義・ゲーム・パーティ操作・SQLite APIテストを実行します。操作や画面の回帰は `@playwright/test` の `npm run test:e2e` を使います。この2つは目的が異なり、片方の成功で他方を確認済みと扱いません。
+`npm test` は `tests/content.test.cjs`、`tests/game/run.cjs`、`tests/party-control.test.cjs`、`tests/backend/api.test.mjs` の定義・ゲーム・パーティ操作・SQLite APIテストを実行します。ゲームのロジックテストは `tests/game/` に機能別に分かれています（`buffs`、`battle-messages`、`staged-actions`、`skill-targets`、`travel`、`rules-progression`）。`run.cjs` がすべてを順に実行し、1件だけなら `node tests/game/travel.test.cjs` のように直接実行できます。共通の起動処理は `tests/game/boot.cjs` にあります。操作や画面の回帰は `@playwright/test` の `npm run test:e2e` を使います。この2つは目的が異なり、片方の成功で他方を確認済みと扱いません。
 
 ### どのテストを選ぶか
 

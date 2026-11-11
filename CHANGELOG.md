@@ -8,6 +8,12 @@
 
 2026-11-09以前の記録は[2026-11-04〜11-09の変更履歴](docs/history/2026-11-04-to-11-09-changelog.md)に移しました。
 
+## 2026-11-11 — GAME_SPECの重複削除とゲームテストの分割
+
+- GAME_SPEC内で重複していた説明（レベルアップ・ボス撃破時の全回復、戦闘中は装備変更不可、人物選択を保存しない、クリア演出）をそれぞれ1箇所にまとめた。仕様の内容は変更していない。
+- `tests/game.test.cjs` を `tests/game/` の機能別6ファイルと起動ヘルパー・実行スクリプトへ分割（[案件計画](docs/plans/2026-11-11-game-test-split.md)）。テストの中身は変えていない。
+- 検証：分割前後でassert数・PASSメッセージ・テスト本文が一致、`npm test` 成功。製品コードの変更なし。Sitesへの反映は未実施。
+
 ## 2026-11-11 — 検索対象・MCP手順・設計書の軽量化
 
 - `.rgignore` を追加し、生成物（`dist/data.generated.js`、`dist/data/`、`dist/shared/`）、`docs/history/`、`package-lock.json` をripgrepの検索対象から除外。AGENTS.md・CLAUDE.md・文書索引に記載。
