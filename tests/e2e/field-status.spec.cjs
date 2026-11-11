@@ -1,8 +1,7 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 test('探索・道中・街の味方ステータスと回復対象選択を両立する',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>.99;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions[2].hp=0;render();});
@@ -56,7 +55,6 @@ expect(errors).toEqual([]);
 
 test('敵が消えた後の勝利報酬待ちでは味方クリックで送り、終了後に詳細を開く',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.lv=30;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>c.hp=maxhp());render();});

@@ -1,6 +1,5 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 async function seed(page,{fallen=false,lethal=false,weak=false}={}){
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.locator('[data-action="explore"]').click();
@@ -85,7 +84,6 @@ test('主人公が先に倒れても仲間で入力を続け、全滅時は各�
 });
 test('もちものの人物を切り替え個別装備・能力・セーブを維持する',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.owned.push('iron','leather');render();});
  await page.locator('[data-screen="bag"]').click();await page.locator('#inventoryCharacter').selectOption('1');

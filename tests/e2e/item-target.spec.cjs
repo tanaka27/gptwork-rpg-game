@@ -1,7 +1,6 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 test('道具で味方を選び、取消・HP/MP回復・戦闘の開始確認を行う',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.companions[0].hp=1;state.companions[0].mp=0;state.companions[1].hp=0;state.items.potion=1;render();});
  await page.locator('[data-screen="bag"]').click();

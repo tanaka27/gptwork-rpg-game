@@ -1,15 +1,14 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 
 const {heroInput:toInput}=require('./party-helpers.cjs');
-async function setup(page){
+async function setup(page,baseURL){
  const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
- await expect(page).toHaveURL('http://127.0.0.1:4173/');
+ await expect(page).toHaveURL(new URL('/',baseURL).href);
  await page.evaluate(()=>{state.lv=7;state.hp=maxhp();state.mp=maxmp();allies();state.companions.forEach(c=>{c.hp=maxhp();c.mp=maxmp();});render();});
  await page.locator('[data-action="explore"]').click();await toInput(page);
  await page.evaluate(()=>{state.enemies.forEach(e=>{e.hp=1000;e.max=1000;e.atk=0;});state.companions[0].hp=1;render(false);});
@@ -28,7 +27,6 @@ test('探索・道中・街・回復・逃走後も同じ味方欄とコマン�
  test.setTimeout(90000);
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>.99;});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.gold=1000;render();});
@@ -77,8 +75,8 @@ test('探索・道中・街・回復・逃走後も同じ味方欄とコマン�
  await expect(page.locator('[data-action="explore"]')).toBeVisible();
  expect(errors).toEqual([]);
 });
-test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操作する',async({page})=>{
- const errors=await setup(page);
+test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操作する',async({page},testInfo)=>{
+ const errors=await setup(page,testInfo.project.use.baseURL);
  const before=await page.evaluate(()=>[state.mp,state.turn]);
  const party=await page.locator('#partyStatus').boundingBox(),commands=await page.locator('#actions').boundingBox();
  expect(party.y+party.height).toBeLessThanOrEqual(commands.y);
@@ -119,8 +117,8 @@ test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操�
  await insideViewport(page);expect(errors).toEqual([]);
 });
 
-test('小さい縦画面と横画面で特技・戻る・HPバーが収まる',async({page})=>{
- const errors=await setup(page);
+test('小さい縦画面と横画面で特技・戻る・HPバーが収まる',async({page},testInfo)=>{
+ const errors=await setup(page,testInfo.project.use.baseURL);
  for(const viewport of [{width:320,height:568},{width:844,height:390}]){
   await page.setViewportSize(viewport);
   await page.locator('[data-action="skills"]').click();

@@ -49,7 +49,7 @@
 
 ## 実装時の約束
 
-- **動作を変更した場合は、必ずPlaywrightで実ブラウザを起動して実操作検証を行うこと。** ロジックテストだけで完了にせず、変更した操作の前後をPC幅・スマホ幅で確認し、表示・状態・コンソールエラーを検証する。表示の変更はスクリーンショットも確認する。失敗した場合は修正して再実行する。ブラウザ操作ツールがない場合も、Playwright実行環境を確認し、ユーザー指定のPlaywright検証を省略しない。実行不能なら阻害要因と未検証範囲を報告する。PC上のスマホ幅の検証と、iOS/Android端末でのスマートフォン実機検証を区別して記載する。
+- **動作や画面を変更した場合は、必ずPlaywrightで実ブラウザを起動して実操作検証を行うこと。** 変更対象の回帰E2EをPC幅とスマホ相当幅の両方で実行し、操作後の状態、表示、console/pageerrorを確認する。表示の変更はスクリーンショットも目視する。テスト層の選び方、E2E project、Playwright MCPの探索・vision運用、失敗診断は[開発・検証手順](docs/DEVELOPMENT.md)を正本とする。MCPは探索・snapshot確認に使い、回帰E2Eを置き換えない。失敗は原因を直して再実行し、skip、期待弱化、無条件retryで緑化しない。ブラウザ操作ツールがない場合もPlaywright実行環境を確認し、必要な確認を省略しない。実行不能なら阻害要因と未検証範囲を報告する。PC上のスマホ幅の検証と、iOS/Android実機検証を区別して記載する。
 
 - 現行はHTML/CSS/JavaScript/SVGのフロントと、ESMバックエンドAPI。ローカルはNode.js 24のSQLite、本番はCloudflare Workers/D1。開発はnpm run dev、検証はnpm testとPlaywright。npm run buildでSites向けWorkerを生成する。認証はSitesを利用し、OWNER_EMAIL（またはサイト内認証IDのOWNER_ID）が一致する所有者だけがAPIを利用できる。
 - `dist/` はフロントのソース。ただしdist/data.generated.js・dist/data/game.json・dist/shared/は生成物で直接編集しない。初期定義はcontent/game.json、共通処理はshared/を編集しnpm run content:syncする。公開後の定義はDBの公開版が正本。bootstrap.jsが定義を読み、storage.js → combat.js → game.js → party.jsの順で起動する。build/とserver/assets.generated.mjsはGit対象外。

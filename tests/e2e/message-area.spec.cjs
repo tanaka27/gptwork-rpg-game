@@ -1,7 +1,6 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 test('背景と無効コマンドの座標でメッセージを一件ずつ送る',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>0;});await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.locator('[data-action="explore"]').click();await page.locator('[data-action="attack"]').click();
  for(const viewport of [page.viewportSize(),{width:320,height:568},{width:844,height:390}]){

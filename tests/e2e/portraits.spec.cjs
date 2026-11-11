@@ -1,8 +1,7 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 test('4人の顔画像を状態欄・仲間一覧・詳細に表示し、画像から回復対象を選べる',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  const ids=['astel','rina','gald','noel'];
  async function loaded(selector,count){

@@ -1,10 +1,9 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 const {heroInput}=require('./party-helpers.cjs');
 const rewardRandoms=()=>[...Array(4).fill(0),...Array(4).fill([0,0,0,0,0,0,.999]).flat()];
 
 test.beforeEach(async({page})=>{
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,route=>route.abort());
-});
+ });
 
 test('rare shop gear detail, purchase, inventory detail and bonus stats work',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));

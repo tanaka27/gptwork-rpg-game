@@ -1,4 +1,4 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect}=require('./fixtures.cjs');
 const collectErrors=page=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});return errors;};
 const ready=page=>expect(page.locator('html')).toHaveAttribute('data-game-ready','true',{timeout:15000});
 
@@ -16,7 +16,6 @@ async function waitForActor(page,characterId){
 
 test('仲間一覧と個別詳細にジョブ・固有特技・習得状態を表示する',async({page})=>{
  const errors=collectErrors(page);
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.goto('/');await ready(page);
  await page.evaluate(()=>{state.lv=3;allies();render();});
  await page.locator('[data-screen="party"]').click();
@@ -39,7 +38,6 @@ test('仲間一覧と個別詳細にジョブ・固有特技・習得状態を�
 
 test('各行動者の技だけを出し、ガルドの気合いを本人に適用する',async({page})=>{
  const errors=collectErrors(page);
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.addInitScript(()=>{Math.random=()=>.99;});
  await page.goto('/');await ready(page);
  await page.evaluate(()=>{
@@ -74,7 +72,6 @@ test('各行動者の技だけを出し、ガルドの気合いを本人に適�
 
 test('旧battleContentを補完して再読込後も進行と技能を保ち、補完済みsnapshotを再保存する',async({page})=>{
  const errors=collectErrors(page);
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{
   const save=JSON.parse(localStorage.getItem('starlight-rpg-v1')),legacy=structuredClone(GameData);
@@ -100,7 +97,6 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
 
 test('狭い縦画面と横画面でもジョブ詳細・戦闘状態を画面幅に収める',async({page})=>{
  const errors=collectErrors(page);
- await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,r=>r.abort());
  for(const size of [{width:320,height:568},{width:844,height:390}]){
   await page.setViewportSize(size);await page.goto('/');await ready(page);
   await page.locator('[data-screen="party"]').click();await expect(page.locator('#characterList')).toContainText('弓使い');

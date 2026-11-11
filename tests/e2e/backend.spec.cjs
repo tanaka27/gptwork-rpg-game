@@ -1,9 +1,9 @@
-const {test,expect}=require('@playwright/test');
+const {test,expect,allowExpectedRequestFailure}=require('./fixtures.cjs');
 const seed=require('../../content/game.json');
 const ready=page=>expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
 test.describe.configure({mode:'serial'});
-test.beforeEach(async({page})=>{await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/,route=>route.abort());page.on('dialog',dialog=>dialog.accept());});
-test('管理画面で編集・検証・プレビュー・公開・旧版への復帰を行う',async({page,context})=>{
+test.beforeEach(async({page})=>{page.on('dialog',dialog=>dialog.accept());});
+test('管理画面で編集・検証・プレビュー・公開・旧版への復帰を行う',async({page,context},testInfo)=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const publish=async()=>{await page.locator('#publish').click();await expect(page.locator('#status')).toContainText('公開版を切り替えました');};
  try{
@@ -37,7 +37,7 @@ test('管理画面で編集・検証・プレビュー・公開・旧版への�
   await page.screenshot({path:test.info().outputPath('admin-data-editor.png'),fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
   await game.close();
- }finally{await page.request.post('/api/admin/versions/bundled/publish',{headers:{origin:'http://127.0.0.1:4173'},data:{revision:0}});}
+ }finally{await page.request.post('/api/admin/versions/bundled/publish',{headers:{origin:new URL(testInfo.project.use.baseURL).origin},data:{revision:0}});}
 });
 test('ローカルの進行をクラウドへ保存・復元し、復元前の進行を保持する',async({page})=>{
  await page.goto('/');await ready(page);const original=JSON.parse(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1')));
@@ -59,6 +59,7 @@ test('ローカルの進行をクラウドへ保存・復元し、復元前の�
 test('公開定義をキャッシュし、API切断時もローカルの進行を保持する',async({page})=>{
  await page.goto('/');await ready(page);
  const before=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
+ allowExpectedRequestFailure(page,'/api/content');
  await page.route('**/api/content',route=>route.abort());
  await page.reload();await ready(page);
  expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(before);

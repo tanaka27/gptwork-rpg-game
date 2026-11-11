@@ -1,11 +1,6 @@
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures.cjs');
 
 const {heroInput:readBattleRound}=require('./party-helpers.cjs');
-
-test.beforeEach(async ({ page }) => {
-  // 外部フォントに左右されず、ローカルの配信物だけを検証する。
-  await page.route(/^https?:\/\/(?!127\.0\.0\.1:4173(?:\/|$))/, route => route.abort());
-});
 
 test('初期画面、素材画像、4画面切替、ビューポート内表示', async ({ page }) => {
   const errors = [];
@@ -30,10 +25,13 @@ test('初期画面、素材画像、4画面切替、ビューポート内表示'
       return image.naturalWidth > 0;
     }, asset)).toBe(true);
   }
-  for (const screen of ['map', 'bag', 'party', 'record', 'adventure']) {
-    await page.locator(`.screen-nav [data-screen="${screen}"]`).click();
+  const navigation=page.getByRole('navigation',{name:'ゲーム画面'});
+  expect(await navigation.ariaSnapshot()).toContain('button "冒険" [pressed]');
+  for (const [screen,label] of [['map','地図'],['bag','もちもの'],['party','仲間'],['record','記録'],['adventure','冒険']]) {
+    const item=navigation.getByRole('button',{name:label,exact:true});
+    await item.click();
     await expect(page.locator(`#screen-${screen}`)).toBeVisible();
-    await expect(page.locator(`.screen-nav [data-screen="${screen}"]`)).toHaveAttribute('aria-pressed', 'true');
+    await expect(item).toHaveAttribute('aria-pressed', 'true');
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth <= innerWidth &&
       document.documentElement.scrollHeight <= innerHeight
@@ -371,12 +369,12 @@ test('戦闘メッセージはクリックするまで進まず、キーボー�
 });
 
 
-test('行動待機で生存中の敵を薄くせず、攻撃を送った時だけ倒れた敵を薄くする', async ({page})=>{
+test('行動待機で生存中の敵を薄くせず、攻撃を送った時だけ倒れた敵を薄くする', async ({page},testInfo)=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
   await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
   await expect(page).toHaveTitle('星灯りの旅団 | Starlight Chronicle');
-  await expect(page).toHaveURL('http://127.0.0.1:4173/');
+  await expect(page).toHaveURL(new URL('/',testInfo.project.use.baseURL).href);
   await page.locator('[data-action="explore"]').click();await readBattleRound(page);
   await page.evaluate(()=>{
     const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
