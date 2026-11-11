@@ -9,6 +9,13 @@
 
 2026-11-10以前の記録は[2026-11-04〜11-10の変更履歴](docs/history/2026-11-04-to-11-10-changelog.md)（大きいので通常の作業では開かない）にあります。
 
+## 2026-11-11 — GitHub最新版のSites反映
+
+- GitHub `bac4772` の未反映分を既存Siteへ同期し、Sitesソース `cddb24a51e1c25a7cedce6a3f9b0e8a7827e057e` をデプロイ。所有者限定・Site ID・D1バインディングを維持。
+- 検証：Node.js 24.22.1で `npm test` 成功、Workerビルド成功、公開済み静的ファイル23件がGitHub正本とバイト単位で一致（HTTP 200）。既存の全E2E成功記録を引き継ぎ、再実行なし。
+- 未確認：公開Siteの実ブラウザ操作（操作ツール未提供）、認証後の本番API・DB（サービス用アクセスで `/api/health` は401となり、所有者ログインが必要）。
+- 反映：デプロイ `appgdep_6af40598028481919902123d02750960` 成功。Sites補助スクリプト未配置のため、認証を標準入力からメモリだけへ渡して通常Gitで同期。配信物を変えない本反映記録はGitHubへのpushのみ。
+
 ## 2026-11-11 — 手書きコードの整形とテスト運用の調整
 
 - `dist/` の手書きJS・CSSと `shared/` をPrettierで整形し、`npm run format`・`format:check` を追加（`npm test` の先頭で確認）。E2Eの `game.spec.cjs` を機能別の5ファイルへ分割、retryを0に固定、APIテストをdot形式の出力に変更（[案件計画](docs/history/plans/2026-11-11-code-format-and-test-tuning.md)）。
