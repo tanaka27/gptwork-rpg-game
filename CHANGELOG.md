@@ -11,9 +11,9 @@
 
 ## 2026-11-11 — 装備と素材のレアリティ統一
 
-- 装備を素材と共通の4段階・色へ揃え、既存の下位2段階の販売を維持。旧公開定義・戦闘snapshotは読み込みclone上で正規化し、raw定義とセーブ形式を維持（[設計・検証記録](docs/plans/2026-11-11-equipment-material-rarity.md)）。
+- 装備を素材と共通の4段階・色へ揃え、既存の下位2段階の販売を維持。旧公開定義・戦闘snapshotは読み込みclone上で正規化し、raw定義とセーブ形式を維持（[設計・検証記録](docs/history/plans/2026-11-11-equipment-material-rarity.md)）。
 - 検証：`npm test`、全E2E 78/78（workers=1）、`npm run package:site` 成功。PC/スマホ幅の画面表示とブラウザー例外なしを確認。
-- 反映：親レビュー待ち。push・Sitesデプロイは未実施。
+- 反映：GitHub `865ef6a` をmainへpush。Sitesソース `8b09410`、デプロイ `appgdep_6af41aef79788191b5566aa258d43e79` 成功（閲覧範囲・D1維持）。
 
 ## 2026-11-11 — GitHub最新版のSites反映
 

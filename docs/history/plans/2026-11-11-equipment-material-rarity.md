@@ -53,6 +53,6 @@
 - 受け入れ条件と結果：4段階のID・名称・色を素材と共通化し、common/uncommonの既存販売品を維持。旧公開定義・旧snapshotはclone上で正規化し、raw定義・入力・v:2セーブを変更しないことをテストで確認。
 - 検証：`npm test` 成功。Playwright全E2E 78/78成功（Chromium、workers=1、約4分48秒）。デスクトップ／モバイルのショップ・装備詳細を目視し、console/pageerrorを監視。`node --check` 対象JS全件、`npm run format:check`、`git diff --check`、`npm run package:site` 成功。
 - 画面確認：`/tmp/rarity-update-qa/mobile-uncommon-shop.png` と `/tmp/rarity-update-qa/mobile-legendary-detail.png` を目視し、表示崩れなし。実機スマートフォンは未確認。
-- 成果物：`work/site.tar.gz` を生成（`npm run package:site`）。push・デプロイは親レビュー後のため未実施。
+- 成果物：`work/site.tar.gz` を生成（`npm run package:site`）。GitHub mainと既存Sitesへ反映済み。
 - 設計との差異・未検証事項：なし（実機スマートフォンを除く）。
-- push・デプロイ結果：未実施。
+- push・デプロイ結果：GitHub `865ef6a774a723f53de8bd531254ea326f77584f` をmainへpush。Sitesソース `8b09410236c20ddbc35e2e1f8be81f237d2fa7f9`、デプロイ `appgdep_6af41aef79788191b5566aa258d43e79` 成功。所有者限定とD1バインディングを維持。Sites補助スクリプト未配置のため、認証を標準入力からメモリだけへ渡して通常Gitで同期。
