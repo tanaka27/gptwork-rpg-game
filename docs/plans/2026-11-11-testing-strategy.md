@@ -1,6 +1,6 @@
 # テスト戦略とPlaywright MCP導入
 
-- 状態：検証済み
+- 状態：反映完了
 - 設計版：v2
 - 要求・背景：既存のPlaywright E2Eを保ったまま、テスト方法を一次資料に照らして見直し、Playwright MCPを実ブラウザの探索・アクセシビリティsnapshot確認に使えるようにする。vision capabilityも、アクセシビリティsnapshotに現れないゲーム画面の当たり判定で実際に使えるようにする。
 - 設計作成者（子）：`/root/testing_strategy`
@@ -140,4 +140,4 @@
 - 子の実装・検証記録：MCP依存は `@playwright/mcp@0.0.85`、`@modelcontextprotocol/sdk@1.32.2`、Playwright Testは `1.64.1` のまま。MCP session内のChromium cacheは `work/` に指定。親がdesktop/mobileの計40 tool callsと全画像を目視確認した。
 - 配信物再利用確認：製品ソース・生成物は変更なし。既存 `work/site.tar.gz` は8,884,446 bytes、SHA-256 `29da3c58f4b8db7653eca4e7f4729f22f6d6c69d21b77ec3d89dd28f43d26d25`。同一内容を再利用し、新build/packageは不要。
 - 親の実装レビュー・承認記録：/root・2026-11-11 10:38 JST・v2実装を承認。依存/lock、runner、fixture、既存spec、MCP client、異常系probe、AGENTS/手順/記録をレビュー。子の78/78回帰と異常系・構文・差分チェック成功を引継ぎ、親が公式MCP経由でPC23回/mobile17回の実tool callを行い、snapshotのsemantic操作と目視座標vision操作の前後を確認。既存依存版の維持・製品ソース無変更・同一アーカイブを独立確認。阻害事項なし。
-- push・デプロイ結果の参照：親の実装承認後に記録。
+- push・デプロイ結果の参照：GitHub e6fbe11をmainへpush。GitHub追跡ファイルの完全一致を確認しSitesソースb85d055へ同期・push。同一アーカイブでデプロイappgdep_6af3c778118081918ac994c74576d80fのsucceededを確認。既存Site ID・D1・所有者限定を維持。反映記録もpushし同じ成果物を再デプロイする。

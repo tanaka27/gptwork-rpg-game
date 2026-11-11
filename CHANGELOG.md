@@ -6,7 +6,8 @@
 - 公式 `@playwright/mcp@0.0.85` と `@modelcontextprotocol/sdk@1.32.2` を固定追加。継続JSONL操作、失敗応答と不正入力の非成功判定、`--caps=vision` 座標操作を備えたstdio clientとfixture異常系probeを追加。回帰の正本は `@playwright/test@1.64.1` のまま。MCPはPlaywright/playwright-core `1.66.0-alpha-2026-11-09` に依存する。
 - 検証：`npm ci --cache work/npm-cache`、構文検査、`git diff --check`、`qa:e2e-fixtures` 成功。E2Eは4 project計78/78件通過。desktop/mobile実MCP sessionでsemantic snapshot/ref操作とvision座標での戦闘背景操作を実施し、親が計40 tool callsとPC/スマホ相当幅の画像を目視確認。通常開発DB `.local/rpg.sqlite` は存在せず、テスト用4 projectはrun専用SQLiteを使用。
 - 配信物に関する製品ソース・生成物は変更なし。既存 `work/site.tar.gz`（8,884,446 bytes、SHA-256 `29da3c58f4b8db7653eca4e7f4729f22f6d6c69d21b77ec3d89dd28f43d26d25`）を再利用する。
-- 未確認：iOS/Android実機、公開Site、本番API。親の実装レビュー・承認後、親がpushと既存Sitesへの反映を行う。
+- 反映：親が実装承認しGitHub `e6fbe11`をmainへpush。Sitesソース`b85d055`と同じアプリ成果物でデプロイ`appgdep_6af3c778118081918ac994c74576d80f`がsucceeded。既存Site ID・D1・所有者限定を維持。反映記録もpushし同じ成果物を再デプロイする。
+- 未確認：iOS/Android実機、公開Siteの操作、本番API。
 
 ## 2026-11-10 — 装備レアリティと追加効果
 
