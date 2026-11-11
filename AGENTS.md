@@ -30,7 +30,7 @@
 
 - 動作や画面を変えたら、Playwrightで実ブラウザを起動して実操作検証を行う。変更対象の回帰E2EをPC幅とスマホ相当幅の両方で実行し、操作後の状態、表示、console/pageerrorを確認する。表示の変更はスクリーンショットも目視する。テストの選び方と失敗診断は[開発・検証手順](docs/DEVELOPMENT.md)が正本。
 - 関係する構文チェック・テストを実行し、失敗は原因を直して再実行する。skip、期待の弱化、無条件retryで緑化しない。ブラウザ確認とロジックテスト、PC上のスマホ幅とiOS/Android実機を区別し、未確認のものを確認済みと報告しない。ブラウザ操作ツールがなくてもPlaywright実行環境を確認して必要な確認を省略せず、実行できない場合は阻害要因と未検証範囲を報告する。
-- 構成と生成物は[HANDOFF.md](docs/HANDOFF.md)が正本。`dist/data.generated.js`・`dist/data/game.json`・`dist/shared/` は生成物で直接編集せず、`content/game.json` と `shared/` を編集して `npm run content:sync` する。
+- 構成と生成物は[HANDOFF.md](docs/HANDOFF.md)が正本。`dist/data.generated.js`・`dist/data/game.json`・`dist/shared/` は生成物で直接編集せず、`content/game.json` と `shared/` を編集して `npm run content:sync` する。手書きの `dist/*.js`・`dist/*.css`・`shared/*.js` を変えたら `npm run format` で整形する。
 - 戦闘計算は[GAME_SPEC.md](docs/GAME_SPEC.md)が正本。物理計算は `CombatRules.physicalDamage` に集約する。
 - セーブキー `starlight-rpg-v1` と形式 `v:2` を維持する。既存セーブを扱う変更には移行処理と検証を含め、ユーザーの明示的なリセット以外で進行を消さない。詳細は[BACKEND.md](docs/BACKEND.md)が正本。
 - コンテンツIDは名前と独立した固定ID。参照・双方向接続・効果・数値は共通バリデーターで検証し、不正な定義は保存・公開しない。公開済み定義と適用済みDBマイグレーションは変更せず、複製か新しいマイグレーションを追加する。移動・購入などの条件はボタンの無効化だけでなく処理側でも検証する。

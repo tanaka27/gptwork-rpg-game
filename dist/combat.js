@@ -6,7 +6,15 @@ const CombatRules = Object.freeze({
   criticalRate(luck = 0) {
     return Number.isFinite(luck) ? Math.min(0.5, Math.max(0, luck) / 512) : 0;
   },
-  physicalDamage({attack, defense, power = 1, strong = false, guard = false, critical = false, roll = Math.random()}) {
+  physicalDamage({
+    attack,
+    defense,
+    power = 1,
+    strong = false,
+    guard = false,
+    critical = false,
+    roll = Math.random(),
+  }) {
     const a = Math.max(0, attack);
     const d = Math.max(0, defense);
     const p = Math.max(0, power);
@@ -20,5 +28,5 @@ const CombatRules = Object.freeze({
   // No target stats enter magic damage or healing calculations.
   magicAmount(wisdom, skill) {
     return Math.max(0, Math.floor(skill.base + Math.max(0, wisdom) * skill.power));
-  }
+  },
 });

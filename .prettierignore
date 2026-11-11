@@ -1,0 +1,4 @@
+# 生成物（content:syncが作る）は整形しない
+dist/data.generated.js
+dist/data/
+dist/shared/

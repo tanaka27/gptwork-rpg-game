@@ -1,144 +1,924 @@
 'use strict';
-const $=id=>document.getElementById(id);
-const {zones,gear,consumables,shopStock,skillList,normalAttack,mapNodes,rarities,materials,bestiary}=GameContent.legacy(GameData);
-const skillDescription=s=>(s.effect==='buff'?`${s.target==='self'?'自分':'味方1人'}の攻撃力を${s.effects[0].multiplier}倍にする（${s.effects[0].turns}ターン・戦闘専用）。再使用で残数を更新`:s.desc)+(s.type==='physical'&&s.effect==='damage'?'。うんのよさが高いほど会心の一撃が出やすく、相手の守備力を無視します。':'');
-const skillTypeLabel=s=>s.effect==='buff'?'補助特技':s.type==='physical'?'物理':'魔法';
-const gearRarityLabels={normal:'ノーマル',rare:'レア',epic:'エピック',legend:'レジェンド'},gearStatLabels={maxHP:'最大HP',maxMP:'最大MP',attack:'攻撃力',defense:'守備力',wisdom:'賢さ',speed:'素早さ',luck:'うんのよさ'};
-let selectedGearId=null,gearDetailOrigin='bag';
-const equipmentRarity=item=>item?.rarity||'normal';
-const equipmentEligible=id=>!!gear[id]&&['normal','rare'].includes(equipmentRarity(gear[id]));
-function currentShopStock(){return state.village&&!state.journey&&!state.enemy?(shopStock[state.node]||[]).filter(id=>!gear[id]||equipmentEligible(id)):[];}
-const nodeById=id=>mapNodes.find(n=>n.id===id),currentNode=()=>nodeById(state.node);
-function lootTable(e){return GameRules.loot(GameData,e,state.zone);}
-function rollMaterials(e,rng=Math.random){const drops=[];for(const {id,rate} of lootTable(e))if(rng()<rate){state.materials[id]=(state.materials[id]||0)+1;drops.push(id);log(`素材「${materials[id].name}」を獲得！［${rarities[materials[id].rarity].name}］`);}return drops;}
-function rollEquipmentDrop(e,rng=Math.random){if(e?.boss||rng()>=.13)return null;const candidates=zones[state.zone].equipmentDropIds||[zones[state.zone].bonusItemId].filter(Boolean),id=candidates.length?candidates[Math.floor(rng()*candidates.length)]:null;if(id&&gear[id]&&!state.owned.includes(id)){state.owned.push(id);log(`${gear[id].name}を発見！ もちものから装備できる。`);return id;}state.items.ether++;log('星のしずくを拾った！');return id||'ether';}
-const travelSteps=GameData.rules.travel.steps;
-function canMove(id){const n=nodeById(id);return !!n&&!state.journey&&!state.enemy&&!busy&&currentNode().links.includes(id)&&(n.zone===0||state.cleared[n.zone-1]);}
-function moveTo(id){
- if(!canMove(id))return false;
- state.journey={from:state.node,to:id,step:0,fought:false};
- state.zone=Math.max(currentNode().zone,nodeById(id).zone);state.village=false;
- $('subactions').innerHTML='';log(`${nodeById(id).name}へ出発した。道中を3工程進もう。`);
- render();showScreen('adventure');return true;
+const $ = id => document.getElementById(id);
+const { zones, gear, consumables, shopStock, skillList, normalAttack, mapNodes, rarities, materials, bestiary } =
+  GameContent.legacy(GameData);
+const skillDescription = s =>
+  (s.effect === 'buff'
+    ? `${s.target === 'self' ? '自分' : '味方1人'}の攻撃力を${s.effects[0].multiplier}倍にする（${s.effects[0].turns}ターン・戦闘専用）。再使用で残数を更新`
+    : s.desc) +
+  (s.type === 'physical' && s.effect === 'damage'
+    ? '。うんのよさが高いほど会心の一撃が出やすく、相手の守備力を無視します。'
+    : '');
+const skillTypeLabel = s => (s.effect === 'buff' ? '補助特技' : s.type === 'physical' ? '物理' : '魔法');
+const gearRarityLabels = { normal: 'ノーマル', rare: 'レア', epic: 'エピック', legend: 'レジェンド' },
+  gearStatLabels = {
+    maxHP: '最大HP',
+    maxMP: '最大MP',
+    attack: '攻撃力',
+    defense: '守備力',
+    wisdom: '賢さ',
+    speed: '素早さ',
+    luck: 'うんのよさ',
+  };
+let selectedGearId = null,
+  gearDetailOrigin = 'bag';
+const equipmentRarity = item => item?.rarity || 'normal';
+const equipmentEligible = id => !!gear[id] && ['normal', 'rare'].includes(equipmentRarity(gear[id]));
+function currentShopStock() {
+  return state.village && !state.journey && !state.enemy
+    ? (shopStock[state.node] || []).filter(id => !gear[id] || equipmentEligible(id))
+    : [];
 }
-function finishTravel(){
- const journey=state.journey;if(!journey||journey.step<travelSteps||state.enemy||busy)return false;
- const destination=nodeById(journey.to);state.node=destination.id;state.zone=destination.zone;state.village=!!destination.town;
- if(destination.town)state.lastTown=destination.id;
- state.journey=null;$('subactions').innerHTML='';log(`${destination.name}に到着した。`);return true;
+const nodeById = id => mapNodes.find(n => n.id === id),
+  currentNode = () => nodeById(state.node);
+function lootTable(e) {
+  return GameRules.loot(GameData, e, state.zone);
 }
-function advanceTravel(){
- const journey=state.journey;if(!journey||state.enemy||busy||journey.step>=travelSteps)return false;
- journey.step++;$('subactions').innerHTML='';
- const event=GameRules.travelEvent(GameData.rules.travel,journey.fought,Math.random());
- if(event==='battle'){journey.fought=true;startBattle(false,true);}
- else if(event==='material'){
-  const pool=zones[state.zone].travelMaterials||GameData.monsters.find(e=>e.zoneId===zones[state.zone].id).drops;
-  const id=pool[Math.floor(Math.random()*pool.length)];state.materials[id]=(state.materials[id]||0)+1;
-  log(`道中 ${journey.step} / ${travelSteps}：素材「${materials[id].name}」を1個見つけた！`);
- }else log(`道中 ${journey.step} / ${travelSteps}：何事もなく、道を進んだ。`);
- finishTravel();render();return true;
+function rollMaterials(e, rng = Math.random) {
+  const drops = [];
+  for (const { id, rate } of lootTable(e))
+    if (rng() < rate) {
+      state.materials[id] = (state.materials[id] || 0) + 1;
+      drops.push(id);
+      log(`素材「${materials[id].name}」を獲得！［${rarities[materials[id].rarity].name}］`);
+    }
+  return drops;
 }
-function returnFromTravel(){
- if(!state.journey||state.enemy||busy)return false;
- state.journey=null;state.zone=currentNode().zone;state.village=!!currentNode().town;
- $('subactions').innerHTML='';log(`${currentNode().name}へ引き返した。`);render();return true;
+function rollEquipmentDrop(e, rng = Math.random) {
+  if (e?.boss || rng() >= 0.13) return null;
+  const candidates = zones[state.zone].equipmentDropIds || [zones[state.zone].bonusItemId].filter(Boolean),
+    id = candidates.length ? candidates[Math.floor(rng() * candidates.length)] : null;
+  if (id && gear[id] && !state.owned.includes(id)) {
+    state.owned.push(id);
+    log(`${gear[id].name}を発見！ もちものから装備できる。`);
+    return id;
+  }
+  state.items.ether++;
+  log('星のしずくを拾った！');
+  return id || 'ether';
 }
-function renderMap(){const from=currentNode(),edges=[];for(const a of mapNodes)for(const id of a.links){const b=nodeById(id);if(a.id<b.id)edges.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="${state.journey&&[a.id,b.id].includes(state.journey.from)&&[a.id,b.id].includes(state.journey.to)?'travel-road':a.id===from.id||b.id===from.id?'near':''}"/>`);}
-$('networkMap').innerHTML=`<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges.join('')}</svg>`+mapNodes.map(n=>{const here=n.id===state.node,locked=n.zone>0&&!state.cleared[n.zone-1];return `<button style="left:${n.x}%;top:${n.y}%" class="map-node ${here?'here':''} ${n.town?'town':''} ${locked?'locked':''}" data-action="move:${n.id}" ${!canMove(n.id)?'disabled':''} aria-label="${n.name}${here?(state.journey?'（出発地）':'（現在地）'):locked?'（未解放）':canMove(n.id)?'へ移動':'（接続なし）'}" ${here?'aria-current="location"':''}><span>${here?'⚑':locked?'⌑':n.town?'⌂':n.boss?'♜':'●'}</span><small>${n.name}</small></button>`}).join('');$('mapPosition').textContent=state.journey?`${from.name} → ${nodeById(state.journey.to).name}（道中 ${state.journey.step} / ${travelSteps}）`:'現在地：'+from.name;
-$('regions').innerHTML=from.links.map(id=>{const n=nodeById(id);return `<button class="region" data-action="move:${id}" ${!canMove(id)?'disabled':''}><span class="icon">${n.town?'⌂':n.boss?'♜':'♧'}</span><span><strong>${n.name}</strong><small>${n.zone>0&&!state.cleared[n.zone-1]?'前のエリアのボス撃破で解放':state.journey?'移動中：冒険タブから道中を進めてください':n.town?'道中3工程 · 街 / 宿屋 / お店':`道中3工程 · Lv.${n.zone*2+1}〜 · ${n.boss?'ボスの待つ場所':'探索エリア'}`}</small></span><span class="check">→</span></button>`}).join('');$('camp').textContent='⌖ 世界地図を見る';$('camp').disabled=false;}
-function renderMaterials(){$('inventory').innerHTML=(state.enemy?'<p class="note">'+state.enemy.name+'の素材候補：'+lootTable(state.enemy).map(d=>materials[d.id].name).join('・')+'</p>':'<p>現在エリアの魔物：'+bestiary[state.zone].map(e=>e.name).join('・')+'</p>')+'<p>各モンスターの対象素材4枠を独立抽選。複数入手することもあります。街で売却できます。</p><div class="rarity-guide">'+Object.entries(rarities).map(([id,r])=>`<span class="rarity ${id}">${r.name} ${Math.round(r.rate*100)}%</span>`).join('')+'</div>'+Object.entries(materials).map(([id,m])=>`<div class="item"><span class="itemicon rarity ${m.rarity}">◇</span><div><strong>${m.name} ×${state.materials[id]||0}</strong><small class="rarity ${m.rarity}">${rarities[m.rarity].name} · ${Math.round(rarities[m.rarity].rate*100)}%</small></div>${btn(rarities[m.rarity].price+' G','sell:'+id,'',!state.village||!state.materials[id]||!!state.enemy||busy)}</div>`).join('');}
-function creatureSVG(e){const c=['#91b78d','#a6adce','#d99b73'][state.zone],shapes={wolf:'<path d="M35 118L45 62 68 83 114 81 141 57 148 117 125 147 59 149Z"/><path d="M40 120L15 101 22 144 60 146M65 141l-5 22h21l6-21m24 0 7 21h24l-14-27"/>',bat:'<path d="M71 89Q36 35 5 72l18 16-13 34 37-5 17 29 21-25m22-32q35-54 66-17l-18 16 13 34-37-5-17 29-21-25"/><path d="M64 78l4-25 22 18 21-18 7 28q21 62-26 66-43-3-28-69"/>',mushroom:'<path d="M65 90l-13 58q36 20 76 0l-16-58Z" fill="#e6dcb4"/><path d="M20 104q6-88 69-87 62 3 72 87-70 21-141 0"/><g fill="#efe5c7"><circle cx="66" cy="53" r="12"/><circle cx="117" cy="69" r="16"/></g>',golem:'<path d="M58 69L66 28 111 27 124 68 132 83 129 141 52 142 43 87Z"/><path d="M43 80L19 89 12 139 37 147 60 104m69-24 25 9 10 50-25 8-22-43M59 142l-7 22h31l5-22m15 0 4 22h30l-9-22"/>',spirit:'<path d="M51 149Q13 113 56 65L85 12 99 61 125 38 119 80Q169 132 127 151L113 136 94 160 77 138Z"/><path d="M72 134q-18-24 19-61 34 44 12 61" fill="#f2dfa2"/>'};return `<svg viewBox="0 0 180 180"><ellipse cx="90" cy="164" rx="62" ry="7" fill="#142c32" opacity=".3"/><g fill="${c}" stroke="#30484b" stroke-width="3" stroke-linejoin="round">${shapes[e.shape]||shapes.spirit}</g><g fill="#243d3f"><ellipse cx="76" cy="108" rx="5" ry="7"/><ellipse cx="108" cy="108" rx="5" ry="7"/></g><path d="M84 125q8 6 16 0" stroke="#30484b" stroke-width="3" fill="none"/></svg>`;}
+const travelSteps = GameData.rules.travel.steps;
+function canMove(id) {
+  const n = nodeById(id);
+  return (
+    !!n &&
+    !state.journey &&
+    !state.enemy &&
+    !busy &&
+    currentNode().links.includes(id) &&
+    (n.zone === 0 || state.cleared[n.zone - 1])
+  );
+}
+function moveTo(id) {
+  if (!canMove(id)) return false;
+  state.journey = { from: state.node, to: id, step: 0, fought: false };
+  state.zone = Math.max(currentNode().zone, nodeById(id).zone);
+  state.village = false;
+  $('subactions').innerHTML = '';
+  log(`${nodeById(id).name}へ出発した。道中を3工程進もう。`);
+  render();
+  showScreen('adventure');
+  return true;
+}
+function finishTravel() {
+  const journey = state.journey;
+  if (!journey || journey.step < travelSteps || state.enemy || busy) return false;
+  const destination = nodeById(journey.to);
+  state.node = destination.id;
+  state.zone = destination.zone;
+  state.village = !!destination.town;
+  if (destination.town) state.lastTown = destination.id;
+  state.journey = null;
+  $('subactions').innerHTML = '';
+  log(`${destination.name}に到着した。`);
+  return true;
+}
+function advanceTravel() {
+  const journey = state.journey;
+  if (!journey || state.enemy || busy || journey.step >= travelSteps) return false;
+  journey.step++;
+  $('subactions').innerHTML = '';
+  const event = GameRules.travelEvent(GameData.rules.travel, journey.fought, Math.random());
+  if (event === 'battle') {
+    journey.fought = true;
+    startBattle(false, true);
+  } else if (event === 'material') {
+    const pool =
+      zones[state.zone].travelMaterials || GameData.monsters.find(e => e.zoneId === zones[state.zone].id).drops;
+    const id = pool[Math.floor(Math.random() * pool.length)];
+    state.materials[id] = (state.materials[id] || 0) + 1;
+    log(`道中 ${journey.step} / ${travelSteps}：素材「${materials[id].name}」を1個見つけた！`);
+  } else log(`道中 ${journey.step} / ${travelSteps}：何事もなく、道を進んだ。`);
+  finishTravel();
+  render();
+  return true;
+}
+function returnFromTravel() {
+  if (!state.journey || state.enemy || busy) return false;
+  state.journey = null;
+  state.zone = currentNode().zone;
+  state.village = !!currentNode().town;
+  $('subactions').innerHTML = '';
+  log(`${currentNode().name}へ引き返した。`);
+  render();
+  return true;
+}
+function renderMap() {
+  const from = currentNode(),
+    edges = [];
+  for (const a of mapNodes)
+    for (const id of a.links) {
+      const b = nodeById(id);
+      if (a.id < b.id)
+        edges.push(
+          `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="${state.journey && [a.id, b.id].includes(state.journey.from) && [a.id, b.id].includes(state.journey.to) ? 'travel-road' : a.id === from.id || b.id === from.id ? 'near' : ''}"/>`
+        );
+    }
+  $('networkMap').innerHTML =
+    `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${edges.join('')}</svg>` +
+    mapNodes
+      .map(n => {
+        const here = n.id === state.node,
+          locked = n.zone > 0 && !state.cleared[n.zone - 1];
+        return `<button style="left:${n.x}%;top:${n.y}%" class="map-node ${here ? 'here' : ''} ${n.town ? 'town' : ''} ${locked ? 'locked' : ''}" data-action="move:${n.id}" ${!canMove(n.id) ? 'disabled' : ''} aria-label="${n.name}${here ? (state.journey ? '（出発地）' : '（現在地）') : locked ? '（未解放）' : canMove(n.id) ? 'へ移動' : '（接続なし）'}" ${here ? 'aria-current="location"' : ''}><span>${here ? '⚑' : locked ? '⌑' : n.town ? '⌂' : n.boss ? '♜' : '●'}</span><small>${n.name}</small></button>`;
+      })
+      .join('');
+  $('mapPosition').textContent = state.journey
+    ? `${from.name} → ${nodeById(state.journey.to).name}（道中 ${state.journey.step} / ${travelSteps}）`
+    : '現在地：' + from.name;
+  $('regions').innerHTML = from.links
+    .map(id => {
+      const n = nodeById(id);
+      return `<button class="region" data-action="move:${id}" ${!canMove(id) ? 'disabled' : ''}><span class="icon">${n.town ? '⌂' : n.boss ? '♜' : '♧'}</span><span><strong>${n.name}</strong><small>${n.zone > 0 && !state.cleared[n.zone - 1] ? '前のエリアのボス撃破で解放' : state.journey ? '移動中：冒険タブから道中を進めてください' : n.town ? '道中3工程 · 街 / 宿屋 / お店' : `道中3工程 · Lv.${n.zone * 2 + 1}〜 · ${n.boss ? 'ボスの待つ場所' : '探索エリア'}`}</small></span><span class="check">→</span></button>`;
+    })
+    .join('');
+  $('camp').textContent = '⌖ 世界地図を見る';
+  $('camp').disabled = false;
+}
+function renderMaterials() {
+  $('inventory').innerHTML =
+    (state.enemy
+      ? '<p class="note">' +
+        state.enemy.name +
+        'の素材候補：' +
+        lootTable(state.enemy)
+          .map(d => materials[d.id].name)
+          .join('・') +
+        '</p>'
+      : '<p>現在エリアの魔物：' + bestiary[state.zone].map(e => e.name).join('・') + '</p>') +
+    '<p>各モンスターの対象素材4枠を独立抽選。複数入手することもあります。街で売却できます。</p><div class="rarity-guide">' +
+    Object.entries(rarities)
+      .map(([id, r]) => `<span class="rarity ${id}">${r.name} ${Math.round(r.rate * 100)}%</span>`)
+      .join('') +
+    '</div>' +
+    Object.entries(materials)
+      .map(
+        ([id, m]) =>
+          `<div class="item"><span class="itemicon rarity ${m.rarity}">◇</span><div><strong>${m.name} ×${state.materials[id] || 0}</strong><small class="rarity ${m.rarity}">${rarities[m.rarity].name} · ${Math.round(rarities[m.rarity].rate * 100)}%</small></div>${btn(rarities[m.rarity].price + ' G', 'sell:' + id, '', !state.village || !state.materials[id] || !!state.enemy || busy)}</div>`
+      )
+      .join('');
+}
+function creatureSVG(e) {
+  const c = ['#91b78d', '#a6adce', '#d99b73'][state.zone],
+    shapes = {
+      wolf: '<path d="M35 118L45 62 68 83 114 81 141 57 148 117 125 147 59 149Z"/><path d="M40 120L15 101 22 144 60 146M65 141l-5 22h21l6-21m24 0 7 21h24l-14-27"/>',
+      bat: '<path d="M71 89Q36 35 5 72l18 16-13 34 37-5 17 29 21-25m22-32q35-54 66-17l-18 16 13 34-37-5-17 29-21-25"/><path d="M64 78l4-25 22 18 21-18 7 28q21 62-26 66-43-3-28-69"/>',
+      mushroom:
+        '<path d="M65 90l-13 58q36 20 76 0l-16-58Z" fill="#e6dcb4"/><path d="M20 104q6-88 69-87 62 3 72 87-70 21-141 0"/><g fill="#efe5c7"><circle cx="66" cy="53" r="12"/><circle cx="117" cy="69" r="16"/></g>',
+      golem:
+        '<path d="M58 69L66 28 111 27 124 68 132 83 129 141 52 142 43 87Z"/><path d="M43 80L19 89 12 139 37 147 60 104m69-24 25 9 10 50-25 8-22-43M59 142l-7 22h31l5-22m15 0 4 22h30l-9-22"/>',
+      spirit:
+        '<path d="M51 149Q13 113 56 65L85 12 99 61 125 38 119 80Q169 132 127 151L113 136 94 160 77 138Z"/><path d="M72 134q-18-24 19-61 34 44 12 61" fill="#f2dfa2"/>',
+    };
+  return `<svg viewBox="0 0 180 180"><ellipse cx="90" cy="164" rx="62" ry="7" fill="#142c32" opacity=".3"/><g fill="${c}" stroke="#30484b" stroke-width="3" stroke-linejoin="round">${shapes[e.shape] || shapes.spirit}</g><g fill="#243d3f"><ellipse cx="76" cy="108" rx="5" ry="7"/><ellipse cx="108" cy="108" rx="5" ry="7"/></g><path d="M84 125q8 6 16 0" stroke="#30484b" stroke-width="3" fill="none"/></svg>`;
+}
 
-const initial=()=>({v:2,zoneIds:zones.map(z=>z.id),node:'meadow',lastTown:'home',materials:{},lv:1,xp:0,hp:80,mp:20,gold:30,weapon:'twig',armor:'cloth',owned:['twig','cloth'],items:{herb:3,ether:1,potion:0},zone:0,kills:zones.map(()=>0),cleared:zones.map(()=>false),total:0,claimed:false,enemy:null,journey:null,turn:1,log:['はじまりの村を出発した。草原で腕を磨こう。'],village:false});
-let state=initial(),tab='bag',shopOpen=false,busy=false,sound=false,ctx;
-try{const raw=JSON.parse(GameStorage.read());if(raw&&[1,2].includes(raw.v)&&Array.isArray(raw.kills)&&Number.isFinite(raw.hp))state=raw}catch{}
-if(!nodeById(state.node))state.node=state.village?['home','luna','forge'][state.zone]:['meadow','ruins','ash'][state.zone];
-state.materials??={};state.lastTown=nodeById(state.lastTown)?.town?state.lastTown:['home','luna','forge'][state.zone];state.v=2;state.zone=currentNode().zone;state.village=!!currentNode().town;
-const loadedJourney=state.journey;
-if(loadedJourney&&loadedJourney.from===state.node&&currentNode().links.includes(loadedJourney.to)&&Number.isInteger(loadedJourney.step)&&loadedJourney.step>=0&&loadedJourney.step<=travelSteps&&(nodeById(loadedJourney.to).zone===0||state.cleared[nodeById(loadedJourney.to).zone-1])){
- state.journey={from:loadedJourney.from,to:loadedJourney.to,step:loadedJourney.step,fought:!!loadedJourney.fought||!!state.enemy};
- state.zone=Math.max(currentNode().zone,nodeById(state.journey.to).zone);state.village=false;
-}else state.journey=null;
-const previousZoneIds=state.zoneIds||['grassland','moon_ruins','volcano'];state.kills=zones.map(z=>state.kills[previousZoneIds.indexOf(z.id)]||0);state.cleared=zones.map(z=>!!state.cleared[previousZoneIds.indexOf(z.id)]);state.zoneIds=zones.map(z=>z.id);
-const maxhp=()=>GameRules.stats(state,GameData).maxHP,maxmp=()=>GameRules.stats(state,GameData).maxMP,attack=()=>GameRules.stats(state,GameData).attack,defense=()=>GameRules.stats(state,GameData).defense,wisdom=()=>GameRules.stats(state,GameData).wisdom,luck=()=>GameRules.stats(state,GameData).luck,threshold=()=>GameRules.stats(state,GameData).threshold;
-if(state.enemy&&!Number.isFinite(state.enemy.wis))state.enemy.wis=state.enemy.boss?[14,24,38][state.zone]:8+state.zone*10;
-if(state.enemy&&state.battleContent&&!GameContent.validate(state.battleContent).length)state.battleContent=JSON.parse(JSON.stringify(GameData));
-GameRules.normalizeBuffs(state,GameData);
-function save(){try{if(!state.enemy&&!busy)delete state.battleContent;GameStorage.write(state);$('saveStatus').textContent='オートセーブ済み'}catch{$('saveStatus').textContent='保存できません（ブラウザ設定）'}}
-function log(t){state.log.unshift(t);state.log=state.log.slice(0,35)}
-function beep(kind=0){if(!sound)return;try{ctx??=new (window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(kind?650:320,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(kind?950:100,ctx.currentTime+.12);g.gain.setValueAtTime(.045,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.2);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.2)}catch{}}
-function landscape(){const z=state.zone;const sky=z===0?'#99b8a5':z===1?'#738099':'#b17c68',mount=z===0?'#507b6e':z===1?'#4c5d79':'#735559';let trees='';for(let i=0;i<16;i++){const x=i*49-25,y=170+(i%3)*16;trees+=`<path d="M${x} ${y+100}l22 -93 24 93h-18v30h-13v-30z" fill="${z===2?'#4c474a':'#254e49'}"/>`}
-return `<svg viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="${sky}"/><stop offset="1" stop-color="#dbd2ab"/></linearGradient><linearGradient id="ground" x2="0" y2="1"><stop stop-color="${mount}"/><stop offset="1" stop-color="#243f3b"/></linearGradient></defs><rect width="800" height="420" fill="url(#sky)"/><circle cx="580" cy="90" r="33" fill="#f5e8b9" opacity=".8"/><path d="M0 220L130 110 215 185 335 70 455 198 570 118 690 203 800 135V420H0" fill="${mount}" opacity=".4"/><path d="M0 260L90 192 200 251 350 160 470 250 650 171 800 265V420H0" fill="${mount}" opacity=".8"/><path d="M0 280Q190 225 400 280T800 260V420H0" fill="url(#ground)"/>${z===1?'<g fill="#39485c"><path d="M110 285V140h25v145m-28-145h31v-10h-31M620 282V130h26v152m-30-152h34v-13h-34"/><path d="M100 130L370 96 660 117v15L370 116 100 146z"/></g>':trees}<path d="M335 420Q490 340 400 283Q510 330 520 420" fill="#b6b08a" opacity=".35"/><g fill="#e8d797" opacity=".7">${Array.from({length:20},(_,i)=>`<circle cx="${(i*137)%790}" cy="${290+(i*29)%125}" r="${1+i%2}"/>`).join('')}</g></svg>`}
-function monster(e){if(!e.boss&&e.shape&&e.shape!=='slime')return creatureSVG(e);const color=e.boss?['#d5aa68','#9a99bf','#c9755e'][state.zone]:['#88bc8a','#9cacc2','#d5a06b'][state.zone];if(e.boss)return `<svg viewBox="0 0 180 180"><path d="M57 82L8 35 20 111 66 120M120 82l52-47-15 82-41 4" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M48 144Q26 105 64 62L55 28 82 46 103 42 126 25 124 67Q161 129 131 151Z" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M62 145l-10 22h26l8-20m28-2 7 22h28l-16-23" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M68 84l17 8m17-1 17-10" stroke="#243e43" stroke-width="8"/><path d="M80 119l12 10 14-10" fill="none" stroke="#243e43" stroke-width="4"/><path d="M86 99l-13 43h43l-18-43" fill="#e9d6ae" opacity=".7"/></svg>`;
-return `<svg viewBox="0 0 180 180"><ellipse cx="90" cy="158" rx="65" ry="9" fill="#163f3c" opacity=".3"/><path d="M28 125Q24 93 52 79Q64 69 90 31Q107 70 129 79Q161 94 154 127Q147 157 90 157Q35 157 28 125" fill="${color}" stroke="#315951" stroke-width="4"/><path d="M45 107Q48 86 66 88" fill="none" stroke="#edf9d0" stroke-width="7" stroke-linecap="round" opacity=".6"/><ellipse cx="70" cy="115" rx="6" ry="9" fill="#243d3f"/><ellipse cx="112" cy="115" rx="6" ry="9" fill="#243d3f"/><path d="M80 132q10 8 21-1" fill="none" stroke="#334e47" stroke-width="3" stroke-linecap="round"/></svg>`}
-function meter(label,value,max,cls=''){return `<div><div class="meter-head"><span>${label}</span><strong>${value} <span style="opacity:.45">/ ${max}</span></strong></div><div class="bar ${cls}"><i style="width:${Math.min(100,value/max*100)}%"></i></div></div>`}
-function btn(text,action,sub='',disabled=false){text=text.replace(/^[⚔✧♧♢☽⚒⌖♜]\s*/,'');return `<button data-action="${action}" ${disabled?'disabled':''}>${text}${sub?`<small>${sub==='10 G / FULL HEAL'?'10 G · 全回復':sub}</small>`:''}</button>`}
-function render(persist=true){finishTravel();$('reset').disabled=busy;const e=state.enemy,z=zones[state.zone],journey=state.journey;const inTown=state.village&&!e&&!journey,hideRestMessage=inTown&&state.log[0]==='宿屋でひと休み。HP・MPが全回復！';$('location').hidden=!inTown;$('fieldMessage').hidden=hideRestMessage;$('latestLog').textContent=hideRestMessage?'':state.log[0]||'草原で冒険を始めよう。';$('attributes').innerHTML=`<div>攻撃力<b>${attack()}</b></div><div>守備力<b>${defense()}</b></div><div>賢さ<b>${wisdom()}</b></div><div>うんのよさ<b>${luck()}</b></div><div>討伐数<b>${state.total}</b></div>`;$('equipment').innerHTML=`<p>⚔ 武器<span>${gear[state.weapon].name}</span></p><p>♢ 防具<span>${gear[state.armor].name}</span></p>`;$('gold').textContent=state.gold+' G';$('location').textContent=journey?`${nodeById(journey.from).name} → ${nodeById(journey.to).name}`:currentNode().name;$('phase').textContent=e?(e.boss?'BOSS BATTLE':'BATTLE'):journey?'TRAVEL':state.village?'VILLAGE':'EXPLORATION';$('landscape').innerHTML=`<img class="scene-art" src="assets/${state.village?'village':'meadow'}.png" alt="" style="${state.zone===1?'filter:hue-rotate(25deg) saturate(.7)':state.zone===2?'filter:sepia(.35) hue-rotate(320deg)':''}">`;$('enemy').innerHTML=e?monster(e)+`<div class="enemyname">${e.name}${meter('HP',e.hp,e.max)}<small class="enemy-stats">物理攻撃 · 攻 ${e.atk} / 守 ${e.def} / 賢 ${e.wis}</small></div>`:'';$('travelProgress').hidden=!journey;$('travelProgress').textContent=journey?`${nodeById(journey.to).name}へ · 道中 ${journey.step} / ${travelSteps}`:'';
-$('commandTitle').textContent=e?`${e.name}が こちらを見ている！`:journey?'道中を進みましょう。':state.village?'おかえりなさい、アステル。':'次はどこへ向かいますか？';$('turn').textContent=e?'TURN '+state.turn:'';
-$('actions').innerHTML=e?btn('⚔ こうげき','attack','PHYSICAL',busy)+btn('✧ スキル','skills','SKILL',busy)+btn('♧ どうぐ','items','ITEM',busy)+btn('♢ ぼうぎょ','guard','DEFEND',busy):journey?btn('先へ進む','travel-next',`道中 ${journey.step} / ${travelSteps}`,busy)+btn('回復する','items','RECOVER',busy)+btn('引き返す','travel-return',nodeById(journey.from).name,busy)+btn('地図を見る','routes','MAP',busy):state.village?btn('☽ 宿屋で休む','rest','10 G / FULL HEAL')+btn('⚒ お店','shop','SHOP')+btn('✧ 依頼の報酬','claim','QUEST',state.total<5||state.claimed)+btn('⌖ 移動先','routes','TRAVEL'):btn('⚔ 探索する','explore','EXPLORE')+btn('♜ ボスに挑む','boss','BOSS',!currentNode().boss||state.kills[state.zone]<z.kills||state.cleared[state.zone])+btn('♧ 回復する','items','RECOVER')+btn('⌖ 移動先','routes','TRAVEL');
-renderMap();
-const q=state.cleared.findIndex(x=>!x);$('questTitle').textContent=q===-1?'星灯りを取り戻した':`${(zones[q].questTitle||zones[q].name)}`;$('questText').textContent=q===-1?'三つの星のかけらがひとつに。世界に夜明けが訪れました。':`${zones[q].name}の魔物を${zones[q].kills}体倒し、${zones[q].boss}に挑もう。`;$('questProgress').innerHTML=q===-1?'<small>✧ MAIN QUEST COMPLETE</small>':`<div class="bar exp"><i style="width:${Math.min(100,state.kills[q]/zones[q].kills*100)}%"></i></div><p><small>討伐 ${Math.min(state.kills[q],zones[q].kills)} / ${zones[q].kills}　${state.kills[q]>=zones[q].kills?'ボス戦 解放！':''}</small></p>`;$('log').innerHTML=state.log.map(t=>'<p>› '+t+'</p>').join('');renderInventory();renderShop();if(persist)save()}
-function renderInventory(){if(!['bag','materials','skills'].includes(tab))tab='bag';document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='materials'){renderMaterials();return;}if(tab==='skills'){$('inventory').innerHTML=skillList.map(s=>`<div class="item"><span class="itemicon">${s.icon}</span><div><strong>${s.name} <span class="skill-type ${s.type}">${skillTypeLabel(s)}</span></strong><small>${state.lv<s.lv?`Lv.${s.lv}で習得`:(s.effect==='heal'?'HPを'+CombatRules.magicAmount(wisdom(),s)+'回復（賢さ参照）':skillDescription(s))+' · MP '+s.cost}</small></div>${['heal','buff'].includes(s.effect)&&state.lv>=s.lv?btn('使う','skill:'+s.id,'',busy||state.mp<s.cost||s.effect==='buff'&&!state.enemy):`<span class="count">${state.lv>=s.lv?'✓':'⌑'}</span>`}</div>`).join('');return}
+const initial = () => ({
+  v: 2,
+  zoneIds: zones.map(z => z.id),
+  node: 'meadow',
+  lastTown: 'home',
+  materials: {},
+  lv: 1,
+  xp: 0,
+  hp: 80,
+  mp: 20,
+  gold: 30,
+  weapon: 'twig',
+  armor: 'cloth',
+  owned: ['twig', 'cloth'],
+  items: { herb: 3, ether: 1, potion: 0 },
+  zone: 0,
+  kills: zones.map(() => 0),
+  cleared: zones.map(() => false),
+  total: 0,
+  claimed: false,
+  enemy: null,
+  journey: null,
+  turn: 1,
+  log: ['はじまりの村を出発した。草原で腕を磨こう。'],
+  village: false,
+});
+let state = initial(),
+  tab = 'bag',
+  shopOpen = false,
+  busy = false,
+  sound = false,
+  ctx;
+try {
+  const raw = JSON.parse(GameStorage.read());
+  if (raw && [1, 2].includes(raw.v) && Array.isArray(raw.kills) && Number.isFinite(raw.hp)) state = raw;
+} catch {}
+if (!nodeById(state.node))
+  state.node = state.village ? ['home', 'luna', 'forge'][state.zone] : ['meadow', 'ruins', 'ash'][state.zone];
+state.materials ??= {};
+state.lastTown = nodeById(state.lastTown)?.town ? state.lastTown : ['home', 'luna', 'forge'][state.zone];
+state.v = 2;
+state.zone = currentNode().zone;
+state.village = !!currentNode().town;
+const loadedJourney = state.journey;
+if (
+  loadedJourney &&
+  loadedJourney.from === state.node &&
+  currentNode().links.includes(loadedJourney.to) &&
+  Number.isInteger(loadedJourney.step) &&
+  loadedJourney.step >= 0 &&
+  loadedJourney.step <= travelSteps &&
+  (nodeById(loadedJourney.to).zone === 0 || state.cleared[nodeById(loadedJourney.to).zone - 1])
+) {
+  state.journey = {
+    from: loadedJourney.from,
+    to: loadedJourney.to,
+    step: loadedJourney.step,
+    fought: !!loadedJourney.fought || !!state.enemy,
+  };
+  state.zone = Math.max(currentNode().zone, nodeById(state.journey.to).zone);
+  state.village = false;
+} else state.journey = null;
+const previousZoneIds = state.zoneIds || ['grassland', 'moon_ruins', 'volcano'];
+state.kills = zones.map(z => state.kills[previousZoneIds.indexOf(z.id)] || 0);
+state.cleared = zones.map(z => !!state.cleared[previousZoneIds.indexOf(z.id)]);
+state.zoneIds = zones.map(z => z.id);
+const maxhp = () => GameRules.stats(state, GameData).maxHP,
+  maxmp = () => GameRules.stats(state, GameData).maxMP,
+  attack = () => GameRules.stats(state, GameData).attack,
+  defense = () => GameRules.stats(state, GameData).defense,
+  wisdom = () => GameRules.stats(state, GameData).wisdom,
+  luck = () => GameRules.stats(state, GameData).luck,
+  threshold = () => GameRules.stats(state, GameData).threshold;
+if (state.enemy && !Number.isFinite(state.enemy.wis))
+  state.enemy.wis = state.enemy.boss ? [14, 24, 38][state.zone] : 8 + state.zone * 10;
+if (state.enemy && state.battleContent && !GameContent.validate(state.battleContent).length)
+  state.battleContent = JSON.parse(JSON.stringify(GameData));
+GameRules.normalizeBuffs(state, GameData);
+function save() {
+  try {
+    if (!state.enemy && !busy) delete state.battleContent;
+    GameStorage.write(state);
+    $('saveStatus').textContent = 'オートセーブ済み';
+  } catch {
+    $('saveStatus').textContent = '保存できません（ブラウザ設定）';
+  }
+}
+function log(t) {
+  state.log.unshift(t);
+  state.log = state.log.slice(0, 35);
+}
+function beep(kind = 0) {
+  if (!sound) return;
+  try {
+    ctx ??= new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(),
+      g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(kind ? 650 : 320, ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(kind ? 950 : 100, ctx.currentTime + 0.12);
+    g.gain.setValueAtTime(0.045, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.2);
+  } catch {}
+}
+function landscape() {
+  const z = state.zone;
+  const sky = z === 0 ? '#99b8a5' : z === 1 ? '#738099' : '#b17c68',
+    mount = z === 0 ? '#507b6e' : z === 1 ? '#4c5d79' : '#735559';
+  let trees = '';
+  for (let i = 0; i < 16; i++) {
+    const x = i * 49 - 25,
+      y = 170 + (i % 3) * 16;
+    trees += `<path d="M${x} ${y + 100}l22 -93 24 93h-18v30h-13v-30z" fill="${z === 2 ? '#4c474a' : '#254e49'}"/>`;
+  }
+  return `<svg viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="${sky}"/><stop offset="1" stop-color="#dbd2ab"/></linearGradient><linearGradient id="ground" x2="0" y2="1"><stop stop-color="${mount}"/><stop offset="1" stop-color="#243f3b"/></linearGradient></defs><rect width="800" height="420" fill="url(#sky)"/><circle cx="580" cy="90" r="33" fill="#f5e8b9" opacity=".8"/><path d="M0 220L130 110 215 185 335 70 455 198 570 118 690 203 800 135V420H0" fill="${mount}" opacity=".4"/><path d="M0 260L90 192 200 251 350 160 470 250 650 171 800 265V420H0" fill="${mount}" opacity=".8"/><path d="M0 280Q190 225 400 280T800 260V420H0" fill="url(#ground)"/>${z === 1 ? '<g fill="#39485c"><path d="M110 285V140h25v145m-28-145h31v-10h-31M620 282V130h26v152m-30-152h34v-13h-34"/><path d="M100 130L370 96 660 117v15L370 116 100 146z"/></g>' : trees}<path d="M335 420Q490 340 400 283Q510 330 520 420" fill="#b6b08a" opacity=".35"/><g fill="#e8d797" opacity=".7">${Array.from({ length: 20 }, (_, i) => `<circle cx="${(i * 137) % 790}" cy="${290 + ((i * 29) % 125)}" r="${1 + (i % 2)}"/>`).join('')}</g></svg>`;
+}
+function monster(e) {
+  if (!e.boss && e.shape && e.shape !== 'slime') return creatureSVG(e);
+  const color = e.boss ? ['#d5aa68', '#9a99bf', '#c9755e'][state.zone] : ['#88bc8a', '#9cacc2', '#d5a06b'][state.zone];
+  if (e.boss)
+    return `<svg viewBox="0 0 180 180"><path d="M57 82L8 35 20 111 66 120M120 82l52-47-15 82-41 4" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M48 144Q26 105 64 62L55 28 82 46 103 42 126 25 124 67Q161 129 131 151Z" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M62 145l-10 22h26l8-20m28-2 7 22h28l-16-23" fill="${color}" stroke="#283f43" stroke-width="4"/><path d="M68 84l17 8m17-1 17-10" stroke="#243e43" stroke-width="8"/><path d="M80 119l12 10 14-10" fill="none" stroke="#243e43" stroke-width="4"/><path d="M86 99l-13 43h43l-18-43" fill="#e9d6ae" opacity=".7"/></svg>`;
+  return `<svg viewBox="0 0 180 180"><ellipse cx="90" cy="158" rx="65" ry="9" fill="#163f3c" opacity=".3"/><path d="M28 125Q24 93 52 79Q64 69 90 31Q107 70 129 79Q161 94 154 127Q147 157 90 157Q35 157 28 125" fill="${color}" stroke="#315951" stroke-width="4"/><path d="M45 107Q48 86 66 88" fill="none" stroke="#edf9d0" stroke-width="7" stroke-linecap="round" opacity=".6"/><ellipse cx="70" cy="115" rx="6" ry="9" fill="#243d3f"/><ellipse cx="112" cy="115" rx="6" ry="9" fill="#243d3f"/><path d="M80 132q10 8 21-1" fill="none" stroke="#334e47" stroke-width="3" stroke-linecap="round"/></svg>`;
+}
+function meter(label, value, max, cls = '') {
+  return `<div><div class="meter-head"><span>${label}</span><strong>${value} <span style="opacity:.45">/ ${max}</span></strong></div><div class="bar ${cls}"><i style="width:${Math.min(100, (value / max) * 100)}%"></i></div></div>`;
+}
+function btn(text, action, sub = '', disabled = false) {
+  text = text.replace(/^[⚔✧♧♢☽⚒⌖♜]\s*/, '');
+  return `<button data-action="${action}" ${disabled ? 'disabled' : ''}>${text}${sub ? `<small>${sub === '10 G / FULL HEAL' ? '10 G · 全回復' : sub}</small>` : ''}</button>`;
+}
+function render(persist = true) {
+  finishTravel();
+  $('reset').disabled = busy;
+  const e = state.enemy,
+    z = zones[state.zone],
+    journey = state.journey;
+  const inTown = state.village && !e && !journey,
+    hideRestMessage = inTown && state.log[0] === '宿屋でひと休み。HP・MPが全回復！';
+  $('location').hidden = !inTown;
+  $('fieldMessage').hidden = hideRestMessage;
+  $('latestLog').textContent = hideRestMessage ? '' : state.log[0] || '草原で冒険を始めよう。';
+  $('attributes').innerHTML =
+    `<div>攻撃力<b>${attack()}</b></div><div>守備力<b>${defense()}</b></div><div>賢さ<b>${wisdom()}</b></div><div>うんのよさ<b>${luck()}</b></div><div>討伐数<b>${state.total}</b></div>`;
+  $('equipment').innerHTML =
+    `<p>⚔ 武器<span>${gear[state.weapon].name}</span></p><p>♢ 防具<span>${gear[state.armor].name}</span></p>`;
+  $('gold').textContent = state.gold + ' G';
+  $('location').textContent = journey
+    ? `${nodeById(journey.from).name} → ${nodeById(journey.to).name}`
+    : currentNode().name;
+  $('phase').textContent = e
+    ? e.boss
+      ? 'BOSS BATTLE'
+      : 'BATTLE'
+    : journey
+      ? 'TRAVEL'
+      : state.village
+        ? 'VILLAGE'
+        : 'EXPLORATION';
+  $('landscape').innerHTML =
+    `<img class="scene-art" src="assets/${state.village ? 'village' : 'meadow'}.png" alt="" style="${state.zone === 1 ? 'filter:hue-rotate(25deg) saturate(.7)' : state.zone === 2 ? 'filter:sepia(.35) hue-rotate(320deg)' : ''}">`;
+  $('enemy').innerHTML = e
+    ? monster(e) +
+      `<div class="enemyname">${e.name}${meter('HP', e.hp, e.max)}<small class="enemy-stats">物理攻撃 · 攻 ${e.atk} / 守 ${e.def} / 賢 ${e.wis}</small></div>`
+    : '';
+  $('travelProgress').hidden = !journey;
+  $('travelProgress').textContent = journey
+    ? `${nodeById(journey.to).name}へ · 道中 ${journey.step} / ${travelSteps}`
+    : '';
+  $('commandTitle').textContent = e
+    ? `${e.name}が こちらを見ている！`
+    : journey
+      ? '道中を進みましょう。'
+      : state.village
+        ? 'おかえりなさい、アステル。'
+        : '次はどこへ向かいますか？';
+  $('turn').textContent = e ? 'TURN ' + state.turn : '';
+  $('actions').innerHTML = e
+    ? btn('⚔ こうげき', 'attack', 'PHYSICAL', busy) +
+      btn('✧ スキル', 'skills', 'SKILL', busy) +
+      btn('♧ どうぐ', 'items', 'ITEM', busy) +
+      btn('♢ ぼうぎょ', 'guard', 'DEFEND', busy)
+    : journey
+      ? btn('先へ進む', 'travel-next', `道中 ${journey.step} / ${travelSteps}`, busy) +
+        btn('回復する', 'items', 'RECOVER', busy) +
+        btn('引き返す', 'travel-return', nodeById(journey.from).name, busy) +
+        btn('地図を見る', 'routes', 'MAP', busy)
+      : state.village
+        ? btn('☽ 宿屋で休む', 'rest', '10 G / FULL HEAL') +
+          btn('⚒ お店', 'shop', 'SHOP') +
+          btn('✧ 依頼の報酬', 'claim', 'QUEST', state.total < 5 || state.claimed) +
+          btn('⌖ 移動先', 'routes', 'TRAVEL')
+        : btn('⚔ 探索する', 'explore', 'EXPLORE') +
+          btn(
+            '♜ ボスに挑む',
+            'boss',
+            'BOSS',
+            !currentNode().boss || state.kills[state.zone] < z.kills || state.cleared[state.zone]
+          ) +
+          btn('♧ 回復する', 'items', 'RECOVER') +
+          btn('⌖ 移動先', 'routes', 'TRAVEL');
+  renderMap();
+  const q = state.cleared.findIndex(x => !x);
+  $('questTitle').textContent = q === -1 ? '星灯りを取り戻した' : `${zones[q].questTitle || zones[q].name}`;
+  $('questText').textContent =
+    q === -1
+      ? '三つの星のかけらがひとつに。世界に夜明けが訪れました。'
+      : `${zones[q].name}の魔物を${zones[q].kills}体倒し、${zones[q].boss}に挑もう。`;
+  $('questProgress').innerHTML =
+    q === -1
+      ? '<small>✧ MAIN QUEST COMPLETE</small>'
+      : `<div class="bar exp"><i style="width:${Math.min(100, (state.kills[q] / zones[q].kills) * 100)}%"></i></div><p><small>討伐 ${Math.min(state.kills[q], zones[q].kills)} / ${zones[q].kills}　${state.kills[q] >= zones[q].kills ? 'ボス戦 解放！' : ''}</small></p>`;
+  $('log').innerHTML = state.log.map(t => '<p>› ' + t + '</p>').join('');
+  renderInventory();
+  renderShop();
+  if (persist) save();
+}
+function renderInventory() {
+  if (!['bag', 'materials', 'skills'].includes(tab)) tab = 'bag';
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'materials') {
+    renderMaterials();
+    return;
+  }
+  if (tab === 'skills') {
+    $('inventory').innerHTML = skillList
+      .map(
+        s =>
+          `<div class="item"><span class="itemicon">${s.icon}</span><div><strong>${s.name} <span class="skill-type ${s.type}">${skillTypeLabel(s)}</span></strong><small>${state.lv < s.lv ? `Lv.${s.lv}で習得` : (s.effect === 'heal' ? 'HPを' + CombatRules.magicAmount(wisdom(), s) + '回復（賢さ参照）' : skillDescription(s)) + ' · MP ' + s.cost}</small></div>${['heal', 'buff'].includes(s.effect) && state.lv >= s.lv ? btn('使う', 'skill:' + s.id, '', busy || state.mp < s.cost || (s.effect === 'buff' && !state.enemy)) : `<span class="count">${state.lv >= s.lv ? '✓' : '⌑'}</span>`}</div>`
+      )
+      .join('');
+    return;
+  }
 
-$('inventory').innerHTML=Object.entries(consumables).map(([id,a])=>itemRow(a,`${a.desc} · ${state.items[id]} 個`,btn('使う','use:'+id,'',busy||!state.items[id]))).join('')+'<p style="border-top:1px solid #344148;padding-top:14px">装備品</p>'+state.owned.map(id=>{const a=gear[id],equipped=state[a.type]===id;return itemRow(a,`${a.type==='weapon'?'攻撃':'守備'} +${a.value}`,btn(equipped?'装備中':'装備','equip:'+id,'',equipped||!!state.enemy||busy))}).join('')}
-function renderShop(){
- const stock=currentShopStock();
- if(!stock.length||busy)shopOpen=false;
- $('shopMenu').hidden=!shopOpen;
- if(!shopOpen){$('shopItems').innerHTML='';return;}
- $('shopTitle').textContent=currentNode().name+'のお店';
- $('shopGold').textContent=state.gold+' G';
- if(selectedGearId&&gearDetailOrigin==='shop'&&gear[selectedGearId]){$('shopItems').innerHTML=gearDetailMarkup(selectedGearId,'shop');return;}
- $('shopItems').innerHTML=stock.map(id=>{
-  const item=consumables[id]||gear[id],owned=!!gear[id]&&state.owned.includes(id);
-  const description=consumables[id]?item.desc:`${gearRarityLabels[equipmentRarity(item)]} · ${item.type==='weapon'?'攻撃':'守備'} +${item.value}`;
-  return itemRow(item,description,btn(owned?'購入済':item.price+' G','buy:'+id,'',owned||state.gold<item.price),gear[id]?btn('詳細','gear-detail:'+id):'');
- }).join('');
+  $('inventory').innerHTML =
+    Object.entries(consumables)
+      .map(([id, a]) =>
+        itemRow(a, `${a.desc} · ${state.items[id]} 個`, btn('使う', 'use:' + id, '', busy || !state.items[id]))
+      )
+      .join('') +
+    '<p style="border-top:1px solid #344148;padding-top:14px">装備品</p>' +
+    state.owned
+      .map(id => {
+        const a = gear[id],
+          equipped = state[a.type] === id;
+        return itemRow(
+          a,
+          `${a.type === 'weapon' ? '攻撃' : '守備'} +${a.value}`,
+          btn(equipped ? '装備中' : '装備', 'equip:' + id, '', equipped || !!state.enemy || busy)
+        );
+      })
+      .join('');
 }
-function openShop(){
- if(busy||!currentShopStock().length)return false;
- shopOpen=true;$('subactions').innerHTML='';render(false);showScreen('adventure');$('shopTitle').focus();return true;
+function renderShop() {
+  const stock = currentShopStock();
+  if (!stock.length || busy) shopOpen = false;
+  $('shopMenu').hidden = !shopOpen;
+  if (!shopOpen) {
+    $('shopItems').innerHTML = '';
+    return;
+  }
+  $('shopTitle').textContent = currentNode().name + 'のお店';
+  $('shopGold').textContent = state.gold + ' G';
+  if (selectedGearId && gearDetailOrigin === 'shop' && gear[selectedGearId]) {
+    $('shopItems').innerHTML = gearDetailMarkup(selectedGearId, 'shop');
+    return;
+  }
+  $('shopItems').innerHTML = stock
+    .map(id => {
+      const item = consumables[id] || gear[id],
+        owned = !!gear[id] && state.owned.includes(id);
+      const description = consumables[id]
+        ? item.desc
+        : `${gearRarityLabels[equipmentRarity(item)]} · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
+      return itemRow(
+        item,
+        description,
+        btn(owned ? '購入済' : item.price + ' G', 'buy:' + id, '', owned || state.gold < item.price),
+        gear[id] ? btn('詳細', 'gear-detail:' + id) : ''
+      );
+    })
+    .join('');
 }
-function gearDetailMarkup(id,origin){const item=gear[id],owned=state.owned.includes(id),member=typeof GameRules!=='undefined'&&typeof actingAlly!=='undefined'?GameRules.memberState(state,GameData,actingAlly):state,equipped=member?.[item.type]===id,primary=item.type==='weapon'?'攻撃力':'守備力',primaryValue=item.value||0,action=origin==='shop'?btn(owned?'購入済':item.price+' G','buy:'+id,'',owned||!currentShopStock().includes(id)||state.gold<item.price):owned?btn(equipped?'装備中':'装備','equip:'+id,'',equipped||!!state.enemy||busy):'';return `<section class="gear-detail" aria-label="${item.name}の詳細"><div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type==='weapon'?'武器':'防具'}</p><dl><div><dt>基礎補正</dt><dd>${primary} +${primaryValue}</dd></div></dl><h4>追加効果</h4>${item.bonusEffects?.length?`<ul>${item.bonusEffects.map(effect=>`<li>${gearStatLabels[effect.stat]||effect.stat} +${effect.amount}</li>`).join('')}</ul>`:'<p class="muted">追加効果なし</p>'}<div class="gear-detail-actions">${action}${btn('一覧へ戻る','gear-detail-back')}</div></section>`;}
-function itemRow(a,desc,button,secondary=''){return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary?`<div class="item-actions">${button}${secondary}</div>`:button}</div>`}
-function startBattle(boss=false,travelEncounter=false){if(state.enemy||state.village||busy||(state.journey&&(!travelEncounter||boss)))return;const z=state.zone;if(boss&&(!currentNode().boss||state.kills[z]<zones[z].kills||state.cleared[z]))return;state.enemy=GameRules.enemy(GameData,z,boss);state.battleContent=JSON.parse(JSON.stringify(GameData));state.turn=1;log(`${state.enemy.name}が あらわれた！`);$('subactions').innerHTML='';render()}
-async function combat(kind){if(!state.enemy||busy)return;if(kind==='run'){if(state.enemy.boss){log('ボスからは逃げられない！');render();return}if(Math.random()<.7){log('うまく逃げきった。');state.enemy=null;$('subactions').innerHTML='';finishTravel();render();return}}busy=true;let guard=kind==='guard';if(kind==='attack'){const dmg=CombatRules.physicalDamage({attack:attack(),defense:state.enemy.def,power:normalAttack.power});state.enemy.hp=Math.max(0,state.enemy.hp-dmg);log(`物理攻撃で${dmg}のダメージ！`);hit(dmg)}else if(guard)log('身を守り、MPが3回復した。');if(guard)state.mp=Math.min(maxmp(),state.mp+3);beep();render();if(state.enemy.hp<=0){win();busy=false;finishTravel();render();return}await new Promise(r=>setTimeout(r,430));if(state.enemy){const strong=state.turn%3===0;const damage=CombatRules.physicalDamage({attack:state.enemy.atk,defense:defense(),strong,guard});state.hp=Math.max(0,state.hp-damage);log(`${state.enemy.name}の${strong?'物理強攻撃':'物理攻撃'}！ ${damage}のダメージ。`);state.turn++;if(state.hp<=0){const lost=Math.floor(state.gold*.15);state.gold-=lost;state.enemy=null;state.journey=null;state.node=state.lastTown;state.zone=currentNode().zone;state.village=true;state.hp=maxhp();state.mp=maxmp();log(`最後に訪れた街で目を覚ました。救助費${lost} G。経験値と装備は無事だ。`);modal('まだ、旅は終わらない','街の人に助けられました。HP・MPが回復しました。装備を整え、もう一度挑んでみましょう。')}}busy=false;render()}
-function hit(n){$('enemy').classList.add('hit');setTimeout(()=>$('enemy').classList.remove('hit'),300)}
-function win(){const e=state.enemy;state.enemy=null;state.total++;state.kills[state.zone]++;state.xp+=e.xp;state.gold+=e.gold;log(`${e.name}を倒した！ ${e.xp} EXP・${e.gold} Gを獲得。`);rollMaterials(e);if(e.boss){state.cleared[state.zone]=true;state.hp=maxhp();state.mp=maxmp();log('星のかけらを手に入れた！ HP・MPが全回復。');modal(state.zone===zones.length-1?'✧ 星灯りは、ふたたび世界へ':'✧ 星のかけらを手に入れた',state.zone===2?'三つのかけらが輝き、長い夜が明けました。アステルの勇気は、人々の新しい物語になります。クリアおめでとう！ このまま冒険を続けられます。':'新しいエリアが解放されました。地図から次の旅へ進みましょう。')}else{if(Math.random()<.5){state.items.herb++;log('いやし草を拾った！')}rollEquipmentDrop(e);}while(state.xp>=threshold()&&state.lv<GameData.rules.growth.maxLevel){state.xp-=threshold();state.lv++;state.hp=maxhp();state.mp=maxmp();log(`レベル${state.lv}にアップ！ 能力上昇・HPとMPが全回復！`);for(const s of skillList.filter(s=>s.lv===state.lv)){const owner=GameData.characters.find(character=>character.id===GameRules.skillOwnerId(s,GameData));if(owner)log(`${owner.name}は「${s.name}」を覚えた！`)}}$('subactions').innerHTML='';beep(1)}
-function useItem(id){if(busy||!consumables[id]||state.items[id]<=0)return;const mp=id==='ether';if((mp?state.mp>=maxmp():state.hp>=maxhp())){log(`${mp?'MP':'HP'}は満タンです。`);render();return}state.items[id]--;if(mp)state.mp=Math.min(maxmp(),state.mp+GameRules.effectAmount(consumables[id].effects[0],{maxHP:maxhp(),maxMP:maxmp()},CombatRules));else state.hp=Math.min(maxhp(),state.hp+GameRules.effectAmount(consumables[id].effects[0],{maxHP:maxhp(),maxMP:maxmp()},CombatRules));log(`${consumables[id].name}を使った。${mp?'MP':'HP'}が回復！`);$('subactions').innerHTML='';if(state.enemy)combat('item');else render()}
-function useSkill(id){
-const s=skillList.find(x=>x.id===id);if(!s||state.lv<s.lv||state.mp<s.cost||busy)return;
-if(s.effect==='damage'&&!state.enemy)return;
-if(s.effect==='heal'&&state.hp>=maxhp()){log('HPは満タンです。');render();return;}
-state.mp-=s.cost;
-if(s.effect==='heal'){
- const healed=Math.min(maxhp()-state.hp,CombatRules.magicAmount(wisdom(),s));
- state.hp+=healed;log(`${s.name}［${skillTypeLabel(s)}］！ HPが${healed}回復。`);
-}else{
- const result=GameRules.skillResult(s,{attack:attack(),defense:state.enemy.def,wisdom:wisdom(),luck:luck()},CombatRules),dmg=result.amount;
- state.enemy.hp=Math.max(0,state.enemy.hp-dmg);log(`${s.name}［${skillTypeLabel(s)}］！ ${result.critical?'会心の一撃！ ' : ''}${dmg}のダメージ！`);hit(dmg);
+function openShop() {
+  if (busy || !currentShopStock().length) return false;
+  shopOpen = true;
+  $('subactions').innerHTML = '';
+  render(false);
+  showScreen('adventure');
+  $('shopTitle').focus();
+  return true;
 }
-$('subactions').innerHTML='';if(state.enemy)return combat('skill');else render();
+function gearDetailMarkup(id, origin) {
+  const item = gear[id],
+    owned = state.owned.includes(id),
+    member =
+      typeof GameRules !== 'undefined' && typeof actingAlly !== 'undefined'
+        ? GameRules.memberState(state, GameData, actingAlly)
+        : state,
+    equipped = member?.[item.type] === id,
+    primary = item.type === 'weapon' ? '攻撃力' : '守備力',
+    primaryValue = item.value || 0,
+    action =
+      origin === 'shop'
+        ? btn(
+            owned ? '購入済' : item.price + ' G',
+            'buy:' + id,
+            '',
+            owned || !currentShopStock().includes(id) || state.gold < item.price
+          )
+        : owned
+          ? btn(equipped ? '装備中' : '装備', 'equip:' + id, '', equipped || !!state.enemy || busy)
+          : '';
+  return `<section class="gear-detail" aria-label="${item.name}の詳細"><div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>基礎補正</dt><dd>${primary} +${primaryValue}</dd></div></dl><h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
+}
+function itemRow(a, desc, button, secondary = '') {
+  return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;
+}
+function startBattle(boss = false, travelEncounter = false) {
+  if (state.enemy || state.village || busy || (state.journey && (!travelEncounter || boss))) return;
+  const z = state.zone;
+  if (boss && (!currentNode().boss || state.kills[z] < zones[z].kills || state.cleared[z])) return;
+  state.enemy = GameRules.enemy(GameData, z, boss);
+  state.battleContent = JSON.parse(JSON.stringify(GameData));
+  state.turn = 1;
+  log(`${state.enemy.name}が あらわれた！`);
+  $('subactions').innerHTML = '';
+  render();
+}
+async function combat(kind) {
+  if (!state.enemy || busy) return;
+  if (kind === 'run') {
+    if (state.enemy.boss) {
+      log('ボスからは逃げられない！');
+      render();
+      return;
+    }
+    if (Math.random() < 0.7) {
+      log('うまく逃げきった。');
+      state.enemy = null;
+      $('subactions').innerHTML = '';
+      finishTravel();
+      render();
+      return;
+    }
+  }
+  busy = true;
+  let guard = kind === 'guard';
+  if (kind === 'attack') {
+    const dmg = CombatRules.physicalDamage({ attack: attack(), defense: state.enemy.def, power: normalAttack.power });
+    state.enemy.hp = Math.max(0, state.enemy.hp - dmg);
+    log(`物理攻撃で${dmg}のダメージ！`);
+    hit(dmg);
+  } else if (guard) log('身を守り、MPが3回復した。');
+  if (guard) state.mp = Math.min(maxmp(), state.mp + 3);
+  beep();
+  render();
+  if (state.enemy.hp <= 0) {
+    win();
+    busy = false;
+    finishTravel();
+    render();
+    return;
+  }
+  await new Promise(r => setTimeout(r, 430));
+  if (state.enemy) {
+    const strong = state.turn % 3 === 0;
+    const damage = CombatRules.physicalDamage({ attack: state.enemy.atk, defense: defense(), strong, guard });
+    state.hp = Math.max(0, state.hp - damage);
+    log(`${state.enemy.name}の${strong ? '物理強攻撃' : '物理攻撃'}！ ${damage}のダメージ。`);
+    state.turn++;
+    if (state.hp <= 0) {
+      const lost = Math.floor(state.gold * 0.15);
+      state.gold -= lost;
+      state.enemy = null;
+      state.journey = null;
+      state.node = state.lastTown;
+      state.zone = currentNode().zone;
+      state.village = true;
+      state.hp = maxhp();
+      state.mp = maxmp();
+      log(`最後に訪れた街で目を覚ました。救助費${lost} G。経験値と装備は無事だ。`);
+      modal(
+        'まだ、旅は終わらない',
+        '街の人に助けられました。HP・MPが回復しました。装備を整え、もう一度挑んでみましょう。'
+      );
+    }
+  }
+  busy = false;
+  render();
+}
+function hit(n) {
+  $('enemy').classList.add('hit');
+  setTimeout(() => $('enemy').classList.remove('hit'), 300);
+}
+function win() {
+  const e = state.enemy;
+  state.enemy = null;
+  state.total++;
+  state.kills[state.zone]++;
+  state.xp += e.xp;
+  state.gold += e.gold;
+  log(`${e.name}を倒した！ ${e.xp} EXP・${e.gold} Gを獲得。`);
+  rollMaterials(e);
+  if (e.boss) {
+    state.cleared[state.zone] = true;
+    state.hp = maxhp();
+    state.mp = maxmp();
+    log('星のかけらを手に入れた！ HP・MPが全回復。');
+    modal(
+      state.zone === zones.length - 1 ? '✧ 星灯りは、ふたたび世界へ' : '✧ 星のかけらを手に入れた',
+      state.zone === 2
+        ? '三つのかけらが輝き、長い夜が明けました。アステルの勇気は、人々の新しい物語になります。クリアおめでとう！ このまま冒険を続けられます。'
+        : '新しいエリアが解放されました。地図から次の旅へ進みましょう。'
+    );
+  } else {
+    if (Math.random() < 0.5) {
+      state.items.herb++;
+      log('いやし草を拾った！');
+    }
+    rollEquipmentDrop(e);
+  }
+  while (state.xp >= threshold() && state.lv < GameData.rules.growth.maxLevel) {
+    state.xp -= threshold();
+    state.lv++;
+    state.hp = maxhp();
+    state.mp = maxmp();
+    log(`レベル${state.lv}にアップ！ 能力上昇・HPとMPが全回復！`);
+    for (const s of skillList.filter(s => s.lv === state.lv)) {
+      const owner = GameData.characters.find(character => character.id === GameRules.skillOwnerId(s, GameData));
+      if (owner) log(`${owner.name}は「${s.name}」を覚えた！`);
+    }
+  }
+  $('subactions').innerHTML = '';
+  beep(1);
+}
+function useItem(id) {
+  if (busy || !consumables[id] || state.items[id] <= 0) return;
+  const mp = id === 'ether';
+  if (mp ? state.mp >= maxmp() : state.hp >= maxhp()) {
+    log(`${mp ? 'MP' : 'HP'}は満タンです。`);
+    render();
+    return;
+  }
+  state.items[id]--;
+  if (mp)
+    state.mp = Math.min(
+      maxmp(),
+      state.mp + GameRules.effectAmount(consumables[id].effects[0], { maxHP: maxhp(), maxMP: maxmp() }, CombatRules)
+    );
+  else
+    state.hp = Math.min(
+      maxhp(),
+      state.hp + GameRules.effectAmount(consumables[id].effects[0], { maxHP: maxhp(), maxMP: maxmp() }, CombatRules)
+    );
+  log(`${consumables[id].name}を使った。${mp ? 'MP' : 'HP'}が回復！`);
+  $('subactions').innerHTML = '';
+  if (state.enemy) combat('item');
+  else render();
+}
+function useSkill(id) {
+  const s = skillList.find(x => x.id === id);
+  if (!s || state.lv < s.lv || state.mp < s.cost || busy) return;
+  if (s.effect === 'damage' && !state.enemy) return;
+  if (s.effect === 'heal' && state.hp >= maxhp()) {
+    log('HPは満タンです。');
+    render();
+    return;
+  }
+  state.mp -= s.cost;
+  if (s.effect === 'heal') {
+    const healed = Math.min(maxhp() - state.hp, CombatRules.magicAmount(wisdom(), s));
+    state.hp += healed;
+    log(`${s.name}［${skillTypeLabel(s)}］！ HPが${healed}回復。`);
+  } else {
+    const result = GameRules.skillResult(
+        s,
+        { attack: attack(), defense: state.enemy.def, wisdom: wisdom(), luck: luck() },
+        CombatRules
+      ),
+      dmg = result.amount;
+    state.enemy.hp = Math.max(0, state.enemy.hp - dmg);
+    log(`${s.name}［${skillTypeLabel(s)}］！ ${result.critical ? '会心の一撃！ ' : ''}${dmg}のダメージ！`);
+    hit(dmg);
+  }
+  $('subactions').innerHTML = '';
+  if (state.enemy) return combat('skill');
+  else render();
 }
 
-function modal(title,body){document.querySelector?.('.utility-menu')?.removeAttribute('open');$('closeModal').textContent='閉じる';$('modalContent').innerHTML=`<h2>${title}</h2><p>${body}</p>`;$('modal').showModal()}
-function action(a){if(busy)return;const [key,id]=a.split(':');if(shopOpen&&!['shop','buy','gear-detail','gear-detail-back'].includes(key)&&!(key==='equip'&&gearDetailOrigin==='shop')){shopOpen=false;if(gearDetailOrigin==='shop'){selectedGearId=null;gearDetailOrigin='bag';}}switch(key){case'travel-next':advanceTravel();break;case'travel-return':returnFromTravel();break;case'explore':startBattle();break;case'boss':startBattle(true);break;case'attack':case'guard':case'run':combat(key);break;case'skills':$('subactions').innerHTML=skillList.filter(s=>state.lv>=s.lv).map(s=>btn('［'+skillTypeLabel(s)+'］'+s.name+' · MP '+s.cost,'skill:'+s.id,'',state.mp<s.cost)).join('')||'<p class="muted">Lv.2で最初のスキルを習得します。</p>';break;case'items':$('subactions').innerHTML=Object.entries(consumables).map(([k,v])=>btn(`${v.name} ×${state.items[k]}`,'use:'+k,'',!state.items[k])).join('')+(state.enemy?btn('逃げる','run','',state.enemy.boss):'');break;case'use':useItem(id);break;case'skill':useSkill(id);break;case'move':moveTo(id);break;case'village':case'leave':case'routes':showScreen('map');log(state.journey?'移動中です。冒険タブから道中を進めてください。':'線でつながった移動先を選ぶと、道中へ出発します。');render();break;case'sell':if(!state.village||state.enemy||!materials[id]||!state.materials[id])return;state.materials[id]--;state.gold+=rarities[materials[id].rarity].price;log(`${materials[id].name}を売却した。`);render();break;case'rest':if(!state.village||state.journey||state.enemy)return;if(state.gold<GameData.rules.inn.price){log('宿代が足りない。村人の厚意でHP・MPが半分まで回復。');state.hp=Math.max(state.hp,Math.ceil(maxhp()/2));state.mp=Math.max(state.mp,Math.ceil(maxmp()/2))}else{state.gold-=GameData.rules.inn.price;state.hp=maxhp();state.mp=maxmp();log('宿屋でひと休み。HP・MPが全回復！')}render();break;case'zone':break;case'shop':selectedGearId=null;gearDetailOrigin='bag';openShop();break;case'shop-close':shopOpen=false;selectedGearId=null;gearDetailOrigin='bag';render(false);document.querySelector?.('[data-action="shop"]')?.focus();break;case'gear-detail':if(!gear[id]||!shopOpen&&!state.owned.includes(id)||shopOpen&&!currentShopStock().includes(id))return;selectedGearId=id;gearDetailOrigin=shopOpen?'shop':'bag';render(false);document.querySelector?.('.gear-detail h3')?.focus();break;case'gear-detail-back':{const origin=gearDetailOrigin,previous=selectedGearId;selectedGearId=null;gearDetailOrigin='bag';render(false);document.querySelector?.(origin==='shop'?`#shopItems [data-action="gear-detail:${previous}"]`:`#inventory [data-action="gear-detail:${previous}"]`)?.focus();break}case'buy':{if(!currentShopStock().includes(id)||gear[id]&&!equipmentEligible(id))return;const item=consumables[id]||gear[id];if(!item||state.gold<item.price||gear[id]&&state.owned.includes(id))return;state.gold-=item.price;if(consumables[id])state.items[id]++;else state.owned.push(id);log(`${item.name}を購入した。`);render();break}case'equip':if(state.enemy||!state.owned.includes(id)||!gear[id])return;state[gear[id].type]=id;log(`${gear[id].name}を装備した。`);render();break;case'claim':if(!state.village||state.claimed||state.total<5)return;state.claimed=true;state.gold+=100;state.items.potion+=2;log('村長の依頼達成！ 100 Gと生命の霊薬2個を受け取りました。');render();break}}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!b.disabled)action(b.dataset.action);const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;if(tab!=='bag'&&gearDetailOrigin==='bag')selectedGearId=null;renderInventory()}});$('camp').onclick=()=>action('routes');$('sound').onclick=()=>{sound=!sound;$('sound').textContent='音 '+(sound?'ON':'OFF');beep(1)};$('closeModal').onclick=()=>$('modal').close();$('help').onclick=()=>modal('冒険の手引き','世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はノーマル・レア・エピック・レジェンドの4段階で、レア以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはノーマル・レアのみ、エピック・レジェンドは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。5体討伐で村長から100 Gと霊薬2個の報酬も。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。');$('reset').onclick=()=>{if(busy)return;modal('セーブデータを消去しますか？','レベル・装備・アイテム・素材・冒険の進行をすべて消去し、最初から始めます。この操作は取り消せません。');$('closeModal').textContent='キャンセル';const b=document.createElement('button');b.type='button';b.textContent='OK';b.onclick=resetAdventure;$('modalContent').append(b)};render();
+function modal(title, body) {
+  document.querySelector?.('.utility-menu')?.removeAttribute('open');
+  $('closeModal').textContent = '閉じる';
+  $('modalContent').innerHTML = `<h2>${title}</h2><p>${body}</p>`;
+  $('modal').showModal();
+}
+function action(a) {
+  if (busy) return;
+  const [key, id] = a.split(':');
+  if (
+    shopOpen &&
+    !['shop', 'buy', 'gear-detail', 'gear-detail-back'].includes(key) &&
+    !(key === 'equip' && gearDetailOrigin === 'shop')
+  ) {
+    shopOpen = false;
+    if (gearDetailOrigin === 'shop') {
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+    }
+  }
+  switch (key) {
+    case 'travel-next':
+      advanceTravel();
+      break;
+    case 'travel-return':
+      returnFromTravel();
+      break;
+    case 'explore':
+      startBattle();
+      break;
+    case 'boss':
+      startBattle(true);
+      break;
+    case 'attack':
+    case 'guard':
+    case 'run':
+      combat(key);
+      break;
+    case 'skills':
+      $('subactions').innerHTML =
+        skillList
+          .filter(s => state.lv >= s.lv)
+          .map(s =>
+            btn('［' + skillTypeLabel(s) + '］' + s.name + ' · MP ' + s.cost, 'skill:' + s.id, '', state.mp < s.cost)
+          )
+          .join('') || '<p class="muted">Lv.2で最初のスキルを習得します。</p>';
+      break;
+    case 'items':
+      $('subactions').innerHTML =
+        Object.entries(consumables)
+          .map(([k, v]) => btn(`${v.name} ×${state.items[k]}`, 'use:' + k, '', !state.items[k]))
+          .join('') + (state.enemy ? btn('逃げる', 'run', '', state.enemy.boss) : '');
+      break;
+    case 'use':
+      useItem(id);
+      break;
+    case 'skill':
+      useSkill(id);
+      break;
+    case 'move':
+      moveTo(id);
+      break;
+    case 'village':
+    case 'leave':
+    case 'routes':
+      showScreen('map');
+      log(
+        state.journey
+          ? '移動中です。冒険タブから道中を進めてください。'
+          : '線でつながった移動先を選ぶと、道中へ出発します。'
+      );
+      render();
+      break;
+    case 'sell':
+      if (!state.village || state.enemy || !materials[id] || !state.materials[id]) return;
+      state.materials[id]--;
+      state.gold += rarities[materials[id].rarity].price;
+      log(`${materials[id].name}を売却した。`);
+      render();
+      break;
+    case 'rest':
+      if (!state.village || state.journey || state.enemy) return;
+      if (state.gold < GameData.rules.inn.price) {
+        log('宿代が足りない。村人の厚意でHP・MPが半分まで回復。');
+        state.hp = Math.max(state.hp, Math.ceil(maxhp() / 2));
+        state.mp = Math.max(state.mp, Math.ceil(maxmp() / 2));
+      } else {
+        state.gold -= GameData.rules.inn.price;
+        state.hp = maxhp();
+        state.mp = maxmp();
+        log('宿屋でひと休み。HP・MPが全回復！');
+      }
+      render();
+      break;
+    case 'zone':
+      break;
+    case 'shop':
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+      openShop();
+      break;
+    case 'shop-close':
+      shopOpen = false;
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+      render(false);
+      document.querySelector?.('[data-action="shop"]')?.focus();
+      break;
+    case 'gear-detail':
+      if (!gear[id] || (!shopOpen && !state.owned.includes(id)) || (shopOpen && !currentShopStock().includes(id)))
+        return;
+      selectedGearId = id;
+      gearDetailOrigin = shopOpen ? 'shop' : 'bag';
+      render(false);
+      document.querySelector?.('.gear-detail h3')?.focus();
+      break;
+    case 'gear-detail-back': {
+      const origin = gearDetailOrigin,
+        previous = selectedGearId;
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+      render(false);
+      document
+        .querySelector?.(
+          origin === 'shop'
+            ? `#shopItems [data-action="gear-detail:${previous}"]`
+            : `#inventory [data-action="gear-detail:${previous}"]`
+        )
+        ?.focus();
+      break;
+    }
+    case 'buy': {
+      if (!currentShopStock().includes(id) || (gear[id] && !equipmentEligible(id))) return;
+      const item = consumables[id] || gear[id];
+      if (!item || state.gold < item.price || (gear[id] && state.owned.includes(id))) return;
+      state.gold -= item.price;
+      if (consumables[id]) state.items[id]++;
+      else state.owned.push(id);
+      log(`${item.name}を購入した。`);
+      render();
+      break;
+    }
+    case 'equip':
+      if (state.enemy || !state.owned.includes(id) || !gear[id]) return;
+      state[gear[id].type] = id;
+      log(`${gear[id].name}を装備した。`);
+      render();
+      break;
+    case 'claim':
+      if (!state.village || state.claimed || state.total < 5) return;
+      state.claimed = true;
+      state.gold += 100;
+      state.items.potion += 2;
+      log('村長の依頼達成！ 100 Gと生命の霊薬2個を受け取りました。');
+      render();
+      break;
+  }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-action]');
+  if (b && !b.disabled) action(b.dataset.action);
+  const t = e.target.closest('[data-tab]');
+  if (t) {
+    tab = t.dataset.tab;
+    if (tab !== 'bag' && gearDetailOrigin === 'bag') selectedGearId = null;
+    renderInventory();
+  }
+});
+$('camp').onclick = () => action('routes');
+$('sound').onclick = () => {
+  sound = !sound;
+  $('sound').textContent = '音 ' + (sound ? 'ON' : 'OFF');
+  beep(1);
+};
+$('closeModal').onclick = () => $('modal').close();
+$('help').onclick = () =>
+  modal(
+    '冒険の手引き',
+    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はノーマル・レア・エピック・レジェンドの4段階で、レア以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはノーマル・レアのみ、エピック・レジェンドは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。5体討伐で村長から100 Gと霊薬2個の報酬も。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
+  );
+$('reset').onclick = () => {
+  if (busy) return;
+  modal(
+    'セーブデータを消去しますか？',
+    'レベル・装備・アイテム・素材・冒険の進行をすべて消去し、最初から始めます。この操作は取り消せません。'
+  );
+  $('closeModal').textContent = 'キャンセル';
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = 'OK';
+  b.onclick = resetAdventure;
+  $('modalContent').append(b);
+};
+render();
 
-function townSVG(){return `<svg class="town-art" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g stroke="#344e4b" stroke-width="4">${[90,215,470,600].map((x,i)=>`<path d="M${x} ${250-i%2*25}h90v90h-90z" fill="${['#d0c5a0','#bbbcc5','#b9977e'][state.zone]}"/><path d="M${x-12} ${253-i%2*25}l57-55 57 55z" fill="${['#647e68','#6f7494','#87665e'][state.zone]}"/><path d="M${x+35} 340v-49h24v49" fill="#344b49"/><path d="M${x+10} 283h15v18h-15m48-18h15v18h-15" fill="#f3d591"/>`).join('')}<path d="M340 320V200h57v120" fill="#b6b99e"/><path d="M332 200l37-55 38 55z" fill="#6f817c"/><circle cx="368" cy="228" r="10" fill="#edda9e"/></g><path d="M260 420L349 320h40l128 100" fill="#c2b894" opacity=".5"/></svg>`;}
-
-function resetAdventure(){
-  if(busy)return;
-  try{GameStorage.remove();}
-  catch{modal('消去できませんでした','ブラウザの保存設定を確認して、もう一度お試しください。');return;}
-  state=initial();tab='bag';shopOpen=false;selectedGearId=null;gearDetailOrigin='bag';$('subactions').innerHTML='';$('modal').close();
-  render(false);$('saveStatus').textContent='セーブデータを消去しました';
+function townSVG() {
+  return `<svg class="town-art" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g stroke="#344e4b" stroke-width="4">${[90, 215, 470, 600].map((x, i) => `<path d="M${x} ${250 - (i % 2) * 25}h90v90h-90z" fill="${['#d0c5a0', '#bbbcc5', '#b9977e'][state.zone]}"/><path d="M${x - 12} ${253 - (i % 2) * 25}l57-55 57 55z" fill="${['#647e68', '#6f7494', '#87665e'][state.zone]}"/><path d="M${x + 35} 340v-49h24v49" fill="#344b49"/><path d="M${x + 10} 283h15v18h-15m48-18h15v18h-15" fill="#f3d591"/>`).join('')}<path d="M340 320V200h57v120" fill="#b6b99e"/><path d="M332 200l37-55 38 55z" fill="#6f817c"/><circle cx="368" cy="228" r="10" fill="#edda9e"/></g><path d="M260 420L349 320h40l128 100" fill="#c2b894" opacity=".5"/></svg>`;
 }
 
-function showScreen(name){
-  if(name!=='adventure'&&shopOpen){shopOpen=false;if(gearDetailOrigin==='shop'){selectedGearId=null;gearDetailOrigin='bag';}renderShop();}
-  for(const id of ['adventure','map','bag','party','record']) $('screen-'+id).hidden=id!==name;
-  document.querySelectorAll('[data-screen]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.screen===name)));
+function resetAdventure() {
+  if (busy) return;
+  try {
+    GameStorage.remove();
+  } catch {
+    modal('消去できませんでした', 'ブラウザの保存設定を確認して、もう一度お試しください。');
+    return;
+  }
+  state = initial();
+  tab = 'bag';
+  shopOpen = false;
+  selectedGearId = null;
+  gearDetailOrigin = 'bag';
+  $('subactions').innerHTML = '';
+  $('modal').close();
+  render(false);
+  $('saveStatus').textContent = 'セーブデータを消去しました';
 }
-document.addEventListener('click',event=>{const button=event.target.closest('[data-screen]');if(button)showScreen(button.dataset.screen)});
+
+function showScreen(name) {
+  if (name !== 'adventure' && shopOpen) {
+    shopOpen = false;
+    if (gearDetailOrigin === 'shop') {
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+    }
+    renderShop();
+  }
+  for (const id of ['adventure', 'map', 'bag', 'party', 'record']) $('screen-' + id).hidden = id !== name;
+  document
+    .querySelectorAll('[data-screen]')
+    .forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screen === name)));
+}
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-screen]');
+  if (button) showScreen(button.dataset.screen);
+});

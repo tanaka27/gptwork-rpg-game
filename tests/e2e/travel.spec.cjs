@@ -1,0 +1,46 @@
+const { test, expect } = require('./fixtures.cjs');
+
+const {heroInput:readBattleRound}=require('./party-helpers.cjs');
+
+test('地図から3工程の道中へ出発し、素材・戦闘・保存再開を経て街に到着する', async ({ page }) => {
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.addInitScript(()=>{Math.random=()=>.99;});
+  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+  await page.locator('[data-screen="map"]').click();
+  await page.locator('#regions [data-action="move:home"]').click();
+  await expect(page.locator('#screen-adventure')).toBeVisible();
+  await expect(page.locator('#location')).toHaveText('風そよぐ草原 → はじまりの村');
+  await expect(page.locator('#travelProgress')).toContainText('道中 0 / 3');
+  await expect(page.locator('[data-action="rest"]')).toHaveCount(0);
+  await page.evaluate(()=>{Math.random=()=>.4;});
+  await page.locator('[data-action="travel-next"]').click();
+  await expect(page.locator('#latestLog')).toContainText('素材');
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')));
+  expect(saved.node).toBe('meadow');
+  expect(saved.journey.step).toBe(1);
+  expect(Object.values(saved.materials).reduce((a,b)=>a+b,0)).toBe(1);
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await readBattleRound(page);
+  await expect(page.locator('#travelProgress')).toContainText('道中 1 / 3');
+  await page.locator('[data-screen="map"]').click();
+  await expect(page.locator('#networkMap .travel-road')).toHaveCount(1);
+  await expect(page.locator('#regions button:enabled')).toHaveCount(0);
+  await page.locator('[data-screen="adventure"]').click();
+  await page.locator('[data-action="travel-next"]').click();
+  await expect(page.locator('#latestLog')).toContainText('何事もなく');
+  await page.evaluate(()=>{Math.random=()=>0;});
+  await page.locator('[data-action="travel-next"]').click();
+  await expect(page.locator('.enemy-unit')).toHaveCount(4);
+  await expect(page.locator('#travelProgress')).toContainText('道中 3 / 3');
+  await expect(page.locator('[data-action="travel-next"]')).toHaveCount(0);
+  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await readBattleRound(page);
+  await expect(page.locator('.enemy-unit')).toHaveCount(4);
+  await page.evaluate(()=>{Math.random=()=>0;});
+  await page.locator('[data-action="items"]').click();
+  await page.locator('[data-action="run"]').click();await readBattleRound(page);
+  await expect(page.locator('#location')).toHaveText('はじまりの村');
+  await expect(page.locator('[data-action="rest"]')).toBeVisible();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).journey)).toBeNull();
+  expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight&&document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});

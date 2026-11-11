@@ -13,6 +13,8 @@ npm run dev
 
 `npm run dev` は `server/dev.mjs` を起動し、`127.0.0.1:4173` でフロントとNode/SQLite APIを配信します。通常のSQLiteファイルは `.local/rpg.sqlite` です。必要な場合は `PORT` と `RPG_DB_PATH` でローカル値を指定できます。ゲーム定義や共通ロジックを変更したときは `npm run content:sync` で `dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` を更新します。これらのファイルは生成物です。
 
+手書きのクライアントJS・CSS（`dist/*.js`、`dist/*.css`）と `shared/*.js` はPrettier（設定は `.prettierrc.json`、生成物は `.prettierignore` で除外）で整形します。変更後は `npm run format` を実行し、`shared/` を変えた場合はその後に `npm run content:sync` します。`npm test` は最初に `npm run format:check` で整形済みかを確認します。HTMLテンプレートやSVGを含む文字列は整形されないため、一部は長い行のまま残ります。
+
 ## テストとブラウザ検証
 
 ```sh
@@ -21,7 +23,7 @@ npm run test:e2e
 npm run qa:e2e-fixtures
 ```
 
-`npm test` は定義・ゲームロジック・パーティ操作・SQLite APIのテストを実行します（対象は `package.json` の `test`）。ゲームロジックのテストは `tests/game/` に機能別に分かれており、`node tests/game/travel.test.cjs` のように1件だけ実行できます。操作や画面の回帰は `@playwright/test` の `npm run test:e2e` を使います。この2つは目的が異なり、片方の成功で他方を確認済みと扱いません。テスト用のChromiumは `npx playwright install chromium` で準備します。利用可能なChromiumを使うときは `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` に実行ファイルを指定します。
+`npm test` は整形の確認と、定義・ゲームロジック・パーティ操作・SQLite APIのテストを実行します（対象は `package.json` の `test`。APIテストは失敗時だけ詳細を出すdot形式）。ゲームロジックのテストは `tests/game/` に機能別に分かれており、`node tests/game/travel.test.cjs` のように1件だけ実行できます。操作や画面の回帰は `@playwright/test` の `npm run test:e2e` を使います。E2Eは機能別のspecに分かれ、retryは0（CIでも再試行しない）です。この2つは目的が異なり、片方の成功で他方を確認済みと扱いません。テスト用のChromiumは `npx playwright install chromium` で準備します。利用可能なChromiumを使うときは `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` に実行ファイルを指定します。
 
 ### どのテストを選ぶか
 

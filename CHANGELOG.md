@@ -9,6 +9,13 @@
 
 2026-11-10以前の記録は[2026-11-04〜11-10の変更履歴](docs/history/2026-11-04-to-11-10-changelog.md)（大きいので通常の作業では開かない）にあります。
 
+## 2026-11-11 — 手書きコードの整形とテスト運用の調整
+
+- `dist/` の手書きJS・CSSと `shared/` をPrettierで整形し、`npm run format`・`format:check` を追加（`npm test` の先頭で確認）。E2Eの `game.spec.cjs` を機能別の5ファイルへ分割、retryを0に固定、APIテストをdot形式の出力に変更（[案件計画](docs/history/plans/2026-11-11-code-format-and-test-tuning.md)）。
+- 挙動・保存形式の変更なし。キャッシュ更新用クエリを更新。
+- 検証：JSのminify結果が整形前後で一致、`npm test` 成功、全E2E 78/78（変更前後とも）。未確認：Node 24、iOS/Android実機。
+- 反映：GitHubへpush。Sitesは未反映（Claude Codeの環境にSitesツールがないため）。
+
 ## 2026-11-11 — 文書とエージェント向けルールの整理（コンテキスト削減）
 
 - `CLAUDE.md`（Claude Code専用）を追加。AGENTS.mdの重複を統合し、反映の手順・例外を[反映手順](docs/RELEASE.md)へ、MCPの手順を[PLAYWRIGHT_MCP.md](docs/PLAYWRIGHT_MCP.md)へ分離。反映記録だけのcommitは再デプロイ不要と明記。

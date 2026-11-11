@@ -1,11 +1,13 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+// party.jsの自動進行（scheduleRound）を止めて読み込む。整形の差に左右されないよう正規表現で置換し、見つからなければ失敗させる。
+function withoutScheduledRound(source){const pattern=/function scheduleRound\(\)\s*\{\s*return partyRound\(\);?\s*\}/;if(!pattern.test(source))throw new Error('scheduleRound not found in dist/party.js');return source.replace(pattern,'function scheduleRound(){}');}
 const data=require('../content/game.json'),rules=require('../shared/rules.js'),content=require('../shared/content.js'),saves=require('../shared/save.js');
 function boot(saved){
  const nodes={},storage={};const node=()=>({innerHTML:'',textContent:'',disabled:false,addEventListener(){},focus(){},classList:{add(){},remove(){},toggle(){}},showModal(){},close(){},append(){}});
  const c={document:{getElementById:id=>nodes[id]??=node(),querySelectorAll:()=>[],addEventListener(){},createElement:node},localStorage:{getItem:()=>saved?JSON.stringify(saved):null,setItem:(k,v)=>storage[k]=v,removeItem(){}},console,setTimeout:fn=>fn(),Math:Object.create(Math)};
  c.Math.random=()=>.5;c.GameData=structuredClone(data);vm.createContext(c);
  for(const file of ['shared/content.js','shared/rules.js','dist/storage.js','dist/combat.js','dist/game.js'])vm.runInContext(fs.readFileSync(file,'utf8'),c);
- vm.runInContext(fs.readFileSync('dist/party.js','utf8').replace('function scheduleRound(){return partyRound();}','function scheduleRound(){}'),c);
+ vm.runInContext(withoutScheduledRound(fs.readFileSync('dist/party.js','utf8')),c);
  return {run:s=>vm.runInContext(s,c),storage,nodes};
 }
 const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};

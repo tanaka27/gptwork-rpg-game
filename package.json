@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node tests/content.test.cjs && node tests/game/run.cjs && node tests/party-control.test.cjs && node tests/backend/api.test.mjs",
+    "test": "npm run -s format:check && node tests/content.test.cjs && node tests/game/run.cjs && node tests/party-control.test.cjs && node --disable-warning=ExperimentalWarning --test-reporter=dot tests/backend/api.test.mjs",
     "test:e2e": "playwright test",
     "qa:e2e-fixtures": "node scripts/verify-e2e-fixtures.cjs",
     "test:e2e:ui": "playwright test --ui",
@@ -12,6 +12,8 @@
     "dev": "node server/dev.mjs",
     "content:sync": "node scripts/sync-content.cjs",
     "content:check": "node scripts/check-content.cjs",
+    "format": "prettier --write \"dist/*.{js,css}\" \"shared/*.js\"",
+    "format:check": "prettier --check --log-level=warn \"dist/*.{js,css}\" \"shared/*.js\"",
     "db:generate": "drizzle-kit generate",
     "build": "node scripts/build.cjs",
     "package:site": "npm run build && node scripts/package-site.cjs"
@@ -21,7 +23,8 @@
     "@playwright/mcp": "0.0.85",
     "@playwright/test": "1.64.1",
     "drizzle-kit": "^0.31.11",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "prettier": "3.6.2"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4"

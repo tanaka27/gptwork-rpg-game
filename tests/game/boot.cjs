@@ -1,6 +1,8 @@
 // ゲーム本体（dist/game.js 等）をvm上で起動するテスト用ヘルパー。各 *.test.cjs から使う。
 const fs = require('node:fs');
 const vm = require('node:vm');
+// party.jsの自動進行（scheduleRound）を止めて読み込む。整形の差に左右されないよう正規表現で置換し、見つからなければ失敗させる。
+function withoutScheduledRound(source){const pattern=/function scheduleRound\(\)\s*\{\s*return partyRound\(\);?\s*\}/;if(!pattern.test(source))throw new Error('scheduleRound not found in dist/party.js');return source.replace(pattern,'function scheduleRound(){}');}
 const source = fs.readFileSync('dist/game.js', 'utf8');
 function boot(saved = null, party = false, manualMessages = false) {
   const nodes = {}, storage = {};
@@ -21,7 +23,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   vm.runInContext(`function walkTo(id){if(!moveTo(id))return false;const previous=Math.random;Math.random=()=>.99;try{for(let i=0;i<3;i++)advanceTravel();}finally{Math.random=previous;}return !state.journey;}`,context);
   if(party) {
     // Engine regressions supply a command at the hero's slot; controller timing is tested separately.
-    vm.runInContext(fs.readFileSync('dist/party.js','utf8').replace('function scheduleRound(){return partyRound();}', 'function scheduleRound(){}'),context);
+    vm.runInContext(withoutScheduledRound(fs.readFileSync('dist/party.js','utf8')),context);
     vm.runInContext(`commandResolve=()=>{};partyRound=function(kind,skillId,itemId,skillTargetIndex=selectedEnemy){if(busy||!state.enemy)return;return executePartyRound(i=>Promise.resolve(i===0?{kind,skillId,itemId,skillTargetIndex}:{kind:'attack'}));};submitCommand=(...args)=>partyRound(...args);`,context);
   }
   if(party&&!manualMessages)vm.runInContext('waitForBattleMessage=()=>Promise.resolve()',context);
