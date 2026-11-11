@@ -35,6 +35,7 @@
 | 場所 | 参照する内容 |
 | --- | --- |
 | [CHANGELOG.md](../CHANGELOG.md) | 日付ごとの変更、理由、検証、push/deployの事実 |
+| [2026-11-04〜11-09の変更履歴](history/2026-11-04-to-11-09-changelog.md) | CHANGELOGから移した2026-11-09以前の変更記録 |
 | [docs/plans/](plans/) | 案件単位の設計、親レビュー、承認と実装結果 |
 | [開発文書の整理前資料](history/2026-11-10-development-documents.md) | 2026-11-10より前のHANDOFF/DEVELOPMENT/BACKEND記述の保存版 |
 | [ゲーム文書の整理前資料](history/2026-11-10-game-documents.md) | 2026-11-10より前のゲーム仕様・設計文書の保存版 |
