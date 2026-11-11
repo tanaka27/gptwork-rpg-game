@@ -13,8 +13,8 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
   await page.locator('[data-screen="adventure"]').click();
   for (const [node, zone, stock, equipment] of [
     ['home', 0, ['herb', 'leather'], 'leather'],
-    ['luna', 1, ['herb', 'ether', 'iron', 'leather', 'moonsteel_blade'], 'iron'],
-    ['forge', 2, ['herb', 'ether', 'potion', 'star', 'moon', 'starward_armor'], 'star'],
+    ['luna', 1, ['herb', 'ether', 'iron', 'leather', 'moonsteel_blade'], 'moonsteel_blade'],
+    ['forge', 2, ['herb', 'ether', 'potion', 'star', 'moon', 'starward_armor'], 'starward_armor'],
   ]) {
     await page.evaluate(({ node, zone }) => {
       const save = JSON.parse(localStorage.getItem('starlight-rpg-v1'));
@@ -30,6 +30,8 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
     await expect(page.locator('#shopTitle')).toBeFocused();
     await expect(page.locator('#shopMenu [data-action^="buy:"]')).toHaveCount(stock.length);
     for (const id of stock) await expect(page.locator(`#shopItems [data-action="buy:${id}"]`)).toHaveCount(1);
+    if (['moonsteel_blade', 'starward_armor'].includes(equipment))
+      await expect(page.locator(`#shopItems .item:has([data-action="buy:${equipment}"]) .rarity.uncommon`)).toBeVisible();
     const before = await page.evaluate(() => JSON.parse(localStorage.getItem('starlight-rpg-v1')));
     await page.locator('#shopItems [data-action="buy:herb"]').click();
     const after=await page.evaluate(() => JSON.parse(localStorage.getItem('starlight-rpg-v1')));

@@ -17,7 +17,7 @@ export async function handleApi(request,env){
   if(path==='/api/admin/versions'&&method==='GET')return json({versions:[{id:'bundled',label:'初期定義',status:'published',revision:0},...(await db.prepare('SELECT id,label,status,revision,created_at,updated_at FROM content_versions ORDER BY created_at DESC LIMIT 100').all()).results],activeId:(await active(db)).id});
   if(path==='/api/admin/drafts'&&method==='POST'){
    const input=await body(request);const source=input.sourceId&&input.sourceId!=='bundled'?await db.prepare('SELECT data FROM content_versions WHERE id=?').bind(input.sourceId).first():null;
-   check(!input.sourceId||input.sourceId==='bundled'||source,404,'複製元がありません');const data=source?JSON.parse(source.data):input.data||((await active(db)).data);const errors=validate(data);check(!errors.length,422,errors.join('\n'));
+   check(!input.sourceId||input.sourceId==='bundled'||source,404,'複製元がありません');const rawData=source?JSON.parse(source.data):input.data||((await active(db)).data);const data=source||!input.data?withJobs(rawData,seed):rawData;const errors=validate(data);check(!errors.length,422,errors.join('\n'));
    const id=crypto.randomUUID(),stamp=now(),label=String(input.label||'新しい下書き').trim().slice(0,100);check(label,400,'名前を入力してください');
    await db.prepare('INSERT INTO content_versions (id,label,data,status,revision,created_at,updated_at) VALUES (?,?,?,\'draft\',1,?,?)').bind(id,label,JSON.stringify(data),stamp,stamp).run();return json({id,revision:1},201);
   }
@@ -25,7 +25,7 @@ export async function handleApi(request,env){
   if(versionMatch){
    const [,id,operation]=versionMatch,row=id==='bundled'?{id,label:'初期定義',status:'published',revision:0,data:JSON.stringify(seed)}:await db.prepare('SELECT * FROM content_versions WHERE id=?').bind(id).first();check(row,404,'定義がありません');
    if(method==='GET'&&!operation)return json({...row,data:JSON.parse(row.data)});
-   if(method==='POST'&&operation==='validate')return json({errors:validate(JSON.parse(row.data))});
+   if(method==='POST'&&operation==='validate'){const data=row.status==='published'?withJobs(JSON.parse(row.data),seed):JSON.parse(row.data);return json({errors:validate(data)});}
    if(method==='PUT'&&!operation){const input=await body(request);check(row.status==='draft',409,'公開済みの定義は変更できません。複製して編集してください');const errors=validate(input.data);check(!errors.length,422,errors.join('\n'));check(input.revision===row.revision,409,'別の操作で更新されました。再読み込みしてください');
     const updated=await db.prepare("UPDATE content_versions SET data=?,label=?,revision=revision+1,updated_at=? WHERE id=? AND revision=? AND status='draft'").bind(JSON.stringify(input.data),String(input.label||row.label).slice(0,100),now(),id,input.revision).run();check(updated.meta.changes===1,409,'更新が競合しました');return json({id,revision:row.revision+1});}
    if(method==='POST'&&operation==='publish'){const input=await body(request);check(input.revision===row.revision,409,'別の操作で更新されました');const errors=validate(JSON.parse(row.data));check(!errors.length,422,errors.join('\n'));
@@ -33,7 +33,7 @@ export async function handleApi(request,env){
     if(id==='bundled'){await db.prepare("INSERT INTO app_settings(key,value) VALUES ('active_content','bundled') ON CONFLICT(key) DO UPDATE SET value=excluded.value").run();return json({id,published:true});}
     const published=await db.batch([db.prepare("UPDATE content_versions SET status='published',updated_at=? WHERE id=? AND revision=?").bind(now(),id,input.revision),db.prepare("INSERT INTO app_settings(key,value) SELECT 'active_content',id FROM content_versions WHERE id=? AND revision=? AND status='published' ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(id,input.revision)]);check(published[0].meta.changes===1,409,'公開対象が更新されています');return json({id,published:true});}
   }
-  if(path==='/api/admin/preview'&&method==='GET'){const row=url.searchParams.get('version')==='bundled'?{id:'bundled',data:JSON.stringify(seed)}:await db.prepare('SELECT id,data FROM content_versions WHERE id=?').bind(url.searchParams.get('version')).first();check(row,404,'プレビュー対象がありません');return json({id:row.id,data:JSON.parse(row.data),preview:true});}
+  if(path==='/api/admin/preview'&&method==='GET'){const row=url.searchParams.get('version')==='bundled'?{id:'bundled',data:seed}:await db.prepare('SELECT id,data FROM content_versions WHERE id=?').bind(url.searchParams.get('version')).first();check(row,404,'プレビュー対象がありません');return json({id:row.id,data:withJobs(typeof row.data==='string'?JSON.parse(row.data):row.data,seed),preview:true});}
   if(path==='/api/admin/export'&&method==='GET'){const row=await active(db);return new Response(JSON.stringify(row.data,null,2),{headers:{'content-type':'application/json','content-disposition':'attachment; filename="game-content.json"','cache-control':'no-store'}});}
   if(path==='/api/save'&&method==='GET'){const row=await db.prepare('SELECT state,revision,updated_at FROM saves WHERE owner_id=?').bind(owner).first();return json(row?{state:JSON.parse(row.state),revision:row.revision,updatedAt:row.updated_at}:{state:null,revision:0});}
   if(path==='/api/save'&&method==='PUT'){

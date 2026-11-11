@@ -5,8 +5,9 @@
   if (!preview) {
     try {
       const cached = JSON.parse(localStorage.getItem('starlight-content-cache'));
-      if (cached && !GameContent.validate(cached.data).length) {
-        window.GameData = cached.data;
+      const cachedData = cached && GameContent.withJobs(cached.data, bundledData);
+      if (cachedData && !GameContent.validate(cachedData).length) {
+        window.GameData = cachedData;
         window.GameVersion = cached.id;
       }
     } catch {}
@@ -20,9 +21,11 @@
     );
     if (response.ok) {
       const published = await response.json(),
-        errors = GameContent.validate(published.data);
+        publishedData = GameContent.withJobs(published.data, bundledData),
+        errors = GameContent.validate(publishedData);
       if (errors.length) throw new Error(errors.join('\n'));
-      window.GameData = published.data;
+      published.data = publishedData;
+      window.GameData = publishedData;
       window.GameVersion = published.id;
       window.GameBackend = true;
       if (!preview) {
@@ -41,8 +44,10 @@
   if (!preview) {
     try {
       const saved = JSON.parse(localStorage.getItem('starlight-rpg-v1'));
-      if (saved?.enemy && saved.battleContent && !GameContent.validate(saved.battleContent).length)
-        window.GameData = saved.battleContent;
+      if (saved?.enemy && saved.battleContent) {
+        const battleData = GameContent.withJobs(saved.battleContent, bundledData);
+        if (!GameContent.validate(battleData).length) window.GameData = battleData;
+      }
       if (
         saved?.v === 2 &&
         saved.node &&
@@ -65,7 +70,7 @@
   for (const src of ['storage.js', 'combat.js', 'game.js', 'party.js', 'cloud-save.js'])
     await new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = src + '?v=backend-19';
+      script.src = src + '?v=backend-20';
       script.onload = resolve;
       script.onerror = reject;
       document.body.append(script);

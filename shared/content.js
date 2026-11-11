@@ -6,7 +6,7 @@
   'use strict';
   const categories = ['characters', 'zones', 'monsters', 'items', 'skills', 'nodes', 'rarities', 'materials', 'shops'];
   const effectTypes = ['physicalDamage', 'magicDamage', 'magicHeal', 'restoreHP', 'restoreMP', 'attackBuff'];
-  const equipmentRarities = ['normal', 'rare', 'epic', 'legend'];
+  const equipmentRarities = ['common', 'uncommon', 'rare', 'legendary'];
   const bonusEffectStats = ['maxHP', 'maxMP', 'attack', 'defense', 'wisdom', 'speed', 'luck'];
   const safeId = id => typeof id === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(id);
   function validate(data) {
@@ -164,8 +164,8 @@
         e.itemIds.forEach(id => {
           ref('items', id, 'shops.' + e.id + '.itemIds');
           const item = data.items.find(row => row.id === id);
-          if (item?.category === 'gear' && ['epic', 'legend'].includes(item.rarity ?? 'normal'))
-            add('shops.' + e.id + '.itemIds', 'ショップにはノーマル/レア装備だけを置けます: ' + id);
+          if (item?.category === 'gear' && ['rare', 'legendary'].includes(item.rarity ?? 'common'))
+            add('shops.' + e.id + '.itemIds', 'ショップにはコモン/アンコモン装備だけを置けます: ' + id);
         });
     }
     for (const e of data.skills || []) {
@@ -202,10 +202,10 @@
         if (hasRarity !== hasBonus) add(path, 'rarityとbonusEffectsを両方指定してください');
         if (hasRarity || hasBonus) {
           if (!equipmentRarities.includes(e.rarity))
-            add(path + '.rarity', 'normal/rare/epic/legendのいずれかが必要です');
+            add(path + '.rarity', 'common/uncommon/rare/legendaryのいずれかが必要です');
           if (!Array.isArray(e.bonusEffects)) add(path + '.bonusEffects', '追加効果の配列が必要です');
           else {
-            const required = { normal: 0, rare: 1, epic: 2, legend: 3 }[e.rarity];
+            const required = { common: 0, uncommon: 1, rare: 2, legendary: 3 }[e.rarity];
             if (required !== undefined && e.bonusEffects.length !== required)
               add(path + '.bonusEffects', 'レアリティに合う個数の追加効果が必要です');
             const seen = new Set();
@@ -287,34 +287,59 @@
       if (safeId(candidate) && !used.has(candidate)) return candidate;
     }
   }
+  function normalizeEquipmentRarities(data) {
+    if (!data || typeof data !== 'object') return data;
+    const result = JSON.parse(JSON.stringify(data));
+    for (const item of Array.isArray(result.items) ? result.items : []) {
+      if (item?.category !== 'gear') continue;
+      if (!Object.hasOwn(item, 'rarity') && !Object.hasOwn(item, 'bonusEffects')) {
+        item.rarity = 'common';
+        item.bonusEffects = [];
+      } else if (item.rarity === 'normal') item.rarity = 'common';
+      else if (item.rarity === 'epic') item.rarity = 'rare';
+      else if (item.rarity === 'legend') item.rarity = 'legendary';
+      else if (item.rarity === 'rare' && Array.isArray(item.bonusEffects) && item.bonusEffects.length === 1)
+        item.rarity = 'uncommon';
+    }
+    return result;
+  }
   function withJobs(data, defaults = data) {
-    const errors = validate(data);
-    if (errors.length) throw new Error(errors.join('\n'));
-    const defaultErrors = validate(defaults);
-    if (defaultErrors.length) throw new Error(defaultErrors.join('\n'));
-    const result = JSON.parse(JSON.stringify(data)),
-      defaultCharacters = new Map(defaults.characters.map(character => [character.id, character])),
-      party = new Set(result.rules.party);
     const legacyGearIds = new Set(
-      result.items
+      (Array.isArray(data?.items) ? data.items : [])
         .filter(
-          item => item.category === 'gear' && !Object.hasOwn(item, 'rarity') && !Object.hasOwn(item, 'bonusEffects')
+          item => item?.category === 'gear' && !Object.hasOwn(item, 'rarity') && !Object.hasOwn(item, 'bonusEffects')
         )
         .map(item => item.id)
     );
     const oldEquipment =
       legacyGearIds.size > 0 &&
-      result.items.filter(item => item.category === 'gear').every(item => legacyGearIds.has(item.id)) &&
-      result.zones.every(zone => zone.equipmentDropIds === undefined);
+      Array.isArray(data?.items) &&
+      Array.isArray(data?.zones) &&
+      data.items.filter(item => item.category === 'gear').every(item => legacyGearIds.has(item.id)) &&
+      data.zones.every(zone => zone.equipmentDropIds === undefined);
+    const result = normalizeEquipmentRarities(data),
+      errors = validate(result);
+    if (errors.length) throw new Error(errors.join('\n'));
+    let normalizedDefaults = defaults,
+      defaultErrors = validate(normalizedDefaults);
+    if (defaultErrors.length) {
+      normalizedDefaults = normalizeEquipmentRarities(defaults);
+      defaultErrors = validate(normalizedDefaults);
+    }
+    if (defaultErrors.length) throw new Error(defaultErrors.join('\n'));
+    const defaultCharacters = new Map(normalizedDefaults.characters.map(character => [character.id, character])),
+      party = new Set(result.rules.party);
     const builtinIds = new Set(['moonsteel_blade', 'starward_armor', 'eclipse_robe', 'starlight_blade']),
       usedItemIds = new Set(result.items.map(item => item.id)),
       builtinItemIds = new Map();
     for (const item of result.items.filter(row => row.category === 'gear'))
       if (!Object.hasOwn(item, 'rarity') && !Object.hasOwn(item, 'bonusEffects')) {
-        item.rarity = 'normal';
+        item.rarity = 'common';
         item.bonusEffects = [];
       }
-    for (const fallback of defaults.items.filter(item => item.category === 'gear' && builtinIds.has(item.id))) {
+    for (const fallback of normalizedDefaults.items.filter(
+      item => item.category === 'gear' && builtinIds.has(item.id)
+    )) {
       const existing = result.items.find(item => item.id === fallback.id);
       let id = fallback.id;
       const carried = result.items.find(
@@ -348,7 +373,7 @@
     }
     for (const zone of result.zones) {
       if (zone.equipmentDropIds !== undefined) continue;
-      const standard = defaults.zones.find(row => row.id === zone.id);
+      const standard = normalizedDefaults.zones.find(row => row.id === zone.id);
       if (!standard?.equipmentDropIds) continue;
       const candidates = [
         ...(zone.bonusItemId ? [zone.bonusItemId] : []),
@@ -360,13 +385,16 @@
       if (validCandidates.length) zone.equipmentDropIds = validCandidates;
     }
     if (oldEquipment) {
-      const shopDefaults = new Map(defaults.shops.map(shop => [shop.nodeId, shop]));
+      const shopDefaults = new Map(normalizedDefaults.shops.map(shop => [shop.nodeId, shop]));
       for (const shop of result.shops) {
         if (!['luna', 'forge'].includes(shop.nodeId)) continue;
         const standard = shopDefaults.get(shop.nodeId);
         if (!standard) continue;
         const additions = standard.itemIds
-          .filter(id => builtinIds.has(id) && ['rare'].includes(defaults.items.find(item => item.id === id)?.rarity))
+          .filter(
+            id =>
+              builtinIds.has(id) && ['uncommon'].includes(normalizedDefaults.items.find(item => item.id === id)?.rarity)
+          )
           .map(id => builtinItemIds.get(id) || id);
         shop.itemIds = [...new Set([...shop.itemIds, ...additions])];
       }
@@ -377,7 +405,9 @@
       const standard = defaultCharacters.get(character.id);
       character.job = standard?.job || '冒険者';
       if (!standard?.job || !party.has(character.id)) continue;
-      for (const fallback of defaults.skills.filter(skill => owner(skill, defaults.rules) === character.id)) {
+      for (const fallback of normalizedDefaults.skills.filter(
+        skill => owner(skill, normalizedDefaults.rules) === character.id
+      )) {
         let id = fallback.id,
           existing = result.skills.find(skill => skill.id === id);
         if (existing && owner(existing, result.rules) === character.id) continue;
@@ -393,6 +423,7 @@
     return result;
   }
   function legacy(data) {
+    data = normalizeEquipmentRarities(data);
     const errors = validate(data);
     if (errors.length) throw new Error(errors.join('\n'));
     const dict = rows => Object.fromEntries(rows.map(e => [e.id, { ...e }]));

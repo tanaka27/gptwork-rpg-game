@@ -72,8 +72,11 @@
       errors.push('敵の状態が不正です');
     let buffContent = content;
     if (state.enemy && state.battleContent) {
-      if (contentRules.validate(state.battleContent).length) errors.push('戦闘中の定義が不正です');
-      else buffContent = state.battleContent;
+      try {
+        buffContent = contentRules.withJobs(state.battleContent, content);
+      } catch {
+        errors.push('戦闘中の定義が不正です');
+      }
     }
     if (Array.isArray(state.companions)) {
       const seen = new Set();

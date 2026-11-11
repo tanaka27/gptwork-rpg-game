@@ -77,6 +77,7 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
   const save=JSON.parse(localStorage.getItem('starlight-rpg-v1')),legacy=structuredClone(GameData);
   legacy.skills=legacy.skills.filter(skill=>['flame','heal','slash','nova','inspire'].includes(skill.id));
   legacy.characters.forEach(character=>delete character.job);legacy.skills.forEach(skill=>delete skill.characterId);
+  const oldRarity={common:'normal',uncommon:'rare',rare:'epic',legendary:'legend'};legacy.items.filter(item=>item.category==='gear').forEach(item=>item.rarity=oldRarity[item.rarity]);
   Object.assign(save,{lv:3,xp:17,total:6,gold:77,turn:2,enemy:{name:'継続中の敵',hp:1000,max:1000,atk:0,def:0,speed:0},battleContent:legacy,buffs:[{characterId:'astel',skillId:'inspire',remainingTurns:2,appliedTurn:1}]});
   save.companions=[{characterId:'rina',hp:64,mp:24},{characterId:'gald',hp:100,mp:12},{characterId:'noel',hp:68,mp:32}];
   localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
@@ -86,6 +87,7 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
  expect(await page.evaluate(()=>[GameData.characters.map(c=>c.job),state.battleContent.characters.map(c=>c.job),state.battleContent.skills.length])).toEqual([
   ['星剣士','弓使い','戦士','僧侶'],['星剣士','弓使い','戦士','僧侶'],11,
  ]);
+ expect(await page.evaluate(()=>state.battleContent.items.filter(item=>item.category==='gear').map(item=>item.rarity))).toEqual(['common','common','common','common','common','common','uncommon','uncommon','rare','legendary']);
  await waitForActor(page,'rina');await page.locator('[data-action="skills"]').click();
  await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();
  await expect(page.locator('[data-action="skill:flame"]')).toHaveCount(0);

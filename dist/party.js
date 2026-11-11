@@ -853,7 +853,7 @@ renderInventory = function () {
               equipped = member[a.type] === id;
             return itemRow(
               a,
-              `${gearRarityLabels[equipmentRarity(a)]} · ${a.type === 'weapon' ? '攻撃' : '守備'} +${a.value}`,
+              `<span class="rarity ${equipmentRarity(a)}">${gearRarityLabels[equipmentRarity(a)]}</span> · ${a.type === 'weapon' ? '攻撃' : '守備'} +${a.value}`,
               btn(equipped ? '装備中' : '装備', 'equip:' + id, '', equipped || !!state.enemy || busy),
               btn('詳細', 'gear-detail:' + id)
             );

@@ -10,7 +10,7 @@ const skillDescription = s =>
     ? '。うんのよさが高いほど会心の一撃が出やすく、相手の守備力を無視します。'
     : '');
 const skillTypeLabel = s => (s.effect === 'buff' ? '補助特技' : s.type === 'physical' ? '物理' : '魔法');
-const gearRarityLabels = { normal: 'ノーマル', rare: 'レア', epic: 'エピック', legend: 'レジェンド' },
+const gearRarityLabels = { common: 'コモン', uncommon: 'アンコモン', rare: 'レア', legendary: 'レジェンダリー' },
   gearStatLabels = {
     maxHP: '最大HP',
     maxMP: '最大MP',
@@ -22,8 +22,8 @@ const gearRarityLabels = { normal: 'ノーマル', rare: 'レア', epic: 'エピ
   };
 let selectedGearId = null,
   gearDetailOrigin = 'bag';
-const equipmentRarity = item => item?.rarity || 'normal';
-const equipmentEligible = id => !!gear[id] && ['normal', 'rare'].includes(equipmentRarity(gear[id]));
+const equipmentRarity = item => item?.rarity || 'common';
+const equipmentEligible = id => !!gear[id] && ['common', 'uncommon'].includes(equipmentRarity(gear[id]));
 function currentShopStock() {
   return state.village && !state.journey && !state.enemy
     ? (shopStock[state.node] || []).filter(id => !gear[id] || equipmentEligible(id))
@@ -268,8 +268,13 @@ const maxhp = () => GameRules.stats(state, GameData).maxHP,
   threshold = () => GameRules.stats(state, GameData).threshold;
 if (state.enemy && !Number.isFinite(state.enemy.wis))
   state.enemy.wis = state.enemy.boss ? [14, 24, 38][state.zone] : 8 + state.zone * 10;
-if (state.enemy && state.battleContent && !GameContent.validate(state.battleContent).length)
-  state.battleContent = JSON.parse(JSON.stringify(GameData));
+if (state.enemy && state.battleContent) {
+  try {
+    state.battleContent = GameContent.withJobs(state.battleContent, GameData);
+  } catch {
+    state.battleContent = JSON.parse(JSON.stringify(GameData));
+  }
+}
 GameRules.normalizeBuffs(state, GameData);
 function save() {
   try {
@@ -469,7 +474,7 @@ function renderShop() {
         owned = !!gear[id] && state.owned.includes(id);
       const description = consumables[id]
         ? item.desc
-        : `${gearRarityLabels[equipmentRarity(item)]} · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
+        : `<span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
       return itemRow(
         item,
         description,
@@ -864,7 +869,7 @@ $('closeModal').onclick = () => $('modal').close();
 $('help').onclick = () =>
   modal(
     '冒険の手引き',
-    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はノーマル・レア・エピック・レジェンドの4段階で、レア以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはノーマル・レアのみ、エピック・レジェンドは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。5体討伐で村長から100 Gと霊薬2個の報酬も。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
+    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・レジェンダリーの4段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・レジェンダリーは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。5体討伐で村長から100 Gと霊薬2個の報酬も。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
   );
 $('reset').onclick = () => {
   if (busy) return;

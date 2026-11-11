@@ -1978,15 +1978,6 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 
 /* Equipment rarity and inspectable stat details. */
-.rarity.normal {
-  color: #b8c8be;
-}
-.rarity.epic {
-  color: #df8ce7;
-}
-.rarity.legend {
-  color: #f0b85d;
-}
 .item-actions {
   display: flex;
   flex-shrink: 0;

@@ -54,8 +54,9 @@ test('legacy published equipment stays raw while runtime and cloud saves receive
   const created=await app.call('/api/admin/drafts','POST',{data:legacy,label:'old equipment fixture'});assert.equal(created.status,201);
   assert.equal((await app.call('/api/admin/versions/'+created.body.id+'/publish','POST',{revision:1})).status,200);
   const runtime=(await app.call('/api/content')).body.data;
-  assert.ok(runtime.items.some(item=>item.id==='moonsteel_blade'&&item.rarity==='rare'));
-  assert.ok(runtime.items.some(item=>item.id==='eclipse_robe'&&item.rarity==='epic'));
+  assert.ok(runtime.items.some(item=>item.id==='moonsteel_blade'&&item.rarity==='uncommon'));
+  assert.ok(runtime.items.some(item=>item.id==='eclipse_robe'&&item.rarity==='rare'));
+  assert.ok(runtime.items.some(item=>item.id==='starlight_blade'&&item.rarity==='legendary'));
   assert.ok(runtime.shops.find(shop=>shop.nodeId==='luna').itemIds.includes('moonsteel_blade'));
   assert.ok(runtime.zones.find(zone=>zone.id==='volcano').equipmentDropIds.includes('starlight_blade'));
   const raw=(await app.call('/api/admin/versions/'+created.body.id)).body.data,exported=await app.call('/api/admin/export');
@@ -67,5 +68,23 @@ test('legacy published equipment stays raw while runtime and cloud saves receive
   assert.equal((await app.call('/api/save','PUT',{state:save,revision:0})).status,200,'runtime-supplemented IDs pass cloud save validation');
   const second=await app.call('/api/admin/drafts','POST',{data:legacy,label:'old compatibility publish'});
   assert.equal((await app.call('/api/admin/versions/'+second.body.id+'/publish','POST',{revision:1})).status,200,'republishing the old raw shape validates against compatibility data');
+ }finally{app.DB.close();}
+});
+
+test('published old rarity IDs stay raw while runtime, preview, draft copies, and snapshots normalize',async()=>{
+ const app=setup();try{
+  const legacy=structuredClone(seed),oldIds={common:'normal',uncommon:'rare',rare:'epic',legendary:'legend'},id='old-rarity-published',stamp=new Date().toISOString();
+  for(const item of legacy.items.filter(item=>item.category==='gear'))item.rarity=oldIds[item.rarity];
+  await app.DB.prepare('INSERT INTO content_versions (id,label,data,status,revision,created_at,updated_at) VALUES (?,?,?,?,?,?,?)').bind(id,'old rarity',JSON.stringify(legacy),'published',1,stamp,stamp).run();
+  await app.DB.prepare("INSERT INTO app_settings(key,value) VALUES ('active_content',?)").bind(id).run();
+  const runtime=(await app.call('/api/content')).body.data;
+  assert.deepEqual(runtime.items.filter(item=>item.category==='gear').map(item=>item.rarity),seed.items.filter(item=>item.category==='gear').map(item=>item.rarity));
+  assert.deepEqual((await app.call('/api/admin/versions/'+id+'/validate','POST',{})).body.errors,[],'published legacy definition validates through its compatibility clone');
+  const preview=(await app.call('/api/admin/preview?version='+id)).body.data;assert.deepEqual(preview.items.filter(item=>item.category==='gear').map(item=>item.rarity),seed.items.filter(item=>item.category==='gear').map(item=>item.rarity));
+  const copied=await app.call('/api/admin/drafts','POST',{sourceId:id,label:'normalized legacy copy'});assert.equal(copied.status,201);const draft=(await app.call('/api/admin/versions/'+copied.body.id)).body.data;assert.deepEqual(draft.items.filter(item=>item.category==='gear').map(item=>item.rarity),seed.items.filter(item=>item.category==='gear').map(item=>item.rarity),'new draft stores canonical rarity IDs');
+  const raw=(await app.call('/api/admin/versions/'+id)).body.data,exported=await app.call('/api/admin/export');assert.deepEqual(raw,legacy,'version API does not mutate the published raw row');assert.deepEqual(exported.body,legacy,'export continues to return the raw published definition');
+  const snapshot={...fixture(),enemy:{name:'旧レアリティの戦闘',hp:100,max:100,atk:0,def:0,boss:false},battleContent:legacy};
+  const saved=await app.call('/api/save','PUT',{state:snapshot,revision:0});assert.equal(saved.status,200,'v:2 save accepts an old battle snapshot through a compatibility clone');assert.equal((await app.call('/api/save')).body.state.battleContent.items.find(item=>item.id==='moonsteel_blade').rarity,'rare','snapshot validation never rewrites the incoming save');
+  const invalid=structuredClone(seed);invalid.items.find(item=>item.id==='eclipse_robe').bonusEffects.pop();assert.equal((await app.call('/api/admin/drafts','POST',{data:invalid,label:'strict new rarity'})).status,422,'new rarity definitions remain strictly validated');
  }finally{app.DB.close();}
 });

@@ -266,7 +266,7 @@ const {boot} = require('./boot.cjs');
   const bossEther=equipmentDrops.run('state.items.ether');assert.equal(equipmentDrops.run('rollEquipmentDrop({boss:true},()=>0)'),null);assert.equal(equipmentDrops.run('state.items.ether'),bossEther,'boss battles do not use the normal enemy equipment roll');
   const winningDrop=boot();winningDrop.run("state.zone=2;state.enemy={name:'装備試験',hp:0,max:1,xp:0,gold:0,boss:false};let drops=[.99,.99,.99,.99,.99,0,.99];Math.random=()=>drops.shift()??.99;win()");assert.ok(winningDrop.run("state.owned.includes('starlight_blade')"),'normal-enemy win grants a configured legendary candidate');
   console.log('PASS: luck growth, legacy defaults, critical boundary and cap, defense bypass, party MP and critical log, magic exclusion');
-  console.log('PASS: rare/epic/legend equipment stats, individual equipment effects, max HP preservation, equipment drop boundaries and duplicate conversion');
+  console.log('PASS: common/uncommon/rare/legendary equipment stats, individual effects, max HP preservation, drop boundaries and duplicate conversion');
   console.log('PASS: physical/magic types, wisdom growth, nonnegative damage and zero minimum, monotonic attack/defense, DQ-style base, normal attacks without critical hits, glancing hits, shared player/monster physical combat, skill power and MP, magic target-stat independence, wisdom-scaled attacks/healing and old-save compatibility');
   console.log('PASS: graph adjacency, battle movement lock, all progression gates and bosses, 3 towns, 12 monsters, shop, equipment, recovery, leveling, rarity probability boundaries, material sales, legacy save migration, persistence and confirmed save reset');
 })().catch(error=>{console.error(error);process.exit(1)});

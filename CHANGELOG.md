@@ -9,6 +9,12 @@
 
 2026-11-10以前の記録は[2026-11-04〜11-10の変更履歴](docs/history/2026-11-04-to-11-10-changelog.md)（大きいので通常の作業では開かない）にあります。
 
+## 2026-11-11 — 装備と素材のレアリティ統一
+
+- 装備を素材と共通の4段階・色へ揃え、既存の下位2段階の販売を維持。旧公開定義・戦闘snapshotは読み込みclone上で正規化し、raw定義とセーブ形式を維持（[設計・検証記録](docs/plans/2026-11-11-equipment-material-rarity.md)）。
+- 検証：`npm test`、全E2E 78/78（workers=1）、`npm run package:site` 成功。PC/スマホ幅の画面表示とブラウザー例外なしを確認。
+- 反映：親レビュー待ち。push・Sitesデプロイは未実施。
+
 ## 2026-11-11 — GitHub最新版のSites反映
 
 - GitHub `bac4772` の未反映分を既存Siteへ同期し、Sitesソース `cddb24a51e1c25a7cedce6a3f9b0e8a7827e057e` をデプロイ。所有者限定・Site ID・D1バインディングを維持。
