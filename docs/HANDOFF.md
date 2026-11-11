@@ -4,7 +4,7 @@
 
 ## 現行構成
 
-- フロントは `dist/` のHTML/CSS/JavaScript/SVGです。`dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は生成物で、初期定義は `content/game.json`、共通処理は `shared/` にあります。
+- フロントは `dist/` のHTML/CSS/JavaScriptです（敵や地図のSVGは `dist/game.js` 内で生成）。`dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は生成物で、初期定義は `content/game.json`、共通処理は `shared/` にあります。
 - `dist/bootstrap.js` が公開・同梱・キャッシュ・戦闘中の定義を選び、`storage.js`、`combat.js`、`game.js`、`party.js`、`cloud-save.js` を起動します。
 - `server/api.mjs` はNode開発環境と本番Workerで共有するAPIです。開発環境はNode.js 24とSQLite、本番はWorker ESMとD1を使います。詳細は[BACKEND.md](BACKEND.md)を正本とします。
 - 初期定義は同梱JSON、公開中の定義はD1の公開版が正本です。編集・プレビューは管理画面/APIを通します。同期や公開版の詳細は[バックエンド仕様](BACKEND.md)を参照してください。
@@ -24,11 +24,8 @@
 
 ## 保存と互換性
 
-- ブラウザ保存キーは `starlight-rpg-v1`、現在の形式は `v:2` です。キー名とデータ形式を混同せず、既存進行を維持してください。
-- 現在の保存形式は `v:2` です。既存の `v:1` 保存を `v:2` へ移行し、`v:2` の進行も維持します。保存構造を変更するときは互換条件を現行要件として保ち、移行と既存データの保持を検証してください。
-- 装備のレアリティ・追加効果は固定装備定義から計算し、セーブには従来どおり装備IDだけを保存します。旧公開定義の標準装備は実行時にノーマルとして補完し、公開DB行自体は書き換えません。
-- ブラウザの保存はオリジン単位です。クラウドへの保存・復元は利用者の明示操作で行い、自動同期はありません。
-- 公開定義はゲーム起動時に選ばれ、戦闘中は開始時の定義snapshotを使います。公開版やセーブとの関係は[BACKEND.md](BACKEND.md)を正本とします。
+- 保存キー `starlight-rpg-v1`・形式 `v:2`、旧 `v:1` からの移行、装備・`battleContent` の互換条件は[BACKEND.md](BACKEND.md#セーブと互換性)が正本です。保存構造を変えるときは、移行と既存データの保持を検証してください。
+- ブラウザの保存はオリジン単位です。クラウドへの保存・復元は利用者の明示操作だけで行い、自動同期はありません。
 
 ## 既知の制約
 

@@ -8,9 +8,7 @@
 
 ## 入口と読み順
 
-1. [README.md](README.md)でリポジトリの入口を確認します。
-2. [文書索引](docs/README.md)で、作業に必要な正本と読み順を選びます。
-3. 作業範囲に応じて、次の正本だけを読みます。
+作業範囲に応じて、次の正本だけを読みます。他の文書（反映手順、MCP手順など）は[文書索引](docs/README.md)にあります。
 
 | 作業 | 読む文書 |
 | --- | --- |
@@ -21,7 +19,7 @@
 | 画面・画像 | [DESIGN.md](docs/DESIGN.md)、[CHARACTER_ART.md](docs/CHARACTER_ART.md) |
 | 設計書の書式 | [IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md) |
 
-CHANGELOG、`docs/plans/`、`docs/history/`は、必要な項目・期間だけを参照します。historyは整理前の資料で、現行仕様の正本ではないため、通常の作業では開きません。生成物と `docs/history/` は `.rgignore` で検索対象から外しています（必要なら `rg --no-ignore`）。
+CHANGELOGと `docs/plans/`（進行中の案件）は必要な項目だけを参照します。`docs/history/` は保存資料なので通常の作業では開きません。生成物、`docs/history/`、`package-lock.json` は `.rgignore` でripgrepの検索から外しています（必要なら `rg --no-ignore`。`git grep` や `grep -r` には効きません）。
 
 ## 文書の更新ルール
 
@@ -40,15 +38,15 @@ CHANGELOG、`docs/plans/`、`docs/history/`は、必要な項目・期間だけ�
 
 ## 実装時の約束
 
-- **設計書を残します。** 機能追加・修正・リファクタリングなど実装を伴う作業では、`docs/plans/YYYY-MM-DD-短い識別名.md` に設計と検証結果を残します。書式は[IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md)のテンプレートを使います。テンプレートの「親エージェントのレビュー・承認記録」欄はCodex運用向けです。Claude Codeでは、その欄にユーザーと合意した方針を記録します。規模が大きい変更や仕様判断を含む変更は、実装前にユーザーと方針を合わせます。
+- **設計書を残します。** 機能追加・修正・リファクタリングなど実装を伴う作業では、`docs/plans/YYYY-MM-DD-短い識別名.md` に設計と検証結果を残します。書式は[IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md)のテンプレートを使います。テンプレートの「親エージェントのレビュー・承認記録」欄はCodex運用向けです。Claude Codeでは、その欄にユーザーと合意した方針を記録します。規模が大きい変更や仕様判断を含む変更は、実装前にユーザーと方針を合わせます。反映が完了した設計書は `docs/history/plans/` へ移します。
 - **動作や画面を変えたら、Playwrightで実ブラウザ検証をします。** 変更対象の回帰E2Eを、PC幅とスマホ相当幅の両方で実行します。操作後の状態、表示、console/pageerrorを確認し、表示の変更はスクリーンショットも目視します。テストの選び方、E2E project、失敗の診断は[DEVELOPMENT.md](docs/DEVELOPMENT.md)が正本です。
-- 失敗したテストは原因を直して再実行します。skip、期待値の弱化、無条件retryで通過扱いにしません。ブラウザ確認とロジックテストを区別し、未確認のものを確認済みと報告しません。PC上のスマホ幅の検証と、iOS/Android実機の検証も区別して書きます。
+- 失敗したテストは原因を直して再実行します。skip、期待値の弱化、無条件retryで通過扱いにしません。ブラウザ確認とロジックテストを区別し、未確認のものを確認済みと報告しません。PC上のスマホ幅の検証と、iOS/Android実機の検証も区別して書きます。ブラウザ操作ツールがなくてもPlaywrightの実行環境を確認して必要な確認を省略せず、実行できない場合は阻害要因と未検証範囲を報告します。
 - **生成物を直接編集しません。** `dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は生成物です。初期定義は `content/game.json`、共通処理は `shared/` を編集し、`npm run content:sync` で同期します。詳しくは[HANDOFF.md](docs/HANDOFF.md)を参照してください。
 - **既存セーブを壊しません。** 保存キー `starlight-rpg-v1` と現在の形式 `v:2` を維持します。保存構造を変える場合は、移行処理と検証を含めます。ユーザーが明示的にリセットした場合を除き、進行を消しません。詳しくは[BACKEND.md](docs/BACKEND.md)を参照してください。
-- **定義とDBの不変条件を守ります。** コンテンツのIDは名前と独立した固定IDです。公開済み定義と適用済みDBマイグレーションは変更せず、複製するか新しいマイグレーションを追加します。移動・購入などの条件は、ボタンの無効化だけでなく処理側でも検証します。
+- **定義とDBの不変条件を守ります。** コンテンツのIDは名前と独立した固定IDです。参照・双方向接続・効果・数値は共通バリデーターで検証し、不正な定義は保存・公開しません。公開済み定義と適用済みDBマイグレーションは変更せず、複製するか新しいマイグレーションを追加します。移動・購入などの条件は、ボタンの無効化だけでなく処理側でも検証します。
 - 戦闘計算の仕様は[GAME_SPEC.md](docs/GAME_SPEC.md)が正本です。物理ダメージの計算は `CombatRules.physicalDamage` にまとめます。
 - 表示や挙動を変えたら、ゲーム内の日本語の説明、スキル表示、ヘルプ、README、関連テストとの整合を確認します。配信ファイルを変えた場合は、`dist/index.html` などのキャッシュ更新用クエリ（`?v=`）も更新します。
 
 ## Sitesへの公開
 
-Sitesへのデプロイは、Codexのハーネスに付属するSitesのskill・ツールで行う前提です。Claude Codeの環境にはこれらがないため、Claude Codeではデプロイを行いません。完了報告では、GitHubへのpushまで完了していること、Sitesへは未反映であることを明記します。公開に必要なビルドとパッケージのコマンドは[DEVELOPMENT.md](docs/DEVELOPMENT.md)を参照してください。
+Sitesへのデプロイは、Codexのハーネスに付属するSitesのskill・ツールで行う前提です。Claude Codeの環境にはこれらがないため、Claude Codeではデプロイを行いません。完了報告では、GitHubへのpushまで完了していること、Sitesへは未反映であることを明記します。公開の手順とビルド・パッケージのコマンドは[反映手順](docs/RELEASE.md)を参照してください。

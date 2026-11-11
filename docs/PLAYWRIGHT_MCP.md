@@ -4,7 +4,7 @@ Playwright MCPで実ブラウザを探索するときだけ読む手順です。
 
 ## 使う場面
 
-仕様のあいまいな導線、アクセシビリティsnapshot、semanticでない操作対象（accessibility treeに出ない当たり判定）を、継続セッションで探索するときに使います。導入の判断根拠は[案件計画](plans/2026-11-11-testing-strategy.md)を参照してください。
+仕様のあいまいな導線、アクセシビリティsnapshot、semanticでない操作対象（accessibility treeに出ない当たり判定）を、継続セッションで探索するときに使います。
 
 `@playwright/mcp` と `@modelcontextprotocol/sdk` はlockfileでバージョンを固定しています。MCP packageが依存するPlaywrightは、回帰E2Eの `@playwright/test` とは別のバージョンなので、Test runner APIが同一とは扱いません。Chromium実行ファイルを指定した場合は、実際に使ったpathとversionを記録します。
 
