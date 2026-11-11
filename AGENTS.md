@@ -1,6 +1,6 @@
 # 開発エージェント向けルール
 
-このリポジトリは、日本語のブラウザRPG「星灯りの旅団」です。作業前に[文書索引](docs/README.md)で必要な正本と読み順を選び、作業に必要な正本・節だけを読みます。CHANGELOG、plans、historyも必要な項目・期間だけを参照します。
+このリポジトリは、日本語のブラウザRPG「星灯りの旅団」です。作業前に[文書索引](docs/README.md)で必要な正本と読み順を選び、作業に必要な正本・節だけを読みます。CHANGELOGとplansも必要な項目・期間だけを参照します。`docs/history/` は整理前の保存資料なので、通常の作業では開きません。生成物（`dist/data.generated.js`、`dist/data/`、`dist/shared/`）と `docs/history/` は `.rgignore` で検索対象から外しています。
 
 ## 文書
 
@@ -32,7 +32,7 @@
 
 ## 実装時の約束
 
-- 動作や画面を変えたら、Playwrightで実ブラウザを起動して実操作検証を行う。変更対象の回帰E2EをPC幅とスマホ相当幅の両方で実行し、操作後の状態、表示、console/pageerrorを確認する。表示の変更はスクリーンショットも目視する。テスト層の選び方、E2E project、Playwright MCPの運用、失敗診断は[開発・検証手順](docs/DEVELOPMENT.md)が正本。MCPは探索用で、回帰E2Eの代わりにしない。
+- 動作や画面を変えたら、Playwrightで実ブラウザを起動して実操作検証を行う。変更対象の回帰E2EをPC幅とスマホ相当幅の両方で実行し、操作後の状態、表示、console/pageerrorを確認する。表示の変更はスクリーンショットも目視する。テスト層の選び方、E2E project、失敗診断は[開発・検証手順](docs/DEVELOPMENT.md)、Playwright MCPの運用は[MCP手順](docs/PLAYWRIGHT_MCP.md)が正本。MCPは探索用で、回帰E2Eの代わりにしない。
 - 関係する構文チェック・テストを実行し、失敗は原因を直して再実行する。skip、期待の弱化、無条件retryで緑化しない。ブラウザ確認とロジックテスト、PC上のスマホ幅とiOS/Android実機を区別し、未確認のものを確認済みと報告しない。ブラウザ操作ツールがなくてもPlaywright実行環境を確認して必要な確認を省略せず、実行できない場合は阻害要因と未検証範囲を報告する。
 - 構成と生成物は[HANDOFF.md](docs/HANDOFF.md)が正本。`dist/data.generated.js`・`dist/data/game.json`・`dist/shared/` は生成物で直接編集せず、`content/game.json` と `shared/` を編集して `npm run content:sync` する。
 - 戦闘計算は[GAME_SPEC.md](docs/GAME_SPEC.md)が正本。物理計算は `CombatRules.physicalDamage` に集約する。

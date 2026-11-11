@@ -8,6 +8,13 @@
 
 2026-11-09以前の記録は[2026-11-04〜11-09の変更履歴](docs/history/2026-11-04-to-11-09-changelog.md)に移しました。
 
+## 2026-11-11 — 検索対象・MCP手順・設計書の軽量化
+
+- `.rgignore` を追加し、生成物（`dist/data.generated.js`、`dist/data/`、`dist/shared/`）、`docs/history/`、`package-lock.json` をripgrepの検索対象から除外。AGENTS.md・CLAUDE.md・文書索引に記載。
+- DEVELOPMENT.mdのPlaywright MCPの節を[PLAYWRIGHT_MCP.md](docs/PLAYWRIGHT_MCP.md)へ分離し、採用理由と依存バージョンの記述は案件計画に任せた。E2Eの固定件数（78件）の記述を削除。HANDOFFから履歴資料へのリンクを外し、文書索引に「通常の作業では開かない」と明記。
+- IMPLEMENTATION_WORKFLOWに設計書を短く保つ書き方（目安8KB、旧版は差分のみ、レビューは1行、検証は1行）を追加し、テンプレートのレビュー・承認欄を1つに統合。
+- 文書・検索設定のみの変更。相対リンク、`git diff --check`、`.rgignore` の除外動作を確認。Sitesへの反映は未実施。
+
 ## 2026-11-11 — コンテキスト消費を抑える文書整理
 
 - AGENTS.mdの重複した記述（push・デプロイ・モデル指定の繰り返し、GAME_SPEC・HANDOFFと同じ説明、文書索引と同じ読み順）を統合し、12.1KBから約7.3KBへ削減。ルールの内容は変更していない。

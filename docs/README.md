@@ -13,6 +13,7 @@
 | [GAME_SPEC.md](GAME_SPEC.md) | 現行ゲーム仕様、数値、計算式、データ |
 | [BACKEND.md](BACKEND.md) | 現行の定義/DB/API/認証/保存の仕組み |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | 現行コマンド、検証、ビルド、Sites反映の参照先 |
+| [PLAYWRIGHT_MCP.md](PLAYWRIGHT_MCP.md) | Playwright MCPで探索するときだけ読む起動・操作手順 |
 | [IMPLEMENTATION_WORKFLOW.md](IMPLEMENTATION_WORKFLOW.md) | 実装前の設計書、親レビューと承認の流れ |
 | [DESIGN.md](DESIGN.md) | 現行の画面デザイン指針 |
 | [CHARACTER_ART.md](CHARACTER_ART.md) | キャラクター画像の制作・配置指針 |
@@ -40,4 +41,4 @@
 | [開発文書の整理前資料](history/2026-11-10-development-documents.md) | 2026-11-10より前のHANDOFF/DEVELOPMENT/BACKEND記述の保存版 |
 | [ゲーム文書の整理前資料](history/2026-11-10-game-documents.md) | 2026-11-10より前のゲーム仕様・設計文書の保存版 |
 
-historyは整理前の参考資料で、現行仕様や手順の正本ではありません。問い合わせや移行調査に必要な日付・節だけを見て、現在の正本と照合してください。
+historyは整理前の参考資料で、現行仕様や手順の正本ではありません。**通常の作業では開きません。** 問い合わせや移行調査で必要になった場合だけ、該当する日付・節を見て現在の正本と照合してください。`docs/history/` と生成物は `.rgignore` で検索対象から外しています（必要なら `rg --no-ignore` で検索できます）。

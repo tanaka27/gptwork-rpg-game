@@ -1,0 +1,7 @@
+# エージェントの検索（ripgrep）から除外する。生成物は元ファイルと同じ内容が重複してヒットし、
+# 履歴資料は現行の正本ではないため。必要な場合は rg --no-ignore で検索する。
+dist/data.generated.js
+dist/data/
+dist/shared/
+docs/history/
+package-lock.json

@@ -42,11 +42,11 @@ npm run qa:e2e-fixtures
 | 定義・計算・セーブ検証 | `npm test` と変更した層の既存テスト | 保存形式・移行・旧定義が関係すれば対応するAPI/E2Eケース |
 | API・SQLite・管理画面・クラウド保存 | APIテストと `tests/e2e/backend.spec.cjs` | 管理UIに変更があればadminのdesktop/mobile両project |
 | ゲーム画面・操作 | 変更した `tests/e2e/*.spec.cjs` | gameのdesktop/mobile両projectで操作後の状態・画面・consoleを確認 |
-| レイアウト・意味構造・非ボタンの当たり判定 | 関係する画面E2Eと、必要なら `qa:mcp` | semantic snapshotはrole/name/refで操作。accessibility treeにないhit areaだけvision座標で操作し、画像と操作後snapshotを確認 |
+| レイアウト・意味構造・非ボタンの当たり判定 | 関係する画面E2Eと、必要なら `qa:mcp`（[手順](PLAYWRIGHT_MCP.md)） | semantic snapshotはrole/name/refで操作。accessibility treeにないhit areaだけvision座標で操作し、画像と操作後snapshotを確認 |
 | 起動、共通fixture、保存、共有UI/CSS、Playwright設定 | `npm test` を含む関連logic/APIと `npm run test:e2e` 全体 | console fixture、desktop/mobile両方、管理系DB分離を含めて回帰 |
 | 文書だけ | Markdownのリンク・相対参照・記述整合 | ゲーム動作の再検証は不要 |
 
-変更specだけを両viewportで先に実行し、統合前に全E2E 78件を実行します。対象specを選ぶ例は次のとおりです。
+変更specだけを両viewportで先に実行し、統合前に全E2Eを実行します。対象specを選ぶ例は次のとおりです。
 
 ```sh
 npm run test:e2e -- --project=game-desktop tests/e2e/game.spec.cjs
@@ -59,7 +59,7 @@ npm run test:e2e -- --project=admin-mobile tests/e2e/backend.spec.cjs
 
 ### E2Eサーバーと診断
 
-`npm run test:e2e` は一回の実行ごとに新しいSQLiteを `work/playwright/<run>/` に作り、開発DB・別runから状態を分離します。gameと管理APIの書込みを分けるため、設定は4つのprojectを使います。`game-desktop` / `game-mobile` はゲームspecだけを、`admin-desktop` / `admin-mobile` は管理・クラウドAPIを変更する `backend.spec.cjs` だけを実行します。各projectは別のlocalhost portとSQLiteを使い、backend specは各viewport内でserialのままです。4 projectはdesktop 1440×900とmobile相当390×844の2 viewportを保ち、計78件を実行します。mobileはPC上のChromiumによる幅の確認で、iOS/Android実機確認とは別です。
+`npm run test:e2e` は一回の実行ごとに新しいSQLiteを `work/playwright/<run>/` に作り、開発DB・別runから状態を分離します。gameと管理APIの書込みを分けるため、設定は4つのprojectを使います。`game-desktop` / `game-mobile` はゲームspecだけを、`admin-desktop` / `admin-mobile` は管理・クラウドAPIを変更する `backend.spec.cjs` だけを実行します。各projectは別のlocalhost portとSQLiteを使い、backend specは各viewport内でserialのままです。4 projectはdesktop 1440×900とmobile相当390×844の2 viewportを保ちます。mobileはPC上のChromiumによる幅の確認で、iOS/Android実機確認とは別です。
 
 テスト用のChromiumは `npx playwright install chromium` で準備します。利用可能なChromiumを使うときは `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` に実行ファイルを指定します。`trace: retain-on-failure`、失敗時のscreenshot、HTML reportを診断に使い、project・viewport・専用DB・seedや初期saveを確認して失敗を再現します。`tests/e2e/fixtures.cjs` は各contextのconsole error/pageerrorを検査し、現在のproject origin以外への通信を止めます。許可するconsole失敗は意図して止めるGoogle Fonts CSSの正確なrequestと、個別に宣言したオフラインAPI requestだけです。未知の `net::ERR_FAILED` を文字列だけで無視しません。`npm run qa:e2e-fixtures` はこの許可条件の正常系と、未知console/pageerrorを失敗にする負例を子Playwright runnerで確認し、証跡を `work/playwright-fixture-probe/` に保存します。
 
@@ -67,25 +67,7 @@ npm run test:e2e -- --project=admin-mobile tests/e2e/backend.spec.cjs
 
 ### Playwright MCPによる探索
 
-Playwright MCPは継続セッションで仕様の曖昧な導線、アクセシビリティsnapshot、非semanticな操作対象を探索するときに使います。`@playwright/mcp@0.0.85` と `@modelcontextprotocol/sdk@1.32.2` はlockfileで固定され、`@playwright/test` は1.64.1のままです。MCP packageはPlaywright / playwright-core `1.66.0-alpha-2026-11-09` を依存に持つため、Test runner APIが同一とは扱いません。Chromium実行ファイルを指定した場合は、実際に使用したpathとversionを記録します。
-
-MCP clientはローカルのNode/SQLite serverと専用一時ブラウザprofileを起動し、originをそのserverだけに制限します。既定portは4177、viewportは1440×900です。ターミナルを開いたまま `qa:mcp` を実行し、`--caps=vision` を指定したセッションだけcoordinate toolsを有効にします。
-
-```sh
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run qa:mcp -- --port 4177 --viewport 1440x900 --caps=vision
-```
-
-clientは起動時に `tools/list` を表示し、stdinから1行ずつJSONLでtool callを受け取ります。stdinを開いたまま対話できるterminal/PTYで起動してください。ページ操作は `browser_snapshot` とsnapshot refを基本にし、vision座標はsnapshotにない要素だけに使います。例：
-
-```jsonl
-{"tool":"browser_navigate","arguments":{"url":"http://127.0.0.1:4177/"}}
-{"tool":"browser_snapshot","arguments":{}}
-{"command":"quit"}
-```
-
-EOFも正常終了します。toolの `isError: true`、不正JSON、接続・起動失敗はsessionを失敗終了し、診断ログは `work/playwright-mcp/<session>/session.jsonl` と同じsessionの `output/` に保存します。Playwrightのブラウザprofileは隔離された一時領域を使い、Playwright cacheとclientが保存する画像・ログはwork内に置きます。`browser_take_screenshot` の `filename` に相対パスを渡すとclientの作業directory基準になるため、画像はsessionの `output/` 内を指す絶対パスで指定します。ユーザーhomeへ書きません。MCP探索やスクリーンショットの目視は回帰E2Eの代替ではなく、ピクセル画像の自動合否判定でもありません。vision座標はPC上のChromiumに対するCSS pixelで、スマートフォン実機の結果とは区別します。
-
-MicrosoftのMCP READMEはcoding agentの短い高頻度操作にはPlaywright CLI+Skillsを候補にし、MCPは持続状態とsnapshotを使う探索に位置付けています。本作業は継続探索にMCPを使用し、既存回帰はPlaywright Testに残します。判断根拠は[案件計画](plans/2026-11-11-testing-strategy.md)と公式資料です：[Playwright MCP](https://github.com/microsoft/playwright-mcp)、[Playwright CLI](https://github.com/microsoft/playwright-cli)、[Best practices](https://playwright.dev/docs/best-practices)、[Assertions](https://playwright.dev/docs/test-assertions)、[ARIA snapshots](https://playwright.dev/docs/aria-snapshots)、[Test agents](https://playwright.dev/docs/test-agents)。
+継続セッションでの探索やaccessibility snapshotの確認に `npm run qa:mcp` を使う場合は、[Playwright MCPの手順](PLAYWRIGHT_MCP.md)を読みます。MCPは探索用で、回帰E2Eの代わりにはしません。
 
 ## コンテンツ検査、ビルド、パッケージ
 

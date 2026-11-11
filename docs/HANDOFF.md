@@ -34,4 +34,4 @@
 
 - 本番APIと定義管理はSitesで認証された所有者だけが利用できます。Site identity、D1バインディング、閲覧範囲を保ち、認証情報を文書やソースに記載しないでください。
 - モバイル幅のPlaywright検証はPC上のChromiumです。iOS/Android実機の確認とは別です。
-- 現時点の実行・公開コマンドは[DEVELOPMENT.md](DEVELOPMENT.md)、過去の検証結果や公開記録は[CHANGELOG.md](../CHANGELOG.md)と[履歴資料](history/2026-11-10-development-documents.md)を参照してください。履歴資料は現行仕様の正本ではありません。
+- 現時点の実行・公開コマンドは[DEVELOPMENT.md](DEVELOPMENT.md)、過去の検証結果や公開記録は[CHANGELOG.md](../CHANGELOG.md)を参照してください。

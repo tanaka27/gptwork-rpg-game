@@ -21,7 +21,7 @@
 | 画面・画像 | [DESIGN.md](docs/DESIGN.md)、[CHARACTER_ART.md](docs/CHARACTER_ART.md) |
 | 設計書の書式 | [IMPLEMENTATION_WORKFLOW.md](docs/IMPLEMENTATION_WORKFLOW.md) |
 
-CHANGELOG、`docs/plans/`、`docs/history/`は、必要な項目・期間だけを参照します。historyは整理前の資料で、現行仕様の正本ではありません。
+CHANGELOG、`docs/plans/`、`docs/history/`は、必要な項目・期間だけを参照します。historyは整理前の資料で、現行仕様の正本ではないため、通常の作業では開きません。生成物と `docs/history/` は `.rgignore` で検索対象から外しています（必要なら `rg --no-ignore`）。
 
 ## 文書の更新ルール
 
