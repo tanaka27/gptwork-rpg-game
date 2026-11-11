@@ -1,6 +1,6 @@
 # バックエンド仕様
 
-この文書は現在のデータ正本、DB、認証、API、保存の流れを説明します。起動・テスト・公開手順は[DEVELOPMENT.md](DEVELOPMENT.md)を、構成の入口は[HANDOFF.md](HANDOFF.md)を参照してください。
+この文書は現在のデータ正本、DB、認証、API、保存の流れを説明します。起動・テストは[DEVELOPMENT.md](DEVELOPMENT.md)、ビルド・公開は[RELEASE.md](RELEASE.md)を、構成の入口は[HANDOFF.md](HANDOFF.md)を参照してください。
 
 ## データの正本と構成
 
@@ -51,4 +51,4 @@
 
 ## Sitesとの関係
 
-Site project IDとD1バインディングは[`.openai/hosting.json`](../.openai/hosting.json)が現在の設定元です。公開時はこのSite identity、既存D1、所有者限定の閲覧範囲を維持し、現行Sitesスキルと利用できるSitesツールの手順に従います。具体的なビルド・パッケージコマンドは[DEVELOPMENT.md](DEVELOPMENT.md)を正本とします。
+Site identity・D1バインディングの設定元、公開時に維持する条件、ビルド・パッケージは[反映手順](RELEASE.md#sitesへのデプロイ)が正本です。

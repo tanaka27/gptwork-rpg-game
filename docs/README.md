@@ -19,13 +19,13 @@
 | [CHANGELOG.md](../CHANGELOG.md) | 作業ごとの変更の要約と反映記録 | 直近の変更を確認するとき |
 | [docs/plans/](plans/) | 進行中の案件の設計書 | その案件の作業中 |
 
-## 履歴（通常の作業では開かない）
+## 履歴（大きいので通常の作業では開かない）
 
 | 場所 | 内容 |
 | --- | --- |
-| [docs/history/plans/](history/plans/) | 反映完了した案件の設計書（9件、約100KB） |
-| [2026-11-04〜11-10の変更履歴](history/2026-11-04-to-11-10-changelog.md) | CHANGELOGから移した古い記録（約58KB） |
-| [開発文書の整理前資料](history/2026-11-10-development-documents.md) | 2026-11-10より前のHANDOFF/DEVELOPMENT/BACKEND（約102KB） |
-| [ゲーム文書の整理前資料](history/2026-11-10-game-documents.md) | 2026-11-10より前のゲーム仕様・設計文書（約4KB） |
+| [docs/history/plans/](history/plans/) | 反映完了した案件の設計書 |
+| [2026-11-04〜11-10の変更履歴](history/2026-11-04-to-11-10-changelog.md) | CHANGELOGから移した古い記録 |
+| [開発文書の整理前資料](history/2026-11-10-development-documents.md) | 2026-11-10より前のHANDOFF/DEVELOPMENT/BACKEND |
+| [ゲーム文書の整理前資料](history/2026-11-10-game-documents.md) | 2026-11-10より前のゲーム仕様・設計文書 |
 
 historyは現行の正本ではありません。問い合わせや移行調査で必要な場合だけ、該当する日付・節を見て現在の正本と照合します。

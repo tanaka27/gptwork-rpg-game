@@ -5,9 +5,9 @@
 - 1件は見出しと3〜4行程度の箇条書きにまとめます（変更内容、互換性への影響、検証結果の要約、反映結果）。
 - 詳しい検証記録（テスト件数の内訳、ファイルのハッシュ、操作の細かな手順）は残しません。検証結果は案件の設計書の「実装・検証結果」に1行ずつ要約し、ここからリンクします。
 - 反映（push・デプロイ）は完了した事実を書きます。デプロイIDはデプロイ後に分かるため、反映記録だけのcommitで追記して構いません（このcommitは再デプロイ不要。[反映手順](docs/RELEASE.md)）。
-- 記録が10件または8KBを超えたら、古い日付の記録から [docs/history/](docs/history/) の変更履歴へ移します。
+- 記録が10件または8KBを超えたら、古い日付の記録をまとめて新しいファイル `docs/history/YYYY-MM-DD-to-MM-DD-changelog.md`（移す記録の最初と最後の日付）へ移し、下の行と[文書索引](docs/README.md)の履歴表にリンクを足します。既存の履歴ファイルには追記しません。
 
-2026-11-10以前の記録は[2026-11-04〜11-10の変更履歴](docs/history/2026-11-04-to-11-10-changelog.md)（約58KB、通常の作業では開かない）にあります。
+2026-11-10以前の記録は[2026-11-04〜11-10の変更履歴](docs/history/2026-11-04-to-11-10-changelog.md)（大きいので通常の作業では開かない）にあります。
 
 ## 2026-11-11 — 文書とエージェント向けルールの整理（コンテキスト削減）
 
@@ -26,5 +26,5 @@
 
 - E2Eをgame/admin・desktop/mobileの4 projectへ分け、projectごとに専用のserverとSQLiteを使うよう変更。共通fixtureでconsole/pageerror監視と通信先の制限を行う（[案件計画](docs/history/plans/2026-11-11-testing-strategy.md)）。
 - 公式Playwright MCPとMCP SDKをバージョン固定で追加し、探索用のstdio client（`npm run qa:mcp`）を用意。回帰の正本はPlaywright Testのまま。
-- 検証：`qa:e2e-fixtures` と全E2E（desktop/mobile）通過、MCPでsnapshot操作とvision座標操作を確認。製品コードの変更なし。
+- 検証：`qa:e2e-fixtures` と全E2E（desktop/mobile）通過、MCPでsnapshot操作とvision座標操作を確認。未確認：iOS/Android実機、公開Siteでの操作、本番API。製品コードの変更なし。
 - 反映：GitHub `e6fbe11` をmainへpushし、既存Siteへのデプロイ成功（`appgdep_6af3c778118081918ac994c74576d80f`）。

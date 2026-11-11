@@ -1,6 +1,6 @@
 # 開発引き継ぎ
 
-この文書は現在の構成、正本、変更箇所、保存互換性、既知の制約を示します。文書全体の入口は[文書索引](README.md)、数値やゲームルールは[ゲーム仕様](GAME_SPEC.md)、APIとDBは[バックエンド仕様](BACKEND.md)、実行手順は[開発手順](DEVELOPMENT.md)を参照してください。
+この文書は現在の構成、正本、変更箇所、保存互換性、既知の制約を示します。文書全体の入口は[文書索引](README.md)、数値やゲームルールは[ゲーム仕様](GAME_SPEC.md)、APIとDBは[バックエンド仕様](BACKEND.md)、実行・テストは[開発手順](DEVELOPMENT.md)、ビルド・公開は[反映手順](RELEASE.md)を参照してください。
 
 ## 現行構成
 
@@ -19,7 +19,7 @@
 | レイアウトと画面装飾 | `dist/workspace.css`、`dist/style.css`、[DESIGN.md](DESIGN.md) |
 | 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js` |
 | API、DB、Worker | `server/`、`db/`、`drizzle/`、[BACKEND.md](BACKEND.md) |
-| 定義同期と公開用ビルド | `scripts/`、[DEVELOPMENT.md](DEVELOPMENT.md) |
+| 定義同期と公開用ビルド | `scripts/`、[RELEASE.md](RELEASE.md#ビルドとパッケージ) |
 | ロジック/API/ブラウザ検証 | `tests/` |
 
 ## 保存と互換性
@@ -31,4 +31,4 @@
 
 - 本番APIと定義管理はSitesで認証された所有者だけが利用できます。Site identity、D1バインディング、閲覧範囲を保ち、認証情報を文書やソースに記載しないでください。
 - モバイル幅のPlaywright検証はPC上のChromiumです。iOS/Android実機の確認とは別です。
-- 現時点の実行・公開コマンドは[DEVELOPMENT.md](DEVELOPMENT.md)、過去の検証結果や公開記録は[CHANGELOG.md](../CHANGELOG.md)を参照してください。
+- 実行コマンドは[DEVELOPMENT.md](DEVELOPMENT.md)、ビルド・公開は[RELEASE.md](RELEASE.md)、過去の検証結果や公開記録は[CHANGELOG.md](../CHANGELOG.md)を参照してください。

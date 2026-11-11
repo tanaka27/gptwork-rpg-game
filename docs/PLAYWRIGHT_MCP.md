@@ -27,6 +27,6 @@ clientは起動時に `tools/list` を表示し、stdinから1行ずつJSONLでt
 ```
 
 - EOFでも正常終了します。toolの `isError: true`、不正なJSON、接続・起動の失敗は、セッションを失敗として終了します。
-- 診断ログは `work/playwright-mcp/<session>/session.jsonl`、画像は同じsessionの `output/` に保存されます。ユーザーのhomeへは書きません。
+- 診断ログは `work/playwright-mcp/<session>/session.jsonl`、画像は同じsessionの `output/`、Playwright・ブラウザのcacheは同じsession内に保存されます。ユーザーのhomeへは書きません。
 - `browser_take_screenshot` の `filename` に相対パスを渡すとclientの作業directory基準になるため、sessionの `output/` を指す絶対パスで指定します。
 - vision座標はPC上のChromiumに対するCSS pixelです。スマートフォン実機の結果とは区別します。
