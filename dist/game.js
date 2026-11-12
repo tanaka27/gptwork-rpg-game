@@ -517,6 +517,16 @@ function questRewardText(quest) {
     .filter(Boolean)
     .join('、');
 }
+const tavernPortraitIds = new Set(AdventurerRules.list().map(adventurer => adventurer.id)),
+  tavernPortraitCrops = Object.freeze({});
+function tavernPortraitImage(id, className) {
+  if (!tavernPortraitIds.has(id)) return '';
+  const { width = 240, left = -70, top = 6.8 } = tavernPortraitCrops[id] || {};
+  return `<img class="${className}" src="assets/characters/${id}.webp" alt="" width="512" height="768" style="--portrait-width:${width}%;--portrait-left:${left}%;--portrait-top:${top}%" loading="lazy" decoding="async" draggable="false">`;
+}
+function removeFailedTavernPortraits(root) {
+  root.querySelectorAll('img').forEach(image => image.addEventListener('error', () => image.remove(), { once: true }));
+}
 function renderTavern() {
   if (!currentTavern()) tavernOpen = false;
   $('tavernMenu').hidden = !tavernOpen;
@@ -543,12 +553,12 @@ function renderTavern() {
     ? present
         .map(
           adventurer =>
-            `<button type="button" class="tavern-adventurer" data-action="adventurer-detail:${adventurer.id}" aria-label="${adventurer.name}、${adventurer.job}、Lv.${adventurer.level}の詳細"><span><strong>${adventurer.name}</strong><small>${adventurer.job} · Lv.${adventurer.level}</small></span><span class="tavern-adventurer-open">詳細を見る →</span></button>`
+            `<button type="button" class="tavern-adventurer" data-action="adventurer-detail:${adventurer.id}" aria-label="${adventurer.name}、${adventurer.job}、Lv.${adventurer.level}の冒険者詳細を表示"><span class="tavern-adventurer-portrait">${tavernPortraitImage(adventurer.id, 'tavern-adventurer-portrait-image')}</span><span class="tavern-adventurer-copy"><strong>${adventurer.name}</strong><small>${adventurer.job} · Lv.${adventurer.level}</small></span><span class="tavern-adventurer-open" aria-hidden="true">→</span></button>`
         )
         .join('')
     : '<p class="tavern-empty">今この街にいる冒険者はいません。</p>';
   $('tavernAdventurerDetailContent').innerHTML = selected
-    ? `<article class="tavern-adventurer-card" aria-label="${selected.name}の詳細"><h3 tabindex="-1">${selected.name}</h3><p>${selected.job} · Lv.${selected.level}</p><p>現在地：${currentNode().name}</p><dl>${[
+    ? `<article class="tavern-adventurer-card" aria-label="${selected.name}の冒険者詳細"><div class="tavern-adventurer-profile">${tavernPortraitImage(selected.id, 'tavern-adventurer-detail-portrait')}<div class="tavern-adventurer-profile-copy"><h3 tabindex="-1">${selected.name}</h3><p>${selected.job} · Lv.${selected.level}</p><p>現在地：${currentNode().name}</p></div></div><dl>${[
         ['HP', selected.hp],
         ['MP', selected.mp],
         ['攻撃', selected.attack],
@@ -560,6 +570,8 @@ function renderTavern() {
         .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
         .join('')}</dl></article>`
     : '';
+  removeFailedTavernPortraits($('tavernAdventurerList'));
+  removeFailedTavernPortraits($('tavernAdventurerDetailContent'));
   const active = state.questState.active;
   $('tavernTitle').textContent = currentNode().name + 'の酒場';
   $('tavernTotal').textContent = state.total + '体';

@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 function withoutScheduledRound(source){const pattern=/function scheduleRound\(\)\s*\{\s*return partyRound\(\);?\s*\}/;if(!pattern.test(source))throw new Error('scheduleRound not found in dist/party.js');return source.replace(pattern,'function scheduleRound(){}');}
 const data=require('../content/game.json'),rules=require('../shared/rules.js'),content=require('../shared/content.js'),saves=require('../shared/save.js');
 function boot(saved){
- const nodes={},storage={};const node=()=>({innerHTML:'',textContent:'',disabled:false,addEventListener(){},focus(){},classList:{add(){},remove(){},toggle(){}},showModal(){},close(){},append(){}});
+ const nodes={},storage={};const node=()=>({innerHTML:'',textContent:'',disabled:false,addEventListener(){},querySelectorAll(){return [];},focus(){},classList:{add(){},remove(){},toggle(){}},showModal(){},close(){},append(){}});
  const c={document:{getElementById:id=>nodes[id]??=node(),querySelectorAll:()=>[],addEventListener(){},createElement:node},localStorage:{getItem:()=>saved?JSON.stringify(saved):null,setItem:(k,v)=>storage[k]=v,removeItem(){}},console,setTimeout:fn=>fn(),Math:Object.create(Math)};
  c.Math.random=()=>.5;c.GameData=structuredClone(data);vm.createContext(c);
  for(const file of ['shared/content.js','shared/rules.js','shared/quests.js','shared/adventurers.js','dist/storage.js','dist/combat.js','dist/game.js'])vm.runInContext(fs.readFileSync(file,'utf8'),c);

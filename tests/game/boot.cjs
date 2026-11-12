@@ -7,7 +7,7 @@ const source = fs.readFileSync('dist/game.js', 'utf8');
 function boot(saved = null, party = false, manualMessages = false) {
   const nodes = {}, storage = {};
   const node = () => ({innerHTML:'', textContent:'', disabled:false,
-    addEventListener(){}, focus(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
+    addEventListener(){}, querySelectorAll(){return [];}, focus(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
   const context = {
     document:{getElementById:id=>nodes[id]??=node(), querySelectorAll:()=>[], addEventListener(){}, createElement:node},
     localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},

@@ -1,6 +1,29 @@
 const { test, expect } = require('./fixtures.cjs');
 
-test('酒場で街の冒険者詳細を確認し、探索・道中行動tickを保存する', async ({ page }, testInfo) => {
+async function expectVisibleTavernImagesLoaded(page) {
+  await expect
+    .poll(
+      () =>
+        page.locator('#tavernAdventurerList').evaluate(root => {
+          const viewport = root.getBoundingClientRect(),
+            visibleRows = [...root.querySelectorAll('.tavern-adventurer')].filter(row => {
+              const rect = row.getBoundingClientRect();
+              return rect.bottom > viewport.top && rect.top < viewport.bottom;
+            });
+          return (
+            visibleRows.length > 0 &&
+            visibleRows.every(row => {
+              const image = row.querySelector('.tavern-adventurer-portrait-image');
+              return image && image.complete && image.naturalWidth === 512 && image.naturalHeight === 768;
+            })
+          );
+        }),
+      { timeout: 10000 }
+    )
+    .toBe(true);
+}
+
+test('酒場で街のNPC冒険者詳細を確認し、探索・道中行動tickを保存する', async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     Math.random = () => 0.99;
   });
@@ -29,10 +52,77 @@ test('酒場で街の冒険者詳細を確認し、探索・道中行動tickを�
   await expect(page.locator('[data-tavern-view="adventurers"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#tavernAdventurerCount')).toHaveText('34人');
   await expect(page.locator('#tavernAdventurerList .tavern-adventurer')).toHaveCount(34);
-  await expect(page.locator('[data-action="tavern-close"]')).toBeInViewport();
+  const closeButton = page.getByRole('button', { name: '酒場を閉じる' });
+  await expect(closeButton).toBeInViewport();
+  const closeRect = await closeButton.evaluate(node => node.getBoundingClientRect().toJSON());
+  const layout = await page.evaluate(() => {
+    const menu = document.querySelector('#tavernMenu').getBoundingClientRect();
+    const sidebar = document.querySelector('.tavern-tabs').getBoundingClientRect();
+    const list = document.querySelector('#tavernAdventurerList').getBoundingClientRect();
+    return { menu: menu.toJSON(), sidebar: sidebar.toJSON(), list: list.toJSON(), bodyHeight: document.documentElement.scrollHeight };
+  });
+  expect(closeRect.width).toBeGreaterThanOrEqual(44);
+  expect(closeRect.height).toBeGreaterThanOrEqual(44);
+  expect(closeRect.top).toBeCloseTo(layout.menu.top, 0);
+  expect(closeRect.right).toBeCloseTo(layout.menu.right, 0);
+  expect(layout.sidebar.right).toBeLessThan(layout.list.left);
+  expect(layout.bodyHeight).toBeLessThanOrEqual(await page.evaluate(() => innerHeight));
   const first = page.locator('#tavernAdventurerList .tavern-adventurer').first();
   const firstName = await first.locator('strong').textContent();
+  const firstId = (await first.getAttribute('data-action')).split(':')[1];
+  const firstImage = first.locator('.tavern-adventurer-portrait-image');
+  await expect(firstImage).toHaveAttribute('src', `assets/characters/${firstId}.webp`);
+  await expect
+    .poll(() => firstImage.evaluate(image => image.complete && image.naturalWidth === 512 && image.naturalHeight === 768))
+    .toBe(true);
+  await expectVisibleTavernImagesLoaded(page);
+  const frame = await first.locator('.tavern-adventurer-portrait').evaluate(node => node.getBoundingClientRect().toJSON());
+  expect(frame.width).toBeCloseTo(frame.height, 0);
+  await expect(firstImage).toHaveAttribute('loading', 'lazy');
+  const crop = await firstImage.evaluate(image => {
+    const frame = image.parentElement.getBoundingClientRect(),
+      bounds = image.getBoundingClientRect();
+    return {
+      widthScale: bounds.width / frame.width,
+      heightScale: bounds.height / frame.height,
+      leftOffset: (bounds.left - frame.left) / frame.width,
+      topOffset: (bounds.top - frame.top) / frame.height,
+    };
+  });
+  expect(crop.widthScale).toBeGreaterThan(2);
+  expect(crop.heightScale).toBeGreaterThan(3);
+  expect(crop.leftOffset).toBeLessThan(-0.5);
+  expect(crop.topOffset).toBeGreaterThan(0);
+  expect(crop.topOffset).toBeLessThan(0.2);
+  const fetchedImage = await page.evaluate(async src => {
+    const response = await fetch(src),
+      bytes = new Uint8Array(await response.arrayBuffer());
+    return {
+      status: response.status,
+      type: response.headers.get('content-type'),
+      signature: Array.from(bytes.slice(0, 4)).map(byte => String.fromCharCode(byte)).join(''),
+      format: Array.from(bytes.slice(8, 12)).map(byte => String.fromCharCode(byte)).join(''),
+    };
+  }, `assets/characters/${firstId}.webp`);
+  expect(fetchedImage).toEqual({ status: 200, type: 'image/webp', signature: 'RIFF', format: 'WEBP' });
   await page.screenshot({ path: testInfo.outputPath('tavern-adventurer-list.png') });
+  const list = page.locator('#tavernAdventurerList');
+  const fixedBefore = await page.evaluate(() => ({
+    titleTop: document.querySelector('#tavernTitle').getBoundingClientRect().top,
+    tabsTop: document.querySelector('.tavern-tabs').getBoundingClientRect().top,
+  }));
+  await list.hover();
+  await page.mouse.wheel(0, 800);
+  await expect.poll(() => list.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await expectVisibleTavernImagesLoaded(page);
+  await page.screenshot({ path: testInfo.outputPath('tavern-adventurer-list-scrolled.png') });
+  await expect(page.locator('#tavernTitle')).toHaveText('はじまりの村の酒場');
+  const fixedAfter = await page.evaluate(() => ({
+    titleTop: document.querySelector('#tavernTitle').getBoundingClientRect().top,
+    tabsTop: document.querySelector('.tavern-tabs').getBoundingClientRect().top,
+  }));
+  expect(fixedAfter).toEqual(fixedBefore);
+  await list.evaluate(node => { node.scrollTop = 0; });
   await first.click();
   await expect(page.locator('#tavernAdventurerDetail')).toBeVisible();
   const detailControls = await page.evaluate(() => {
@@ -54,6 +144,9 @@ test('酒場で街の冒険者詳細を確認し、探索・道中行動tickを�
     Math.min(detailControls.detailBottom, detailControls.menuBottom, detailControls.viewportHeight)
   );
   await expect(page.locator('#tavernAdventurerDetailContent h3')).toHaveText(firstName);
+  const detailImage = page.locator('.tavern-adventurer-detail-portrait');
+  await expect(detailImage).toHaveAttribute('src', `assets/characters/${firstId}.webp`);
+  await expect.poll(() => detailImage.evaluate(image => image.complete && image.naturalWidth === 512 && image.naturalHeight === 768)).toBe(true);
   await expect(page.locator('#tavernAdventurerDetailContent')).toContainText('剣士');
   await expect(page.locator('#tavernAdventurerDetailContent')).toContainText('現在地：はじまりの村');
   for (const stat of ['HP', 'MP', '攻撃', '防御', '賢さ', '運', '速さ'])
@@ -67,7 +160,8 @@ test('酒場で街の冒険者詳細を確認し、探索・道中行動tickを�
   await expect(page.locator('#tavernQuestView')).toBeVisible();
   await expect(page.locator('#tavernQuests .tavern-quest')).toHaveCount(3);
   await expect(page.locator('#tavernQuests')).toContainText('魔物を累計5体倒す');
-  await page.locator('[data-action="tavern-close"]').click();
+  await closeButton.click();
+  await expect(page.locator('[data-action="tavern"]')).toBeFocused();
 
   // A location change affects only the town's list; it does not share a live world with another save.
   await page.evaluate(() => {

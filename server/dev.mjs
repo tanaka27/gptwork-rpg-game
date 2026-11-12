@@ -1,7 +1,7 @@
 import http from 'node:http';import fs from 'node:fs/promises';import path from 'node:path';
 import {fileURLToPath} from 'node:url';import {handleApi} from './api.mjs';import {openDatabase} from './local-db.mjs';
 const root=fileURLToPath(new URL('../dist/',import.meta.url)),port=Number(process.env.PORT||4173),db=openDatabase(process.env.RPG_DB_PATH||'.local/rpg.sqlite');
-const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.css':'text/css; charset=utf-8','.png':'image/png'};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp'};
 const server=http.createServer(async(req,res)=>{try{
  const url=new URL(req.url,'http://127.0.0.1:'+port);
  if(url.pathname.startsWith('/api/')){

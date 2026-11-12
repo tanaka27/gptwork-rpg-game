@@ -62,8 +62,12 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
     const close = document.querySelector('[data-action="tavern-close"]').getBoundingClientRect();
     const list = document.querySelector('#tavernQuests');
     return {
+      menuTop: menu.top,
       menuRight: menu.right,
-      closeBottom: close.bottom,
+      closeTop: close.top,
+      closeRight: close.right,
+      closeWidth: close.width,
+      closeHeight: close.height,
       viewportWidth: innerWidth,
       viewportHeight: innerHeight,
       listWidth: list.scrollWidth,
@@ -71,7 +75,11 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
     };
   });
   expect(dimensions.menuRight).toBeLessThanOrEqual(dimensions.viewportWidth);
-  expect(dimensions.closeBottom).toBeLessThanOrEqual(dimensions.viewportHeight);
+  expect(dimensions.closeTop).toBeCloseTo(dimensions.menuTop, 0);
+  expect(dimensions.closeRight).toBeCloseTo(dimensions.menuRight, 0);
+  expect(dimensions.closeWidth).toBeGreaterThanOrEqual(44);
+  expect(dimensions.closeHeight).toBeGreaterThanOrEqual(44);
+  expect(dimensions.closeTop).toBeGreaterThanOrEqual(0);
   expect(dimensions.listWidth).toBeLessThanOrEqual(dimensions.listClientWidth);
 
   await page.locator('[data-action="quest-accept:apprentice_hunt"]').click();

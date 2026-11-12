@@ -1129,6 +1129,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   display: none;
 }
 #tavernMenu {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1162,6 +1163,19 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+}
+.tavern-layout {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.tavern-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 .shop-items .item {
   margin: 0;
@@ -1205,13 +1219,14 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   display: none;
 }
 .tavern-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
-  flex: none;
+  min-width: 0;
 }
 .tavern-tabs button {
-  min-height: 38px;
+  min-height: 44px;
+  padding: 5px 2px;
   color: var(--muted);
 }
 .tavern-tabs button[aria-pressed='true'] {
@@ -1242,17 +1257,35 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   overscroll-behavior: contain;
 }
 .tavern-adventurer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 48px;
-  padding: 6px 9px;
+  min-height: 100px;
+  padding: 7px;
   text-align: left;
   background: #18262b;
 }
-.tavern-adventurer > span:first-child {
+.tavern-adventurer-portrait {
+  position: relative;
+  display: block;
+  width: 84px;
+  height: 84px;
+  overflow: hidden;
+  flex: none;
+  aspect-ratio: 1;
+  background: #203638;
+}
+.tavern-adventurer-portrait-image {
+  position: absolute;
+  top: var(--portrait-top, 6.8%);
+  left: var(--portrait-left, -70%);
+  width: var(--portrait-width, 240%);
+  max-width: none;
+  height: auto;
+}
+.tavern-adventurer-copy {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -1263,10 +1296,14 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   white-space: nowrap;
   font-size: 12px;
 }
-.tavern-adventurer small,
-.tavern-adventurer-open {
+.tavern-adventurer small {
   color: var(--muted);
   font-size: 10px;
+  white-space: nowrap;
+}
+.tavern-adventurer-open {
+  color: var(--muted);
+  font-size: 16px;
   white-space: nowrap;
 }
 .tavern-empty {
@@ -1290,6 +1327,24 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 .tavern-adventurer-card {
   flex: 1;
+  min-width: 0;
+}
+.tavern-adventurer-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.tavern-adventurer-detail-portrait {
+  display: block;
+  width: auto;
+  max-width: 42%;
+  max-height: min(26dvh, 184px);
+  height: auto;
+  flex: none;
+  object-fit: contain;
+  background: #203638;
+}
+.tavern-adventurer-profile-copy {
   min-width: 0;
 }
 .tavern-adventurer-card h3 {
@@ -1368,10 +1423,30 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   padding: 7px 10px;
   font-size: 11px;
 }
-#tavernMenu > [data-action='tavern-close'] {
-  flex: none;
+#tavernMenu > .tavern-close {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+}
+#tavernMenu > .tavern-close:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+#tavernMenu > .shop-heading {
   min-height: 40px;
-  padding: 6px 12px;
+  padding-right: 48px;
 }
 @media (max-height: 540px) and (min-width: 600px) {
   #shopMenu,
@@ -1413,6 +1488,26 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 
 @media (max-width: 450px) {
+  .tavern-layout {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .tavern-tabs button {
+    min-height: 44px;
+    font-size: 11px;
+  }
+  .tavern-adventurer {
+    grid-template-columns: 72px minmax(0, 1fr);
+    min-height: 96px;
+    padding: 6px;
+  }
+  .tavern-adventurer-portrait {
+    width: 72px;
+    height: 72px;
+  }
+  .tavern-adventurer-open {
+    display: none;
+  }
   .tavern-quest {
     grid-template-columns: minmax(0, 1fr);
     gap: 6px;
