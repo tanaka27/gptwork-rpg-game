@@ -11,8 +11,9 @@
 
 ## 2026-11-12 — 酒場の冒険者一覧
 
-- 固定100人の冒険者を各セーブで独立管理し、酒場で街ごとの一覧・能力詳細を表示。探索3回または道中の有効stepごとに隣接移動を抽選し、既存 `v:2` セーブを補完する（[設計・検証記録](docs/plans/2026-11-12-tavern-adventurers.md)）。
+- 固定100人の冒険者を各セーブで独立管理し、酒場で街ごとの一覧・能力詳細を表示。探索3回または道中の有効stepごとに隣接移動を抽選し、既存 `v:2` セーブを補完する（[設計・検証記録](docs/history/plans/2026-11-12-tavern-adventurers.md)）。
 - 検証：`npm test`、`npm run content:check`、全E2E 82/82（PC/スマホ相当）、`npm run package:site` 成功。iOS/Android実機は未確認。
+- 反映：GitHub `70a04d4` をmainへpush。Sitesソース `0111f13`、デプロイ `appgdep_6af59b3af9c48191be6a06ea7d09c662` 成功（閲覧範囲・D1維持）。
 
 ## 2026-11-12 — 街の酒場と依頼
 

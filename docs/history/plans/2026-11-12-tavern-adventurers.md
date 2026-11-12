@@ -1,6 +1,6 @@
 # 酒場の冒険者一覧と行動tick
 
-- 状態：検証済み（実装承認済み）
+- 状態：反映完了
 - 設計版：v1
 - 要求・背景：酒場にその街にいるNPC冒険者を一覧表示し、選択すると個別詳細を表示する。NPCは100人で、探索や移動の行動tickに応じて隣接ノードへ移動する。世界状態はセーブごとに独立する。
 - 設計作成者（子）：Codex子エージェント
@@ -35,7 +35,7 @@
 - ロジック・セーブ：100人の名簿と初期配置、能力の安定性、各tickでの滞在/隣接移動、同じPRNG状態からの決定性、探索3回ごとのtick、成功stepごとのtick、無効操作/開始選択/引き返し/到着処理による非加算、探索端数の移動・再読込後の維持、旧`v:2`補完、壊れたNPC状態だけの補正、クラウドセーブ検証を確認する。
 - Playwright：酒場で現在街の冒険者だけを表示し、詳細・一覧へ戻る・依頼タブが操作できることを実操作で確認する。該当E2Eをgame desktop/mobileの両projectで実行し、状態・画面・console/pageerrorを確認、スクリーンショットを目視する。
 - 統合確認：`npm test`、変更specのdesktop/mobile、全E2E、`npm run package:site`。実機iOS/Androidは対象外として未確認と記録する。
-- 反映・復旧方法：親が承認済み実装をレビューした後、AGENTS.mdと[反映手順](../RELEASE.md)に従い親がcommit/push・既存Sites反映を行う。復旧は直前の`main` commitへ戻して再反映する。保存形式は`v:2`のままであり、追加状態は欠落時に補える。
+- 反映・復旧方法：親が承認済み実装をレビューした後、AGENTS.mdと[反映手順](../../RELEASE.md)に従い親がcommit/push・既存Sites反映を行う。復旧は直前の`main` commitへ戻して再反映する。保存形式は`v:2`のままであり、追加状態は欠落時に補える。
 
 ## 親エージェントのレビュー・承認記録
 
@@ -53,4 +53,6 @@
 - `npm test`、`npm run content:check`、`git diff --check`：成功。固定100人、移動tick、既存`v:2`補完、壊れたNPC状態の補正、クラウド保存とNPCのみ参照ノードの公開拒否を確認。
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e`：82/82成功。PC/スマホ相当の画面操作・保存再開、console/pageerrorなしを確認。冒険者一覧・詳細のスクリーンショットを両画面幅で目視確認。
 - `npm run package:site`：成功（Worker bundle 12,210,772 bytes、埋込asset 25件）。
-- 設計との差異・未検証事項：なし。iOS/Android実機は未確認。commit・push・デプロイは親レビュー後に親が実施する。
+- 設計との差異：なし。iOS/Android実機は未確認。
+- 反映：GitHub `70a04d4` をmainへpush。Sitesソース `0111f139a4043e00a8644fc0ebe5cac79fcbc040`（GitHubとtree一致）、デプロイ `appgdep_6af59b3af9c48191be6a06ea7d09c662` が2026-11-12 19:56 JSTに成功。閲覧範囲・D1を維持。
+- 反映環境：Sites source helperが環境内にないため、通常Gitで既存Sites履歴へ同一treeを同期し、検証済み `package:site` アーカイブを使用した。認証情報はstdinとプロセス環境だけで渡し、ファイル・Gitへ保存しない。
