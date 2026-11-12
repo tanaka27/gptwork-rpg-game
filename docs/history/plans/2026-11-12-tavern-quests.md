@@ -1,6 +1,6 @@
 # 街の酒場と依頼
 
-- 状態：検証済み（反映待ち）
+- 状態：反映完了
 - 設計版：v2
 - 要求・背景：各街の酒場で依頼を選んで受注し、条件を達成して報告すると記載報酬を一度受け取れるようにする。
 - 設計作成者（子）：Codex子エージェント
@@ -67,3 +67,5 @@
 - `git diff --check`：成功。`npm run package:site`：成功。生成物 `/workspace/gptwork-rpg-game/work/site.tar.gz`、SHA-256 `99a8653ce5e0c3bb969ded456b72e645155306e12259b5b4b3eaa79457078c31`。
 - 初回検証で既存claim操作に依存したテストと、VM harnessで共有依頼ルールを読み込まないテストが失敗したため、テストを新しい酒場操作・読込順に合わせて修正。最終 `npm test` と全E2Eで再検証済み。CHANGELOGは新規記録後も8KB未満。
 - 未確認：実機iOS/Android、本番認証APIでの動作。E2EはローカルChromiumのPC/スマホviewportで実施。
+
+- 反映：GitHub `f5c33d843c0279d74d83079bfab6cf8daa872052` をmainへpush。Sitesソース `602f0f681063a64b2f8158009e334df5a844df67` と一致する検証済みパッケージをデプロイ `appgdep_6af558d4e3c88191b1472a2065a959dd` で反映し成功。Site ID・D1・所有者限定を維持。Sites補助スクリプト未配置のため、認証を標準入力でメモリだけへ渡す通常Gitで同期。
