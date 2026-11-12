@@ -50,12 +50,13 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
   await page.locator('[data-action="tavern"]').click();
   await expect(page.locator('#tavernMenu')).toBeVisible();
   await expect(page.locator('#tavernTitle')).toHaveText('はじまりの村の酒場');
+  await page.locator('[data-tavern-view="quests"]').click();
   await expect(page.locator('#tavernQuests .tavern-quest')).toHaveCount(3);
   await expect(page.locator('#tavernQuests')).toContainText('魔物を累計5体倒す');
   await expect(page.locator('#tavernQuests')).toContainText('受注後に魔物を3体倒す');
   await expect(page.locator('#tavernQuests')).toContainText('生命の霊薬 2個');
   await expect(page.locator('[data-action="tavern-close"]')).toBeInViewport();
-  await expect(page.locator('#tavernTitle')).toBeFocused();
+  await expect(page.locator('[data-tavern-view="quests"]')).toBeFocused();
   const dimensions = await page.evaluate(() => {
     const menu = document.querySelector('#tavernMenu').getBoundingClientRect();
     const close = document.querySelector('[data-action="tavern-close"]').getBoundingClientRect();
@@ -91,6 +92,7 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
   const beforeReport = await page.evaluate(() => ({ gold: state.gold, total: state.total }));
   expect(beforeReport.total).toBeGreaterThanOrEqual(3);
   await page.locator('[data-action="tavern"]').click();
+  await page.locator('[data-tavern-view="quests"]').click();
   await expect(page.locator('#tavernQuests')).toContainText('受注中 · 3 / 3体');
   await expect(page.locator('[data-action="quest-report"]')).toBeEnabled();
   await page.locator('[data-action="quest-report"]').click();
@@ -102,6 +104,7 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-game-ready', 'true');
   await page.locator('[data-action="tavern"]').click();
+  await page.locator('[data-tavern-view="quests"]').click();
   await expect(page.locator('#tavernQuests .tavern-quest[data-quest="apprentice_hunt"]')).toContainText('報告済み');
 
   await page.locator('[data-action="tavern-close"]').click();
@@ -139,6 +142,7 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
     await page.locator('[data-action="tavern"]').click();
     await expect(page.locator('#tavernTitle')).toHaveText(name + 'の酒場');
     if (node === 'forge') {
+      await page.locator('[data-tavern-view="quests"]').click();
       const veteranAccept = page.locator('[data-action="quest-accept:veteran_hunt"]');
       await veteranAccept.scrollIntoViewIfNeeded();
       await expect(veteranAccept).toBeInViewport();
@@ -153,5 +157,6 @@ test('街の酒場で依頼を受注・報告し、状態を保存して各街�
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-game-ready', 'true');
   await page.locator('[data-action="tavern"]').click();
+  await page.locator('[data-tavern-view="quests"]').click();
   await expect(page.locator('#tavernQuests')).toContainText('受注中 · 0 / 8体');
 });

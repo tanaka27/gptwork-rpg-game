@@ -1,6 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const QuestRules = typeof window !== 'undefined' ? window.QuestRules : globalThis.QuestRules;
+const AdventurerRules = typeof window !== 'undefined' ? window.AdventurerRules : globalThis.AdventurerRules;
 const { zones, gear, consumables, shopStock, skillList, normalAttack, mapNodes, rarities, materials, bestiary } =
   GameContent.legacy(GameData);
 const skillDescription = s =>
@@ -84,6 +85,9 @@ function moveTo(id) {
   showScreen('adventure');
   return true;
 }
+function advanceAdventurerTick() {
+  state.adventurerState = AdventurerRules.advanceTick(state.adventurerState, mapNodes);
+}
 function finishTravel() {
   const journey = state.journey;
   if (!journey || journey.step < travelSteps || state.enemy || busy) return false;
@@ -101,6 +105,7 @@ function advanceTravel() {
   const journey = state.journey;
   if (!journey || state.enemy || busy || journey.step >= travelSteps) return false;
   journey.step++;
+  advanceAdventurerTick();
   $('subactions').innerHTML = '';
   const event = GameRules.travelEvent(GameData.rules.travel, journey.fought, Math.random());
   if (event === 'battle') {
@@ -218,6 +223,7 @@ const initial = () => ({
   total: 0,
   claimed: false,
   questState: QuestRules.initialState(false),
+  adventurerState: AdventurerRules.initialState(mapNodes),
   enemy: null,
   journey: null,
   turn: 1,
@@ -228,6 +234,8 @@ let state = initial(),
   tab = 'bag',
   shopOpen = false,
   tavernOpen = false,
+  tavernView = 'adventurers',
+  selectedAdventurerId = null,
   busy = false,
   sound = false,
   ctx;
@@ -249,6 +257,7 @@ state.lastTown = nodeById(state.lastTown)?.town ? state.lastTown : ['home', 'lun
 state.v = 2;
 state.zone = currentNode().zone;
 state.village = !!currentNode().town;
+state.adventurerState = AdventurerRules.recover(state.adventurerState, mapNodes);
 const loadedJourney = state.journey;
 if (
   loadedJourney &&
@@ -512,9 +521,45 @@ function renderTavern() {
   if (!currentTavern()) tavernOpen = false;
   $('tavernMenu').hidden = !tavernOpen;
   if (!tavernOpen) {
+    $('tavernAdventurerList').innerHTML = '';
+    $('tavernAdventurerDetailContent').innerHTML = '';
+    $('tavernAdventurerDetail').hidden = true;
     $('tavernQuests').innerHTML = '';
     return;
   }
+  $('tavernAdventurers').hidden = tavernView !== 'adventurers';
+  $('tavernQuestView').hidden = tavernView !== 'quests';
+  document
+    .querySelectorAll('[data-tavern-view]')
+    .forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tavernView === tavernView)));
+  const present = AdventurerRules.list().filter(
+      adventurer => state.adventurerState.locations[adventurer.id] === state.node
+    ),
+    selected = present.find(adventurer => adventurer.id === selectedAdventurerId);
+  $('tavernAdventurerCount').textContent = present.length + '人';
+  $('tavernAdventurerList').hidden = !!selected;
+  $('tavernAdventurerDetail').hidden = !selected;
+  $('tavernAdventurerList').innerHTML = present.length
+    ? present
+        .map(
+          adventurer =>
+            `<button type="button" class="tavern-adventurer" data-action="adventurer-detail:${adventurer.id}" aria-label="${adventurer.name}、${adventurer.job}、Lv.${adventurer.level}の詳細"><span><strong>${adventurer.name}</strong><small>${adventurer.job} · Lv.${adventurer.level}</small></span><span class="tavern-adventurer-open">詳細を見る →</span></button>`
+        )
+        .join('')
+    : '<p class="tavern-empty">今この街にいる冒険者はいません。</p>';
+  $('tavernAdventurerDetailContent').innerHTML = selected
+    ? `<article class="tavern-adventurer-card" aria-label="${selected.name}の詳細"><h3 tabindex="-1">${selected.name}</h3><p>${selected.job} · Lv.${selected.level}</p><p>現在地：${currentNode().name}</p><dl>${[
+        ['HP', selected.hp],
+        ['MP', selected.mp],
+        ['攻撃', selected.attack],
+        ['防御', selected.defense],
+        ['賢さ', selected.wisdom],
+        ['運', selected.luck],
+        ['速さ', selected.speed],
+      ]
+        .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)
+        .join('')}</dl></article>`
+    : '';
   const active = state.questState.active;
   $('tavernTitle').textContent = currentNode().name + 'の酒場';
   $('tavernTotal').textContent = state.total + '体';
@@ -577,6 +622,8 @@ function openTavern() {
   if (!currentTavern()) return false;
   shopOpen = false;
   tavernOpen = true;
+  tavernView = 'adventurers';
+  selectedAdventurerId = null;
   $('subactions').innerHTML = '';
   render(false);
   showScreen('adventure');
@@ -642,16 +689,18 @@ function gearDetailMarkup(id, origin) {
 function itemRow(a, desc, button, secondary = '') {
   return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;
 }
-function startBattle(boss = false, travelEncounter = false) {
-  if (state.enemy || state.village || busy || (state.journey && (!travelEncounter || boss))) return;
+function startBattle(boss = false, travelEncounter = false, exploration = false) {
+  if (state.enemy || state.village || busy || (state.journey && (!travelEncounter || boss))) return false;
   const z = state.zone;
-  if (boss && (!currentNode().boss || state.kills[z] < zones[z].kills || state.cleared[z])) return;
+  if (boss && (!currentNode().boss || state.kills[z] < zones[z].kills || state.cleared[z])) return false;
   state.enemy = GameRules.enemy(GameData, z, boss);
+  if (exploration) state.adventurerState = AdventurerRules.recordExploration(state.adventurerState, mapNodes);
   state.battleContent = JSON.parse(JSON.stringify(GameData));
   state.turn = 1;
   log(`${state.enemy.name}が あらわれた！`);
   $('subactions').innerHTML = '';
   render();
+  return true;
 }
 async function combat(kind) {
   if (!state.enemy || busy) return;
@@ -834,7 +883,18 @@ function action(a) {
       gearDetailOrigin = 'bag';
     }
   }
-  if (tavernOpen && !['tavern', 'quest-accept', 'quest-report', 'tavern-close'].includes(key)) {
+  if (
+    tavernOpen &&
+    ![
+      'tavern',
+      'tavern-view',
+      'adventurer-detail',
+      'adventurer-back',
+      'quest-accept',
+      'quest-report',
+      'tavern-close',
+    ].includes(key)
+  ) {
     tavernOpen = false;
     renderTavern();
   }
@@ -846,7 +906,7 @@ function action(a) {
       returnFromTravel();
       break;
     case 'explore':
-      startBattle();
+      startBattle(false, false, true);
       break;
     case 'boss':
       startBattle(true);
@@ -929,6 +989,31 @@ function action(a) {
     case 'tavern':
       openTavern();
       break;
+    case 'tavern-view':
+      if (!tavernOpen || !currentTavern() || !['adventurers', 'quests'].includes(id)) return;
+      tavernView = id;
+      selectedAdventurerId = null;
+      render(false);
+      document.querySelector?.(`[data-tavern-view="${id}"]`)?.focus();
+      break;
+    case 'adventurer-detail': {
+      const adventurer = AdventurerRules.list().find(
+        member => member.id === id && state.adventurerState.locations[member.id] === state.node
+      );
+      if (!tavernOpen || tavernView !== 'adventurers' || !currentTavern() || !adventurer) return;
+      selectedAdventurerId = id;
+      render(false);
+      document.querySelector?.('#tavernAdventurerDetailContent h3')?.focus();
+      break;
+    }
+    case 'adventurer-back': {
+      if (!tavernOpen || tavernView !== 'adventurers' || !selectedAdventurerId) return;
+      const previous = selectedAdventurerId;
+      selectedAdventurerId = null;
+      render(false);
+      document.querySelector?.(`[data-action="adventurer-detail:${previous}"]`)?.focus();
+      break;
+    }
     case 'tavern-close':
       tavernOpen = false;
       render(false);
@@ -1002,7 +1087,7 @@ $('closeModal').onclick = () => $('modal').close();
 $('help').onclick = () =>
   modal(
     '冒険の手引き',
-    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。「酒場」では依頼を選び、受注後に条件を満たして報告すると報酬を受け取れます。受注と報告はどの街の酒場でも行え、同時に受けられる依頼は1件です。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・レジェンダリーの4段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・レジェンダリーは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。村長の依頼は累計5体討伐で100 Gと霊薬2個、ほかの依頼は受注後の討伐数で条件を満たします。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
+    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。「酒場」の「冒険者」タブではこの街にいる冒険者を一覧し、名前を選ぶと能力と現在地を確認できます。「依頼」タブでは依頼を受注し、条件を満たして報告すると報酬を受け取れます。探索を3回始める、または道中で「先へ進む」を1回選ぶごとに、冒険者が隣の地点へ移動することがあります。受注と報告はどの街の酒場でも行え、同時に受けられる依頼は1件です。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・レジェンダリーの4段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・レジェンダリーは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。村長の依頼は累計5体討伐で100 Gと霊薬2個、ほかの依頼は受注後の討伐数で条件を満たします。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
   );
 $('reset').onclick = () => {
   if (busy) return;

@@ -1,9 +1,26 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {openDatabase} from '../../server/local-db.mjs';import {handleApi} from '../../server/api.mjs';import seed from '../../content/game.json' with {type:'json'};
+import AdventurerRules from '../../shared/adventurers.js';
 const fixture=()=>({v:2,node:'meadow',lastTown:'home',lv:1,xp:0,hp:80,mp:20,gold:30,weapon:'twig',armor:'cloth',owned:['twig','cloth'],items:{herb:3,ether:1,potion:0},materials:{},zone:0,kills:[0,0,0],cleared:[false,false,false],total:0,turn:1,log:['開始'],enemy:null,journey:null});
 function setup(){const DB=openDatabase();const env={DB,OWNER_ID:'owner'};return {DB,call:async(path,method='GET',data,headers={})=>{const response=await handleApi(new Request('https://rpg.test'+path,{method,headers:{'oai-authenticated-user-id':'owner','origin':'https://rpg.test',...headers},...(data?{body:JSON.stringify(data)}:{})}),env);return {status:response.status,body:await response.json()};}};}
 test('owner authentication and same-origin writes',async()=>{const app=setup();assert.equal((await app.call('/api/content','GET',null,{'oai-authenticated-user-id':''})).status,401);assert.equal((await app.call('/api/content','GET',null,{'oai-authenticated-user-id':'stranger'})).status,403);assert.equal((await app.call('/api/admin/drafts','POST',{}, {origin:'https://evil.test'})).status,403);app.DB.close();});
 test('draft isolation, validation, revision, publish, immutable versions and rollback',async()=>{const app=setup();assert.equal((await app.call('/api/content')).body.id,'bundled');const created=await app.call('/api/admin/drafts','POST',{label:'test'});assert.equal(created.status,201);const id=created.body.id,edited=structuredClone(seed);edited.monsters[0].name='追加した敵';assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:1,data:edited})).status,200);assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:1,data:edited})).status,409);assert.equal((await app.call('/api/content')).body.data.monsters[0].name,seed.monsters[0].name);assert.equal((await app.call('/api/admin/preview?version='+id)).body.data.monsters[0].name,'追加した敵');assert.equal((await app.call('/api/admin/versions/'+id+'/publish','POST',{revision:2})).status,200);assert.equal((await app.call('/api/content')).body.id,id);assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:2,data:edited})).status,409);assert.equal((await app.call('/api/admin/versions/bundled/publish','POST',{revision:0})).status,200);assert.equal((await app.call('/api/content')).body.id,'bundled');app.DB.close();});
 test('save import, CAS conflict, backup history and invalid state rejection',async()=>{const app=setup();assert.equal((await app.call('/api/save')).body.revision,0);const save=fixture();assert.equal((await app.call('/api/save','PUT',{revision:0,state:save})).status,200);assert.equal((await app.call('/api/save','PUT',{revision:0,state:save})).status,409);save.gold=99;assert.equal((await app.call('/api/save','PUT',{revision:1,state:save})).body.revision,2);const history=(await app.call('/api/save/history')).body.history;assert.equal(history.length,1);assert.equal((await app.call('/api/save/history/'+history[0].id)).body.state.gold,30);save.gold=-1;assert.equal((await app.call('/api/save','PUT',{revision:2,state:save})).status,422);assert.equal((await app.call('/api/save')).body.state.gold,99);app.DB.close();});
+test('per-save NPC state round-trips and protects map nodes referenced only by NPCs',async()=>{
+ const app=setup();try{
+  const data=structuredClone(seed),outpost={id:'npc_outpost',name:'旅人の野営地',zoneId:'grassland',x:8,y:8,links:['home']};
+  data.nodes[0].links.push(outpost.id);data.nodes.push(outpost);
+  const created=await app.call('/api/admin/drafts','POST',{data,label:'NPC outpost fixture'});assert.equal(created.status,201);
+  assert.equal((await app.call('/api/admin/versions/'+created.body.id+'/publish','POST',{revision:1})).status,200);
+  const adventurerState=AdventurerRules.initialState(data.nodes);
+  adventurerState.tick=7;adventurerState.explorationProgress=2;adventurerState.locations.adventurer_001=outpost.id;
+  const state={...fixture(),adventurerState},saved=await app.call('/api/save','PUT',{revision:0,state});assert.equal(saved.status,200);
+  assert.deepEqual((await app.call('/api/save')).body.state.adventurerState,adventurerState,'NPC positions and random progress survive cloud save/restore reads');
+  const removed=structuredClone(data);removed.nodes=removed.nodes.filter(node=>node.id!==outpost.id);removed.nodes.find(node=>node.id==='home').links=removed.nodes.find(node=>node.id==='home').links.filter(id=>id!==outpost.id);
+  const next=await app.call('/api/admin/drafts','POST',{data:removed,label:'remove NPC-only node'});assert.equal(next.status,201);
+  assert.equal((await app.call('/api/admin/versions/'+next.body.id+'/publish','POST',{revision:1})).status,422,'a published map cannot remove a node occupied by an NPC');
+  assert.equal((await app.call('/api/save')).body.state.adventurerState.locations.adventurer_001,outpost.id,'rejected publication preserves NPC save state');
+ }finally{app.DB.close();}
+});
 test('legacy and active quest states round-trip through cloud saves while invalid quest states are rejected',async()=>{
  const app=setup();try{
   let revision=0;

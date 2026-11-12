@@ -6,7 +6,7 @@ function boot(saved){
  const nodes={},storage={};const node=()=>({innerHTML:'',textContent:'',disabled:false,addEventListener(){},focus(){},classList:{add(){},remove(){},toggle(){}},showModal(){},close(){},append(){}});
  const c={document:{getElementById:id=>nodes[id]??=node(),querySelectorAll:()=>[],addEventListener(){},createElement:node},localStorage:{getItem:()=>saved?JSON.stringify(saved):null,setItem:(k,v)=>storage[k]=v,removeItem(){}},console,setTimeout:fn=>fn(),Math:Object.create(Math)};
  c.Math.random=()=>.5;c.GameData=structuredClone(data);vm.createContext(c);
- for(const file of ['shared/content.js','shared/rules.js','shared/quests.js','dist/storage.js','dist/combat.js','dist/game.js'])vm.runInContext(fs.readFileSync(file,'utf8'),c);
+ for(const file of ['shared/content.js','shared/rules.js','shared/quests.js','shared/adventurers.js','dist/storage.js','dist/combat.js','dist/game.js'])vm.runInContext(fs.readFileSync(file,'utf8'),c);
  vm.runInContext(withoutScheduledRound(fs.readFileSync('dist/party.js','utf8')),c);
  return {run:s=>vm.runInContext(s,c),storage,nodes};
 }

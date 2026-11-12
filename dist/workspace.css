@@ -1190,6 +1190,151 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   overflow: auto;
   overscroll-behavior: contain;
 }
+#tavernAdventurers,
+#tavernQuestView {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+#tavernAdventurers[hidden],
+#tavernQuestView[hidden],
+#tavernAdventurerList[hidden],
+#tavernAdventurerDetail[hidden] {
+  display: none;
+}
+.tavern-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex: none;
+}
+.tavern-tabs button {
+  min-height: 38px;
+  color: var(--muted);
+}
+.tavern-tabs button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #25382f;
+}
+.tavern-adventurer-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+.tavern-adventurer-heading b {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.tavern-adventurers {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.tavern-adventurer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 9px;
+  text-align: left;
+  background: #18262b;
+}
+.tavern-adventurer > span:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.tavern-adventurer strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.tavern-adventurer small,
+.tavern-adventurer-open {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.tavern-empty {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tavern-adventurer-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#tavernAdventurerDetailContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.tavern-adventurer-card {
+  flex: 1;
+  min-width: 0;
+}
+.tavern-adventurer-card h3 {
+  margin: 0 0 3px;
+  font:
+    500 16px 'Noto Serif JP',
+    serif;
+}
+.tavern-adventurer-card p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.tavern-adventurer-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 14px;
+  margin: 12px 0 0;
+}
+.tavern-adventurer-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0;
+  font-size: 11px;
+}
+.tavern-adventurer-card dt {
+  color: var(--muted);
+}
+.tavern-adventurer-card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.tavern-adventurer-detail > button {
+  flex: none;
+  min-height: 40px;
+  padding: 6px 12px;
+}
+.tavern-quest-heading {
+  flex: none;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--muted);
+}
 .tavern-quest {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -2,6 +2,8 @@
 
 日本語で遊べる、オリジナルのターン制ブラウザRPGです。4人の旅団で各地を旅し、魔物を倒して装備を整え、3体のボスに挑みます。
 
+街の酒場では、その街にいる冒険者を一覧して個別の能力や現在地を確認できます。冒険者はセーブごとに独立しており、探索や道中の行動に応じて隣の地点へ移動することがあります。
+
 - [ゲームを開く](https://starlight-chronicle-rpg.tomo27tomo84.chatgpt.site)（現在は所有者限定）
 - [GitHub](https://github.com/tanaka27/gptwork-rpg-game)（`main`）
 
