@@ -24,6 +24,7 @@
 | 場所 | 内容 |
 | --- | --- |
 | [docs/history/plans/](history/plans/) | 反映完了した案件の設計書 |
+| [2026-11-11の変更履歴](history/2026-11-11-to-11-11-changelog.md) | CHANGELOGから移した2026-11-11の記録 |
 | [2026-11-04〜11-10の変更履歴](history/2026-11-04-to-11-10-changelog.md) | CHANGELOGから移した古い記録 |
 | [開発文書の整理前資料](history/2026-11-10-development-documents.md) | 2026-11-10より前のHANDOFF/DEVELOPMENT/BACKEND |
 | [ゲーム文書の整理前資料](history/2026-11-10-game-documents.md) | 2026-11-10より前のゲーム仕様・設計文書 |
