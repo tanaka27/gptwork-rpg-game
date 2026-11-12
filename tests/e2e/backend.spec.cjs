@@ -40,7 +40,7 @@ test('管理画面で編集・検証・プレビュー・公開・旧版への�
  }finally{await page.request.post('/api/admin/versions/bundled/publish',{headers:{origin:new URL(testInfo.project.use.baseURL).origin},data:{revision:0}});}
 });
 test('ローカルの進行をクラウドへ保存・復元し、復元前の進行を保持する',async({page})=>{
- await page.goto('/');await ready(page);const original=JSON.parse(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1')));
+ await page.goto('/');await ready(page);await page.evaluate(()=>{const saved=JSON.parse(localStorage.getItem('starlight-rpg-v1'));saved.total=2;saved.questState={active:{id:'apprentice_hunt',acceptedAtTotal:1},completedIds:[]};localStorage.setItem('starlight-rpg-v1',JSON.stringify(saved));});await page.reload();await ready(page);const original=JSON.parse(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1')));
  await page.locator('.utility-menu summary').click();await page.locator('#cloudSave').click();await expect(page.locator('#uploadCloud')).toBeEnabled();
  await page.locator('#uploadCloud').click();await expect(page.locator('#cloudStatus')).toContainText('クラウドに保存しました');
  await page.locator('#closeCloud').click();await page.locator('.utility-menu summary').click();
@@ -51,6 +51,7 @@ test('ローカルの進行をクラウドへ保存・復元し、復元前の�
  await page.locator('.utility-menu summary').click();await page.locator('#cloudSave').click();await expect(page.locator('#restoreCloud')).toBeEnabled();await page.locator('#restoreCloud').click();
  await ready(page);await expect(page.locator('#location')).toHaveText('風そよぐ草原');
  const restored=JSON.parse(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1')));expect(restored.node).toBe(original.node);expect(restored.gold).toBe(original.gold);
+ expect(restored.questState).toEqual(original.questState,'cloud restore keeps the accepted quest and its progress baseline');
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-before-cloud-restore')).node)).toBe('home');
  await page.locator('.utility-menu summary').click();await page.locator('#cloudSave').click();await expect(page.locator('#uploadCloud')).toBeEnabled();await page.locator('#uploadCloud').click();await expect(page.locator('#cloudStatus')).toContainText('クラウドに保存しました');await expect(page.locator('#restoreHistory')).toBeEnabled();
  await page.screenshot({path:test.info().outputPath('cloud-save.png')});

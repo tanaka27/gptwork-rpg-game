@@ -17,7 +17,7 @@
 | 画面、状態遷移、操作 | `dist/game.js`、`dist/party.js`、`dist/bootstrap.js` |
 | 戦闘計算 | `shared/rules.js`、`dist/combat.js` |
 | レイアウトと画面装飾 | `dist/workspace.css`、`dist/style.css`、[DESIGN.md](DESIGN.md) |
-| 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js` |
+| 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js`、`shared/quests.js` |
 | API、DB、Worker | `server/`、`db/`、`drizzle/`、[BACKEND.md](BACKEND.md) |
 | 定義同期と公開用ビルド | `scripts/`、[RELEASE.md](RELEASE.md#ビルドとパッケージ) |
 | ロジック/API/ブラウザ検証 | `tests/` |

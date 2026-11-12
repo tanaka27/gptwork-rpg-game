@@ -4,6 +4,22 @@ function setup(){const DB=openDatabase();const env={DB,OWNER_ID:'owner'};return 
 test('owner authentication and same-origin writes',async()=>{const app=setup();assert.equal((await app.call('/api/content','GET',null,{'oai-authenticated-user-id':''})).status,401);assert.equal((await app.call('/api/content','GET',null,{'oai-authenticated-user-id':'stranger'})).status,403);assert.equal((await app.call('/api/admin/drafts','POST',{}, {origin:'https://evil.test'})).status,403);app.DB.close();});
 test('draft isolation, validation, revision, publish, immutable versions and rollback',async()=>{const app=setup();assert.equal((await app.call('/api/content')).body.id,'bundled');const created=await app.call('/api/admin/drafts','POST',{label:'test'});assert.equal(created.status,201);const id=created.body.id,edited=structuredClone(seed);edited.monsters[0].name='追加した敵';assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:1,data:edited})).status,200);assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:1,data:edited})).status,409);assert.equal((await app.call('/api/content')).body.data.monsters[0].name,seed.monsters[0].name);assert.equal((await app.call('/api/admin/preview?version='+id)).body.data.monsters[0].name,'追加した敵');assert.equal((await app.call('/api/admin/versions/'+id+'/publish','POST',{revision:2})).status,200);assert.equal((await app.call('/api/content')).body.id,id);assert.equal((await app.call('/api/admin/versions/'+id,'PUT',{revision:2,data:edited})).status,409);assert.equal((await app.call('/api/admin/versions/bundled/publish','POST',{revision:0})).status,200);assert.equal((await app.call('/api/content')).body.id,'bundled');app.DB.close();});
 test('save import, CAS conflict, backup history and invalid state rejection',async()=>{const app=setup();assert.equal((await app.call('/api/save')).body.revision,0);const save=fixture();assert.equal((await app.call('/api/save','PUT',{revision:0,state:save})).status,200);assert.equal((await app.call('/api/save','PUT',{revision:0,state:save})).status,409);save.gold=99;assert.equal((await app.call('/api/save','PUT',{revision:1,state:save})).body.revision,2);const history=(await app.call('/api/save/history')).body.history;assert.equal(history.length,1);assert.equal((await app.call('/api/save/history/'+history[0].id)).body.state.gold,30);save.gold=-1;assert.equal((await app.call('/api/save','PUT',{revision:2,state:save})).status,422);assert.equal((await app.call('/api/save')).body.state.gold,99);app.DB.close();});
+test('legacy and active quest states round-trip through cloud saves while invalid quest states are rejected',async()=>{
+ const app=setup();try{
+  let revision=0;
+  for(const claimed of [false,true]){
+   const old={...fixture(),claimed};
+   const result=await app.call('/api/save','PUT',{revision,state:old});assert.equal(result.status,200);
+   revision=result.body.revision;assert.equal((await app.call('/api/save')).body.state.questState,undefined,'legacy v:2 state stays readable without quest fields');
+  }
+  const accepted={...fixture(),claimed:false,questState:{active:{id:'apprentice_hunt',acceptedAtTotal:0},completedIds:[]}};
+  const saved=await app.call('/api/save','PUT',{revision,state:accepted});assert.equal(saved.status,200);
+  const roundTrip=(await app.call('/api/save')).body.state;assert.deepEqual(roundTrip.questState,accepted.questState);
+  const invalid={...accepted,questState:{active:{id:'apprentice_hunt',acceptedAtTotal:1},completedIds:['apprentice_hunt']}};
+  assert.equal((await app.call('/api/save','PUT',{revision:saved.body.revision,state:invalid})).status,422);
+  assert.deepEqual((await app.call('/api/save')).body.state.questState,accepted.questState,'rejected quest state cannot overwrite progress');
+ }finally{app.DB.close();}
+});
 test('publishing cannot invalidate current cloud saves',async()=>{const app=setup();await app.call('/api/save','PUT',{revision:0,state:fixture()});const data=structuredClone(seed);data.items=data.items.filter(e=>e.id!=='twig');const draft=await app.call('/api/admin/drafts','POST',{data});assert.equal(draft.status,201);assert.equal((await app.call('/api/admin/versions/'+draft.body.id+'/publish','POST',{revision:1})).status,422);app.DB.close();});
 test('legacy and job-enabled battle snapshots round-trip through cloud saves without changing bundled content',async()=>{
  const app=setup();try{

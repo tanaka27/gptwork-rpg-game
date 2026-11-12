@@ -16,7 +16,7 @@ function boot(saved = null, party = false, manualMessages = false) {
   context.Math.random = () => .5;
   vm.createContext(context);
   context.GameData=JSON.parse(fs.readFileSync('content/game.json','utf8'));
-  for(const file of ['shared/content.js','shared/rules.js','dist/storage.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
+  for(const file of ['shared/content.js','shared/rules.js','shared/quests.js','dist/storage.js'])vm.runInContext(fs.readFileSync(file,'utf8'),context);
   vm.runInContext(fs.readFileSync('dist/combat.js','utf8'),context);
   vm.runInContext(source, context);
   // Existing progression tests traverse real, uneventful three-step routes.

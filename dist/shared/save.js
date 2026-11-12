@@ -5,6 +5,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   const contentRules = typeof module === 'object' ? require('./content.js') : globalThis.GameContent;
   const gameRules = typeof module === 'object' ? require('./rules.js') : globalThis.GameRules;
+  const questRules = typeof module === 'object' ? require('./quests.js') : globalThis.QuestRules;
   function validate(state, content) {
     const errors = [];
     if (JSON.stringify(state)?.includes('<')) errors.push('セーブにHTMLを含めることはできません');
@@ -14,6 +15,8 @@
       if (!Number.isSafeInteger(state[key]) || state[key] < (key === 'lv' || key === 'turn' ? 1 : 0))
         errors.push(key + 'が不正です');
     if (state.lv > content.rules.growth.maxLevel) errors.push('レベルが上限を超えています');
+    if (state.questState !== undefined)
+      errors.push(...questRules.validate(state.questState, state.total, state.claimed));
     const nodes = new Set(content.nodes.map(e => e.id)),
       items = new Set(content.items.map(e => e.id)),
       materials = new Set(content.materials.map(e => e.id));

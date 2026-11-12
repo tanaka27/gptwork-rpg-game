@@ -1,5 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
+const QuestRules = typeof window !== 'undefined' ? window.QuestRules : globalThis.QuestRules;
 const { zones, gear, consumables, shopStock, skillList, normalAttack, mapNodes, rarities, materials, bestiary } =
   GameContent.legacy(GameData);
 const skillDescription = s =>
@@ -28,6 +29,9 @@ function currentShopStock() {
   return state.village && !state.journey && !state.enemy
     ? (shopStock[state.node] || []).filter(id => !gear[id] || equipmentEligible(id))
     : [];
+}
+function currentTavern() {
+  return state.village && !state.journey && !state.enemy && !busy;
 }
 const nodeById = id => mapNodes.find(n => n.id === id),
   currentNode = () => nodeById(state.node);
@@ -149,7 +153,7 @@ function renderMap() {
   $('regions').innerHTML = from.links
     .map(id => {
       const n = nodeById(id);
-      return `<button class="region" data-action="move:${id}" ${!canMove(id) ? 'disabled' : ''}><span class="icon">${n.town ? '⌂' : n.boss ? '♜' : '♧'}</span><span><strong>${n.name}</strong><small>${n.zone > 0 && !state.cleared[n.zone - 1] ? '前のエリアのボス撃破で解放' : state.journey ? '移動中：冒険タブから道中を進めてください' : n.town ? '道中3工程 · 街 / 宿屋 / お店' : `道中3工程 · Lv.${n.zone * 2 + 1}〜 · ${n.boss ? 'ボスの待つ場所' : '探索エリア'}`}</small></span><span class="check">→</span></button>`;
+      return `<button class="region" data-action="move:${id}" ${!canMove(id) ? 'disabled' : ''}><span class="icon">${n.town ? '⌂' : n.boss ? '♜' : '♧'}</span><span><strong>${n.name}</strong><small>${n.zone > 0 && !state.cleared[n.zone - 1] ? '前のエリアのボス撃破で解放' : state.journey ? '移動中：冒険タブから道中を進めてください' : n.town ? '道中3工程 · 街 / 宿屋 / お店 / 酒場' : `道中3工程 · Lv.${n.zone * 2 + 1}〜 · ${n.boss ? 'ボスの待つ場所' : '探索エリア'}`}</small></span><span class="check">→</span></button>`;
     })
     .join('');
   $('camp').textContent = '⌖ 世界地図を見る';
@@ -213,6 +217,7 @@ const initial = () => ({
   cleared: zones.map(() => false),
   total: 0,
   claimed: false,
+  questState: QuestRules.initialState(false),
   enemy: null,
   journey: null,
   turn: 1,
@@ -222,6 +227,7 @@ const initial = () => ({
 let state = initial(),
   tab = 'bag',
   shopOpen = false,
+  tavernOpen = false,
   busy = false,
   sound = false,
   ctx;
@@ -229,6 +235,13 @@ try {
   const raw = JSON.parse(GameStorage.read());
   if (raw && [1, 2].includes(raw.v) && Array.isArray(raw.kills) && Number.isFinite(raw.hp)) state = raw;
 } catch {}
+state.claimed = state.claimed === true;
+if (state.questState === undefined) state.questState = QuestRules.initialState(state.claimed);
+else if (QuestRules.validate(state.questState, state.total, state.claimed).length) {
+  const recovered = QuestRules.recover(state.questState, state.total, state.claimed);
+  state.questState = recovered.state;
+  state.claimed = recovered.claimed;
+}
 if (!nodeById(state.node))
   state.node = state.village ? ['home', 'luna', 'forge'][state.zone] : ['meadow', 'ruins', 'ash'][state.zone];
 state.materials ??= {};
@@ -391,7 +404,7 @@ function render(persist = true) {
       : state.village
         ? btn('☽ 宿屋で休む', 'rest', '10 G / FULL HEAL') +
           btn('⚒ お店', 'shop', 'SHOP') +
-          btn('✧ 依頼の報酬', 'claim', 'QUEST', state.total < 5 || state.claimed) +
+          btn('♧ 酒場', 'tavern', 'QUEST BOARD') +
           btn('⌖ 移動先', 'routes', 'TRAVEL')
         : btn('⚔ 探索する', 'explore', 'EXPLORE') +
           btn(
@@ -416,6 +429,7 @@ function render(persist = true) {
   $('log').innerHTML = state.log.map(t => '<p>› ' + t + '</p>').join('');
   renderInventory();
   renderShop();
+  renderTavern();
   if (persist) save();
 }
 function renderInventory() {
@@ -484,13 +498,122 @@ function renderShop() {
     })
     .join('');
 }
+function questRewardText(quest) {
+  return [
+    quest.gold ? `${quest.gold} G` : '',
+    ...Object.entries(quest.items).map(
+      ([id, count]) => `${consumables[id]?.name || (id === 'potion' ? '生命の霊薬' : `報酬アイテム(${id})`)} ${count}個`
+    ),
+  ]
+    .filter(Boolean)
+    .join('、');
+}
+function renderTavern() {
+  if (!currentTavern()) tavernOpen = false;
+  $('tavernMenu').hidden = !tavernOpen;
+  if (!tavernOpen) {
+    $('tavernQuests').innerHTML = '';
+    return;
+  }
+  const active = state.questState.active;
+  $('tavernTitle').textContent = currentNode().name + 'の酒場';
+  $('tavernTotal').textContent = state.total + '体';
+  $('tavernQuests').innerHTML = QuestRules.list()
+    .map(quest => {
+      const completed = QuestRules.isCompleted(state.questState, quest.id),
+        isActive = active?.id === quest.id,
+        supported = QuestRules.supports(quest.id, consumables),
+        progress = QuestRules.progress(quest.id, state.total, active),
+        status = completed
+          ? '報告済み'
+          : !supported
+            ? '現在、この依頼の報酬を用意できません'
+            : isActive
+              ? `受注中 · ${progress} / ${quest.target}体`
+              : active
+                ? `別の依頼を進行中 · ${QuestRules.get(active.id)?.name || '依頼'}`
+                : `未受注 · ${progress} / ${quest.target}体`,
+        action = completed
+          ? btn('達成済み', `quest-accept:${quest.id}`, '', true)
+          : !supported
+            ? btn(
+                isActive ? '報告できません' : '利用できません',
+                isActive ? 'quest-report' : `quest-accept:${quest.id}`,
+                '',
+                true
+              )
+            : isActive
+              ? btn(
+                  QuestRules.canReport(state.questState, state.total, state.claimed, consumables)
+                    ? '報告する'
+                    : '進行中',
+                  'quest-report',
+                  QuestRules.canReport(state.questState, state.total, state.claimed, consumables)
+                    ? '報酬を受け取る'
+                    : `${progress} / ${quest.target}体`,
+                  !QuestRules.canReport(state.questState, state.total, state.claimed, consumables)
+                )
+              : btn(
+                  active ? 'ほかの依頼を進行中' : '受注する',
+                  `quest-accept:${quest.id}`,
+                  '',
+                  !!active || !QuestRules.canAccept(state.questState, quest.id, state.total, state.claimed, consumables)
+                );
+      return `<article class="tavern-quest" data-quest="${quest.id}"><div class="tavern-quest-copy"><strong>${quest.name}</strong><small>条件：${quest.condition}</small><small>報酬：${questRewardText(quest)}</small><small class="tavern-status">${status}</small></div>${action}</article>`;
+    })
+    .join('');
+}
 function openShop() {
   if (busy || !currentShopStock().length) return false;
   shopOpen = true;
+  tavernOpen = false;
   $('subactions').innerHTML = '';
   render(false);
   showScreen('adventure');
   $('shopTitle').focus();
+  return true;
+}
+function openTavern() {
+  if (!currentTavern()) return false;
+  shopOpen = false;
+  tavernOpen = true;
+  $('subactions').innerHTML = '';
+  render(false);
+  showScreen('adventure');
+  $('tavernTitle').focus();
+  return true;
+}
+function acceptQuest(id) {
+  if (!tavernOpen || !currentTavern()) return false;
+  if (!QuestRules.supports(id, consumables)) {
+    const quest = QuestRules.get(id);
+    if (quest) log(`${quest.name}は現在、報酬を用意できないため受注できません。`);
+    render();
+    return false;
+  }
+  const next = QuestRules.accept(state.questState, id, state.total, state.claimed, consumables);
+  if (!next) return false;
+  state.questState = next;
+  log(`${QuestRules.get(id).name}を受注した。`);
+  render();
+  return true;
+}
+function reportQuest() {
+  if (!tavernOpen || !currentTavern()) return false;
+  if (!state.questState.active) return false;
+  if (!QuestRules.supports(state.questState.active?.id, consumables)) {
+    log('現在、依頼の報酬を受け取れないため報告できません。');
+    render();
+    return false;
+  }
+  const result = QuestRules.report(state.questState, state.total, state.claimed, consumables);
+  if (!result) return false;
+  state.questState = result.state;
+  if (result.quest.id === 'village_bounty') state.claimed = true;
+  state.gold += result.quest.gold;
+  for (const [id, count] of Object.entries(result.quest.items)) state.items[id] = (state.items[id] || 0) + count;
+  log(`${result.quest.name}を報告！ ${questRewardText(result.quest)}を受け取りました。`);
+  render();
   return true;
 }
 function gearDetailMarkup(id, origin) {
@@ -711,6 +834,10 @@ function action(a) {
       gearDetailOrigin = 'bag';
     }
   }
+  if (tavernOpen && !['tavern', 'quest-accept', 'quest-report', 'tavern-close'].includes(key)) {
+    tavernOpen = false;
+    renderTavern();
+  }
   switch (key) {
     case 'travel-next':
       advanceTravel();
@@ -799,6 +926,20 @@ function action(a) {
       render(false);
       document.querySelector?.('[data-action="shop"]')?.focus();
       break;
+    case 'tavern':
+      openTavern();
+      break;
+    case 'tavern-close':
+      tavernOpen = false;
+      render(false);
+      document.querySelector?.('[data-action="tavern"]')?.focus();
+      break;
+    case 'quest-accept':
+      acceptQuest(id);
+      break;
+    case 'quest-report':
+      reportQuest();
+      break;
     case 'gear-detail':
       if (!gear[id] || (!shopOpen && !state.owned.includes(id)) || (shopOpen && !currentShopStock().includes(id)))
         return;
@@ -839,14 +980,6 @@ function action(a) {
       log(`${gear[id].name}を装備した。`);
       render();
       break;
-    case 'claim':
-      if (!state.village || state.claimed || state.total < 5) return;
-      state.claimed = true;
-      state.gold += 100;
-      state.items.potion += 2;
-      log('村長の依頼達成！ 100 Gと生命の霊薬2個を受け取りました。');
-      render();
-      break;
   }
 }
 document.addEventListener('click', e => {
@@ -869,7 +1002,7 @@ $('closeModal').onclick = () => $('modal').close();
 $('help').onclick = () =>
   modal(
     '冒険の手引き',
-    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・レジェンダリーの4段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・レジェンダリーは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。5体討伐で村長から100 Gと霊薬2個の報酬も。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
+    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。「酒場」では依頼を選び、受注後に条件を満たして報告すると報酬を受け取れます。受注と報告はどの街の酒場でも行え、同時に受けられる依頼は1件です。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・レジェンダリーの4段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・レジェンダリーは通常魔物のドロップのみです。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却できます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。<br><br>経験値でレベルアップし、Lv.2・3・5・7でスキルを習得。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。村長の依頼は累計5体討伐で100 Gと霊薬2個、ほかの依頼は受注後の討伐数で条件を満たします。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
   );
 $('reset').onclick = () => {
   if (busy) return;
@@ -901,6 +1034,7 @@ function resetAdventure() {
   state = initial();
   tab = 'bag';
   shopOpen = false;
+  tavernOpen = false;
   selectedGearId = null;
   gearDetailOrigin = 'bag';
   $('subactions').innerHTML = '';
@@ -910,13 +1044,17 @@ function resetAdventure() {
 }
 
 function showScreen(name) {
-  if (name !== 'adventure' && shopOpen) {
-    shopOpen = false;
-    if (gearDetailOrigin === 'shop') {
-      selectedGearId = null;
-      gearDetailOrigin = 'bag';
+  if (name !== 'adventure') {
+    if (shopOpen) {
+      shopOpen = false;
+      if (gearDetailOrigin === 'shop') {
+        selectedGearId = null;
+        gearDetailOrigin = 'bag';
+      }
+      renderShop();
     }
-    renderShop();
+    tavernOpen = false;
+    renderTavern();
   }
   for (const id of ['adventure', 'map', 'bag', 'party', 'record']) $('screen-' + id).hidden = id !== name;
   document

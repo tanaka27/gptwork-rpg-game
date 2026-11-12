@@ -78,6 +78,12 @@ buffed.buffs=[null,{characterId:content.rules.party[0],skillId:'missing',remaini
 const saveRules=require('../shared/save.js');
 const saved={...buffState(),v:2,xp:0,gold:30,total:0,node:'meadow',lastTown:'home',owned:['twig','cloth'],items:{herb:3},materials:{},kills:[0,0,0],cleared:[false,false,false],log:[]};
 assert.deepEqual(saveRules.validate(saved,content),[]);
+const questRules=require('../shared/quests.js');
+for(const claimed of [false,true])assert.deepEqual(saveRules.validate({...saved,claimed},content),[],'legacy v:2 save without quest state remains valid');
+const questSave={...saved,claimed:false,questState:{active:{id:'apprentice_hunt',acceptedAtTotal:0},completedIds:[]}};
+assert.deepEqual(saveRules.validate(questSave,content),[],'valid accepted quest state is cloud-save compatible');
+assert.deepEqual(saveRules.validate({...saved,claimed:true,questState:questRules.initialState(true)},content),[],'claimed legacy reward migrates to completed quest state');
+for(const mutation of [s=>s.questState.active.id='unknown',s=>s.questState.active.acceptedAtTotal=1,s=>s.questState.completedIds=['unknown'],s=>s.questState.completedIds=['apprentice_hunt','apprentice_hunt'],s=>s.questState.completedIds=['apprentice_hunt'],s=>{s.questState.active=null;s.questState.completedIds=['village_bounty']},s=>s.questState.completedIds=['apprentice_hunt','village_bounty']]){const changed=structuredClone(questSave);mutation(changed);assert.ok(saveRules.validate(changed,content).length,'invalid quest save is rejected');}
 rules.applyAttackBuff(saved,content,1,inspire);assert.deepEqual(saveRules.validate(saved,content),[]);
 for(const mutation of [s=>s.buffs={},s=>s.buffs.push({...s.buffs[0]}),s=>s.buffs[0].remainingTurns=0,s=>s.buffs[0].remainingTurns=4,s=>s.buffs[0].remainingTurns=1.5,s=>s.buffs[0].appliedTurn=2,s=>s.buffs[0].appliedTurn=0,s=>s.buffs[0].characterId='missing',s=>s.buffs[0].skillId='flame']){const changed=structuredClone(saved);mutation(changed);assert.ok(saveRules.validate(changed,content).length);}
 const snapshotSave={...structuredClone(saved),battleContent:structuredClone(content)};
