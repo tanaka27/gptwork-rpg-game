@@ -85,7 +85,7 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
  await page.reload();await ready(page);
  expect(await page.evaluate(()=>[state.lv,state.xp,state.total,state.gold])).toEqual([3,17,6,77]);
  expect(await page.evaluate(()=>[GameData.characters.map(c=>c.job),state.battleContent.characters.map(c=>c.job),state.battleContent.skills.length])).toEqual([
-  ['星剣士','弓使い','戦士','僧侶'],['星剣士','弓使い','戦士','僧侶'],11,
+  ['星剣士','弓使い','戦士','僧侶'],['星剣士','弓使い','戦士','僧侶'],15,
  ]);
  expect(await page.evaluate(()=>state.battleContent.items.filter(item=>item.category==='gear').map(item=>item.rarity))).toEqual(['common','common','common','common','common','common','uncommon','uncommon','rare','legendary']);
  await waitForActor(page,'rina');await page.locator('[data-action="skills"]').click();

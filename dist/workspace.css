@@ -902,12 +902,12 @@ button.party-member:hover {
 .enemy-unit:hover:not(:disabled) .enemy-target-marker {
   visibility: visible;
 }
-#enemy:has(.enemy-unit:hover:not(:disabled)):not(:has(.enemy-unit:focus-visible))
+#enemy:not(.all-targets):has(.enemy-unit:hover:not(:disabled)):not(:has(.enemy-unit:focus-visible))
   .enemy-unit:not(:hover)
   .enemy-target-marker {
   visibility: hidden;
 }
-#enemy:has(.enemy-unit:focus-visible) .enemy-unit:not(:focus-visible) .enemy-target-marker {
+#enemy:not(.all-targets):has(.enemy-unit:focus-visible) .enemy-unit:not(:focus-visible) .enemy-target-marker {
   visibility: hidden;
 }
 #enemy .enemy-unit strong {

@@ -776,6 +776,88 @@
           "base": 12
         }
       ]
+    },
+    {
+      "id": "astel_ember_shower",
+      "name": "火の粉",
+      "characterId": "astel",
+      "type": "magic",
+      "effect": "damage",
+      "target": "allEnemies",
+      "power": 0.8,
+      "base": 5,
+      "lv": 4,
+      "cost": 5,
+      "desc": "敵全体に火の粉を降らせる魔法。賢さ参照・守備力の影響なし",
+      "icon": "✺",
+      "effects": [
+        {
+          "type": "magicDamage",
+          "power": 0.8,
+          "base": 5
+        }
+      ]
+    },
+    {
+      "id": "rina_scatter_shot",
+      "name": "ばらまき撃ち",
+      "characterId": "rina",
+      "type": "physical",
+      "effect": "damage",
+      "target": "allEnemies",
+      "power": 0.7,
+      "lv": 3,
+      "cost": 4,
+      "desc": "敵全体に矢をばらまく物理攻撃",
+      "icon": "⇶",
+      "effects": [
+        {
+          "type": "physicalDamage",
+          "power": 0.7,
+          "base": 0
+        }
+      ]
+    },
+    {
+      "id": "gald_sweep",
+      "name": "なぎ払い",
+      "characterId": "gald",
+      "type": "physical",
+      "effect": "damage",
+      "target": "allEnemies",
+      "power": 0.6,
+      "lv": 4,
+      "cost": 4,
+      "desc": "敵全体をなぎ払う物理攻撃",
+      "icon": "↔",
+      "effects": [
+        {
+          "type": "physicalDamage",
+          "power": 0.6,
+          "base": 0
+        }
+      ]
+    },
+    {
+      "id": "noel_light_motes",
+      "name": "光の粒",
+      "characterId": "noel",
+      "type": "magic",
+      "effect": "damage",
+      "target": "allEnemies",
+      "power": 0.5,
+      "base": 3,
+      "lv": 4,
+      "cost": 5,
+      "desc": "敵全体に光の粒を降らせる魔法。賢さ参照・守備力の影響なし",
+      "icon": "⁂",
+      "effects": [
+        {
+          "type": "magicDamage",
+          "power": 0.5,
+          "base": 3
+        }
+      ]
     }
   ],
   "nodes": [

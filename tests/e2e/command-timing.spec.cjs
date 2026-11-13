@@ -27,7 +27,7 @@ test('全員の番で入力を待ち、仲間のスキル・回復・道具・�
  const saved=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
  const before=await page.evaluate(()=>[state.companions[0].mp,state.mp,state.enemies[2].hp]);
  await page.locator('[data-action="skills"]').click();
- await expect(page.locator('.skill-list button')).toHaveCount(1);await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();
+ await expect(page.locator('.skill-list button')).toHaveCount(2);await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();await expect(page.locator('[data-action="skill:rina_scatter_shot"]')).toBeVisible();
  expect(await page.evaluate(()=>useSkill('flame'))).toBe(false,'Rina cannot invoke Astel\'s skill directly');
  await page.locator('[data-action="skill:rina_aimed_shot"]').click();
  await page.keyboard.press('Escape');expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]);

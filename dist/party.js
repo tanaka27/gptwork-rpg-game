@@ -205,7 +205,9 @@ function validSkillTarget(skill, index) {
     );
   if (skill.effect === 'heal')
     return index < allies().length && allyHP(index) > 0 && allyHP(index) < allyStats(index).maxHP;
-  return !!state.enemy && index < battleEnemies().length && battleEnemies()[index].hp > 0;
+  if (!state.enemy || index >= battleEnemies().length) return false;
+  // 全体攻撃は、選んだ敵が先に倒れても生存中の敵がいれば発動する。
+  return skillTargetsAllEnemies(skill) ? battleEnemies().some(e => e.hp > 0) : battleEnemies()[index].hp > 0;
 }
 function itemResource(id) {
   return consumables[id]?.effects[0]?.type === 'restoreMP' ? 'mp' : 'hp';
@@ -304,7 +306,7 @@ function renderSkillMenu() {
       ? `味方1人のHPを最大${GameRules.skillAmount(skill, { wisdom: allyStats().wisdom, attack: allyStats().attack }, CombatRules)}回復します。`
       : skillDescription(skill);
   $('skillMenu').innerHTML =
-    `<article id="skillDetail"><h3>${skill.name}<span>消費MP ${skill.cost}</span></h3><p>${skillTypeLabel(skill)} · ${description}</p><p class="skill-target-note">${skill.effect === 'buff' && skill.target === 'self' ? '自分を強化します。自分の状態欄を選んでください。' : skillTargetsAlly(skill) ? (skill.effect === 'buff' ? '強化する味方を選んでください。' : '回復する味方を選んでください。') : 'だれにつかいますか？ フィールドの敵を選んでください。'}</p></article>` +
+    `<article id="skillDetail"><h3>${skill.name}<span>消費MP ${skill.cost}</span></h3><p>${skillTypeLabel(skill)} · ${description}</p><p class="skill-target-note">${skill.effect === 'buff' && skill.target === 'self' ? '自分を強化します。自分の状態欄を選んでください。' : skillTargetsAlly(skill) ? (skill.effect === 'buff' ? '強化する味方を選んでください。' : '回復する味方を選んでください。') : skillTargetsAllEnemies(skill) ? '敵全体に当たります。フィールドの敵をどれか選んでください。' : 'だれにつかいますか？ フィールドの敵を選んでください。'}</p></article>` +
     btn('スキル一覧へ戻る', 'skill-list');
 }
 function chooseSkillTarget(skill) {
@@ -378,8 +380,9 @@ function skillEffectDescription(skill) {
   if (skill.effect === 'buff')
     return `${skill.target === 'self' ? '自分' : '味方1人'}の攻撃力を${effect.multiplier}倍にする（${effect.turns}ターン）`;
   if (skill.effect === 'heal') return `HPを回復（${effect.base} + 賢さ × ${effect.power}）`;
-  if (skill.type === 'physical') return `物理攻撃（${physicalPowerText(skill)}）`;
-  return `魔法攻撃（${effect.base} + 賢さ × ${effect.power}）`;
+  const area = skillTargetsAllEnemies(skill) ? '敵全体に' : '';
+  if (skill.type === 'physical') return `${area}物理攻撃（${physicalPowerText(skill)}）`;
+  return `${area}魔法攻撃（${effect.base} + 賢さ × ${effect.power}）`;
 }
 function characterSkillsMarkup(index) {
   const skills = skillsForAlly(index);
@@ -507,6 +510,10 @@ render = function (persist = true) {
         ? pendingDetailSkill
         : null;
   if (state.enemy && !(enemies[selectedEnemy]?.hp > 0)) selectedEnemy = enemies.findIndex(e => e.hp > 0);
+  const allEnemySkill =
+    !busy && state.enemy && pendingDetailSkill && skillTargetsAllEnemies(pendingDetailSkill)
+      ? pendingDetailSkill
+      : null;
   $('attributes').innerHTML += `<div>素早さ<b>${speedOf(0)}</b></div>`;
   const inspectCharacter = canInspectCharacter();
   $('partyStatus').innerHTML = allies()
@@ -519,9 +526,10 @@ render = function (persist = true) {
     $('enemy').innerHTML = enemies
       .map(
         (e, i) =>
-          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && i === selectedEnemy}" aria-label="${e.name}を攻撃対象に選択" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`
+          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && (allEnemySkill ? e.hp > 0 : i === selectedEnemy)}" aria-label="${allEnemySkill ? `敵全体に${allEnemySkill.name}を使う（${e.name}）` : `${e.name}を攻撃対象に選択`}" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`
       )
       .join('');
+    $('enemy').classList.toggle('all-targets', !!allEnemySkill);
     $('battleOrder').textContent =
       '行動順：' +
       roundOrder()
@@ -661,6 +669,24 @@ async function executePartyRound(getCommand) {
             setAllyHP(skillTargetIndex, allyHP(skillTargetIndex) + healed);
             log(`${actor.name}の${skill.name}！ ${partyNames[skillTargetIndex]}のHPが${healed}回復。`);
           } else log(`${skill.name}の対象を回復できないため、MPを消費せず見送った。`);
+        } else if (skillTargetsAllEnemies(skill)) {
+          setAllyMP(i, allyMP(i) - skill.cost);
+          const hits = enemies
+            .filter(e => e.hp > 0)
+            .map(e => {
+              const result = GameRules.skillResult(
+                skill,
+                { wisdom: allyStats(i).wisdom, attack: allyAttack(i), defense: e.def, luck: allyStats(i).luck },
+                CombatRules
+              );
+              e.hp = Math.max(0, e.hp - result.amount);
+              return result;
+            });
+          const average = Math.round(hits.reduce((sum, hit) => sum + hit.amount, 0) / hits.length),
+            criticals = hits.filter(hit => hit.critical).length;
+          log(
+            `${actor.name}の${skill.name}！ ${criticals ? `会心の一撃${criticals > 1 ? '×' + criticals : ''}！ ` : ''}敵${hits.length}体に平均${average}のダメージ。`
+          );
         } else {
           setAllyMP(i, allyMP(i) - skill.cost);
           const result = GameRules.skillResult(

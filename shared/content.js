@@ -171,8 +171,13 @@
     for (const e of data.skills || []) {
       effects(e, 'skills.' + e.id);
       if (e.characterId !== undefined) ref('characters', e.characterId, 'skills.' + e.id + '.characterId');
-      if (e.target !== undefined && (e.effect !== 'buff' || !['ally', 'self'].includes(e.target)))
-        add('skills.' + e.id + '.target', '補助技能の対象はallyまたはselfです');
+      if (
+        e.target !== undefined &&
+        (e.effect === 'buff'
+          ? !['ally', 'self'].includes(e.target)
+          : e.effect !== 'damage' || e.target !== 'allEnemies')
+      )
+        add('skills.' + e.id + '.target', '補助技能の対象はallyまたはself、攻撃技能の対象はallEnemiesです');
       if (!['damage', 'heal', 'buff'].includes(e.effect) || !['physical', 'magic'].includes(e.type))
         add('skills.' + e.id, '攻撃/回復/補助と物理/魔法の分類が必要です');
       if (e.effect === 'buff' && (e.effects?.length !== 1 || e.type !== 'physical'))
