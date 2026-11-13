@@ -45,6 +45,7 @@ CHANGELOGと `docs/plans/`（進行中の案件）は必要な項目だけを参
 
 - Node.js 24以上が必要です（`package.json` の `engines`）。`node -v` が24未満なら、`npm install -g n && N_PREFIX=/opt/node22 n 24` で入れ替えてから `npm ci` します。
 - E2Eはプリインストールのブラウザを使います。`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium` を指定し、`npx playwright install` は実行しません。traceが不要なら `--trace off` を付けます。
+- 必要に応じてインターネット上のドキュメントを参照します（WebSearch・WebFetch）。一次情報を優先します（例：Sitesは developers.openai.com・help.openai.com、JavaScript/CSSはMDN、Node.js・Playwright・Prettier・Drizzleは各公式ドキュメント、標準仕様はECMAScript・WHATWG・W3C）。仕様や設計判断の根拠にした場合は、設計書にURLを残します。外部の記述よりも、このリポジトリの規約（Prettier設定、正本の文書）を優先します。
 - ImageMagick 7がない環境では `npm run build`・`npm run package:site`・`npm run qa:worker-assets` が失敗します。これらはSitesへの公開用なので、通常の開発では不要です。画像配信に関わる変更でこれらを実行できなかった場合は、未検証として報告します。
 
 ## 実装時の約束

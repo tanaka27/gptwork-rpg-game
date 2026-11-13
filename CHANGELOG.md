@@ -12,7 +12,7 @@
 ## 2026-11-13 — Claude Codeの開発体制
 
 - [CLAUDE.md](CLAUDE.md)に、Claude Codeが開発（実装・テスト・文書・`main` へのpush）を担当し、Sitesへのデプロイだけを行わないことを明記。検証済みの変更は `main` へ直接pushする運用に変更（ユーザーの事前承認）。
-- クラウド環境の注意点（Node 24への入れ替え、プリインストールのChromiumの指定、ImageMagick 7がない場合に失敗するコマンド）を追加。文書のみの変更でアプリへの影響はない。
+- クラウド環境の注意点（外部ドキュメントの参照方針、Node 24への入れ替え、プリインストールのChromiumの指定、ImageMagick 7がない場合に失敗するコマンド）を追加。文書のみの変更でアプリへの影響はない。
 - 確認：Claude Codeのクラウド環境（Node 24）で `npm test` 成功、全E2E 82/82成功（PC/スマホ相当）。ImageMagick 6のため `npm run build` は失敗（公開用のため対象外）。
 - 反映：GitHubの `main` へpush。Sitesへは未反映（アプリの変更なし）。
 
