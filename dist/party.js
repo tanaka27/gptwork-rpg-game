@@ -378,7 +378,7 @@ function skillEffectDescription(skill) {
   if (skill.effect === 'buff')
     return `${skill.target === 'self' ? '自分' : '味方1人'}の攻撃力を${effect.multiplier}倍にする（${effect.turns}ターン）`;
   if (skill.effect === 'heal') return `HPを回復（${effect.base} + 賢さ × ${effect.power}）`;
-  if (skill.type === 'physical') return `物理攻撃（威力${effect.power}倍）`;
+  if (skill.type === 'physical') return `物理攻撃（${physicalPowerText(skill)}）`;
   return `魔法攻撃（${effect.base} + 賢さ × ${effect.power}）`;
 }
 function characterSkillsMarkup(index) {

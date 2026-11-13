@@ -10,7 +10,7 @@ for(const critical of [true,false])test(`うんのよさと物理スキルの${c
  await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();
  await expect(page.locator('#partyDetails')).toContainText('うんのよさ');await expect(page.locator('#partyDetails dt').filter({hasText:'うんのよさ'}).locator('..')).toHaveText('うんのよさ18');
  await page.screenshot({path:test.info().outputPath('luck-status.png')});
- await page.locator('[data-screen="adventure"]').click();await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:slash"]').click();await expect(page.locator('#skillDetail')).toContainText('会心の一撃');
+ await page.locator('[data-screen="adventure"]').click();await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:slash"]').click();await expect(page.locator('#skillDetail')).toContainText('会心の一撃は相手の守備力を無視します');
  await page.evaluate(critical=>{Math.random=()=>critical?0:.99;},critical);
  const before=await page.evaluate(()=>({hp:state.enemies[0].hp,mp:state.mp}));
  await page.locator('[data-target="0"]').click();await expect(page.locator('#latestLog')).toHaveText('アステルの流星斬り！');

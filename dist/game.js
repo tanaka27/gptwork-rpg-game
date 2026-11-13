@@ -4,13 +4,19 @@ const QuestRules = typeof window !== 'undefined' ? window.QuestRules : globalThi
 const AdventurerRules = typeof window !== 'undefined' ? window.AdventurerRules : globalThis.AdventurerRules;
 const { zones, gear, consumables, shopStock, skillList, normalAttack, mapNodes, rarities, materials, bestiary } =
   GameContent.legacy(GameData);
+// 物理威力は定義の数値から%で表示する。旧定義のdesc末尾にある「威力X倍」は表示時だけ取り除く。
+const physicalPowerText = s => `威力${Math.round((s.effects?.[0]?.power ?? s.power) * 1000) / 10}%`;
+const physicalSkillDesc = s =>
+  String(s.desc || '')
+    .replace(/[・。、]?\s*(?:物理)?威力\s*\d+(?:\.\d+)?倍\s*$/, '')
+    .replace(/。+$/, '');
 const skillDescription = s =>
-  (s.effect === 'buff'
+  s.effect === 'buff'
     ? `${s.target === 'self' ? '自分' : '味方1人'}の攻撃力を${s.effects[0].multiplier}倍にする（${s.effects[0].turns}ターン・戦闘専用）。再使用で残数を更新`
-    : s.desc) +
-  (s.type === 'physical' && s.effect === 'damage'
-    ? '。うんのよさが高いほど会心の一撃が出やすく、相手の守備力を無視します。'
-    : '');
+    : s.type === 'physical' && s.effect === 'damage'
+      ? (physicalSkillDesc(s) ? `${physicalSkillDesc(s)}（${physicalPowerText(s)}）` : physicalPowerText(s)) +
+        '。うんのよさが高いほど会心の一撃が出やすく、会心の一撃は相手の守備力を無視します。'
+      : s.desc;
 const skillTypeLabel = s => (s.effect === 'buff' ? '補助特技' : s.type === 'physical' ? '物理' : '魔法');
 const gearRarityLabels = { common: 'コモン', uncommon: 'アンコモン', rare: 'レア', legendary: 'レジェンダリー' },
   gearStatLabels = {
