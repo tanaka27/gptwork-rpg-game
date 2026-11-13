@@ -235,6 +235,29 @@ function applyItem(id, index) {
   log(`${consumables[id].name}で${partyNames[index]}の${resource.toUpperCase()}が${amount}回復。`);
   return true;
 }
+// 与えたダメージを敵ごとに数値で浮かべる。再描画しても経過時間から再生を続ける。
+const damagePopupMs = 1400;
+let damagePopups = [];
+function showDamagePopups(enemies, hits) {
+  const at = Date.now();
+  damagePopups = hits.map(({ enemy, amount, critical }) => ({
+    index: enemies.indexOf(enemy),
+    amount,
+    critical: !!critical,
+    at,
+  }));
+}
+function damagePopupHTML(index) {
+  const now = Date.now();
+  damagePopups = damagePopups.filter(p => now - p.at < damagePopupMs);
+  return damagePopups
+    .filter(p => p.index === index)
+    .map(
+      p =>
+        `<span class="damage-popup${p.critical ? ' critical' : ''}" aria-hidden="true" style="animation-delay:-${Math.round(now - p.at)}ms">${p.amount}</span>`
+    )
+    .join('');
+}
 function enemyHPMeter(enemy) {
   const percent = Math.max(0, Math.min(100, enemy.max > 0 ? (enemy.hp / enemy.max) * 100 : 0));
   return `<span class="enemy-hp bar" role="meter" aria-label="${enemy.name}のHP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i style="width:${percent}%"></i></span>`;
@@ -458,6 +481,7 @@ startBattle = function (boss = false, travelEncounter = false) {
   originalStart(boss, travelEncounter);
   if (!state.enemy) return;
   state.buffs = [];
+  damagePopups = [];
   const first = state.enemy;
   state.enemies = [
     first,
@@ -526,7 +550,7 @@ render = function (persist = true) {
     $('enemy').innerHTML = enemies
       .map(
         (e, i) =>
-          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && (allEnemySkill ? e.hp > 0 : i === selectedEnemy)}" aria-label="${allEnemySkill ? `敵全体に${allEnemySkill.name}を使う（${e.name}）` : `${e.name}を攻撃対象に選択`}" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}</button>`
+          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && (allEnemySkill ? e.hp > 0 : i === selectedEnemy)}" aria-label="${allEnemySkill ? `敵全体に${allEnemySkill.name}を使う（${e.name}）` : `${e.name}を攻撃対象に選択`}" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}${damagePopupHTML(i)}</button>`
       )
       .join('');
     $('enemy').classList.toggle('all-targets', !!allEnemySkill);
@@ -680,8 +704,9 @@ async function executePartyRound(getCommand) {
                 CombatRules
               );
               e.hp = Math.max(0, e.hp - result.amount);
-              return result;
+              return { ...result, enemy: e };
             });
+          showDamagePopups(enemies, hits);
           const average = Math.round(hits.reduce((sum, hit) => sum + hit.amount, 0) / hits.length),
             criticals = hits.filter(hit => hit.critical).length;
           log(
@@ -696,6 +721,7 @@ async function executePartyRound(getCommand) {
             ),
             damage = result.amount;
           target.hp = Math.max(0, target.hp - damage);
+          showDamagePopups(enemies, [{ enemy: target, amount: damage, critical: result.critical }]);
           log(`${actor.name}の${skill.name}！ ${result.critical ? '会心の一撃！ ' : ''}${target.name}に${damage}。`);
         }
       } else {
@@ -705,6 +731,7 @@ async function executePartyRound(getCommand) {
           power: normalAttack.power,
         });
         target.hp = Math.max(0, target.hp - damage);
+        showDamagePopups(enemies, [{ enemy: target, amount: damage }]);
         log(`${actor.name}の攻撃！ ${target.name}に${damage}。`);
       }
     } else {
