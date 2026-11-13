@@ -45,8 +45,14 @@ CHANGELOGと `docs/plans/`（進行中の案件）は必要な項目だけを参
 
 - Node.js 24以上が必要です（`package.json` の `engines`）。`node -v` が24未満なら、`npm install -g n && N_PREFIX=/opt/node22 n 24` で入れ替えてから `npm ci` します。
 - E2Eはプリインストールのブラウザを使います。`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium` を指定し、`npx playwright install` は実行しません。traceが不要なら `--trace off` を付けます。
-- 必要に応じてインターネット上のドキュメントを参照します（WebSearch・WebFetch）。一次情報を優先します（例：Sitesは developers.openai.com・help.openai.com、JavaScript/CSSはMDN、Node.js・Playwright・Prettier・Drizzleは各公式ドキュメント、標準仕様はECMAScript・WHATWG・W3C）。仕様や設計判断の根拠にした場合は、設計書にURLを残します。外部の記述よりも、このリポジトリの規約（Prettier設定、正本の文書）を優先します。
 - ImageMagick 7がない環境では `npm run build`・`npm run package:site`・`npm run qa:worker-assets` が失敗します。これらはSitesへの公開用なので、通常の開発では不要です。画像配信に関わる変更でこれらを実行できなかった場合は、未検証として報告します。
+
+## 外部ドキュメントの参照
+
+- **知識が古い可能性があることは、記憶で済ませずに調べます。** 対象は、Sites・ブラウザ・Node.js・ライブラリの仕様やAPI、ツールの挙動、バージョンごとの差、コーディング標準などです。WebSearch・WebFetchを使います。
+- 一次情報を優先します（例：Sitesは developers.openai.com・help.openai.com、JavaScript/CSSはMDN、Node.js・Playwright・Prettier・Drizzleは各公式ドキュメント、標準仕様はECMAScript・WHATWG・W3C）。仕様や設計判断の根拠にした場合は、設計書にURLを残します。外部の記述よりも、このリポジトリの規約（Prettier設定、正本の文書）を優先します。
+- **検索・取得が権限やネットワークで拒否されても、黙って手持ちの知識に切り替えません。** 拒否されたツールやホストと理由をユーザーに伝え、許可を求めます（環境のネットワーク設定を変えるツールがあれば、追加を提案します）。待つ間は、調査に依存しない作業だけを進めます。
+- 調べられないまま進める場合は、その判断が記憶に基づく未確認事項であることを、完了報告と設計書に明記します。確認済みとして扱いません。
 
 ## 実装時の約束
 
