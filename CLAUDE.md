@@ -6,6 +6,8 @@
 
 このリポジトリは、日本語のブラウザRPG「星灯りの旅団」です。ChatGPTのSites上で、所有者だけが閲覧できるアプリとして公開されています。
 
+**Claude Codeはこのリポジトリの開発を担当します。** 調査、設計書の作成、実装、テスト、文書の更新、`main` へのpushまでを行います。担当しないのはSitesへのデプロイだけです（[Sitesへの公開](#sitesへの公開)）。
+
 ## 入口と読み順
 
 作業範囲に応じて、次の正本だけを読みます。他の文書（MCP手順など）は[文書索引](docs/README.md)にあります。
@@ -33,9 +35,17 @@ CHANGELOGと `docs/plans/`（進行中の案件）は必要な項目だけを参
 ## Gitの扱い
 
 - 作業開始時に `git status --short --branch` で未コミットの変更と対象ブランチを確認します。`git fetch origin` でリモートとの差分も確認し、古いHEADを基準に変更しません。
-- セッションで指定されたブランチで作業し、commitしてpushします。指定がない場合、`main` への直接pushとPull Requestの作成は、ユーザーの指示があるときだけ行います。
+- 検証が済んだ変更はcommitし、`main` へ直接pushします（文書だけの変更も含む）。ユーザーはこのpushを継続的に事前承認しているので、都度確認しません。セッションに作業ブランチ（`ccr-…` など）が指定されていても、最終的な反映先は `main` です。push前に `git fetch origin` し、`origin/main` の最新に追従してから（必要ならrebase）pushします。ユーザーがpush不要や別ブランチを指定した場合はそれに従います。Pull Requestはユーザーの指示があるときだけ作成します。
 - コミット前に `git status` と差分を確認します。他者の未コミット変更を上書き・巻き戻ししません。無関係な変更や `work/` はコミットしません。共有履歴へforce pushしません。
 - 認証情報をMarkdown、ソース、Git、ログへ残しません。
+
+## 実行環境
+
+コマンドとテストの正本は[DEVELOPMENT.md](docs/DEVELOPMENT.md)です。Claude Codeのクラウド環境では次の点に注意します。
+
+- Node.js 24以上が必要です（`package.json` の `engines`）。`node -v` が24未満なら、`npm install -g n && N_PREFIX=/opt/node22 n 24` で入れ替えてから `npm ci` します。
+- E2Eはプリインストールのブラウザを使います。`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/opt/pw-browsers/chromium` を指定し、`npx playwright install` は実行しません。traceが不要なら `--trace off` を付けます。
+- ImageMagick 7がない環境では `npm run build`・`npm run package:site`・`npm run qa:worker-assets` が失敗します。これらはSitesへの公開用なので、通常の開発では不要です。画像配信に関わる変更でこれらを実行できなかった場合は、未検証として報告します。
 
 ## 実装時の約束
 
@@ -50,4 +60,4 @@ CHANGELOGと `docs/plans/`（進行中の案件）は必要な項目だけを参
 
 ## Sitesへの公開
 
-Sitesへのデプロイは、Codexのハーネスに付属するSitesのskill・ツールで行う前提です。Claude Codeの環境にはこれらがないため、Claude Codeではデプロイを行いません。完了報告では、GitHubへのpushまで完了していること、Sitesへは未反映であることを明記します。公開の手順とビルド・パッケージのコマンドは[反映手順](docs/RELEASE.md)を参照してください。
+Sitesへのデプロイは、Codexのハーネスに付属するSitesのskill・ツールで行う前提です。Claude Codeの環境にはこれらがないため、Claude Codeではデプロイを行いません。完了報告では、GitHubの `main` へのpushまで完了していること、Sitesへは未反映であること（公開はCodexで行う）を明記します。公開の手順とビルド・パッケージのコマンドは[反映手順](docs/RELEASE.md)を参照してください。
