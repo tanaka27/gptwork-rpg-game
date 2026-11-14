@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {validate,legacy,withJobs}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
 assert.deepEqual(validate(content),[]);assert.equal(legacy(content).bestiary[0].length,4);
 assert.deepEqual(content.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
-assert.deepEqual(content.rules.party.map(id=>rules.skillsForCharacter(content,id).length),[6,3,3,3]);
+assert.deepEqual(content.rules.party.map(id=>rules.skillsForCharacter(content,id).length),[7,4,4,4]);
 assert.equal(content.skills.filter(s=>s.characterId===undefined).length,0,'all bundled skills state their owner');
 for(const mutate of [d=>d.skills[0].characterId='unknown',d=>d.skills[0].target='self',d=>d.skills.find(s=>s.id==='gald_kiai').target='enemy',d=>d.skills.find(s=>s.id==='heal').target='allEnemies',d=>d.skills.find(s=>s.id==='inspire').target='allEnemies',d=>d.skills.find(s=>s.id==='flame').target='ally']){const changed=structuredClone(content);mutate(changed);assert.ok(validate(changed).length,'owner and target fields are checked');}
 for(const change of [d=>d.monsters[0].id=d.monsters[1].id,d=>d.monsters[0].zoneId='missing',d=>d.nodes[0].links=['dragon'],d=>d.shops[0].itemIds=['missing'],d=>d.skills[0].effects[0].type='eval',d=>d.monsters[0].name='<img src=x>',d=>d.monsters[0].hp=-1,d=>d.rarities[0].rate=2]){const altered=structuredClone(content);change(altered);assert.ok(validate(altered).length);}
@@ -10,10 +10,10 @@ assert.equal(rules.skillAmount(content.skills[0],{wisdom:18,attack:10,defense:1}
 assert.equal(rules.enemy(content,0,true).id,'grass_guardian');assert.equal(rules.travelEvent(content.rules.travel,false,.29),'battle');
 const state={lv:1,weapon:'twig',armor:'cloth'};assert.equal(rules.stats(state,content).maxHP,80);
 // Legacy definitions receive standard jobs and skills only when job is missing.
-const oldDefinition=structuredClone(content);oldDefinition.skills=oldDefinition.skills.filter(s=>!['rina_aimed_shot','rina_comet_arrow','gald_kiai','gald_full_power_slash','noel_prayer_light','noel_holy_light','astel_ember_shower','rina_scatter_shot','gald_sweep','noel_light_motes'].includes(s.id));for(const character of oldDefinition.characters)delete character.job;for(const skill of oldDefinition.skills)delete skill.characterId;
+const oldDefinition=structuredClone(content);oldDefinition.skills=oldDefinition.skills.filter(s=>!['rina_aimed_shot','rina_comet_arrow','gald_kiai','gald_full_power_slash','noel_prayer_light','noel_holy_light','astel_ember_shower','rina_scatter_shot','gald_sweep','noel_light_motes','rina_pinning_arrow','noel_weakening_prayer','gald_war_cry','astel_star_break'].includes(s.id));for(const character of oldDefinition.characters)delete character.job;for(const skill of oldDefinition.skills)delete skill.characterId;
 const supplemented=withJobs(oldDefinition,content);
 assert.deepEqual(supplemented.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
-assert.deepEqual(supplemented.rules.party.map(id=>rules.skillsForCharacter(supplemented,id).length),[6,3,3,3],'standard skills including all-enemy attacks are supplemented');
+assert.deepEqual(supplemented.rules.party.map(id=>rules.skillsForCharacter(supplemented,id).length),[7,4,4,4],'standard skills including all-enemy attacks are supplemented');
 assert.equal(oldDefinition.skills.some(s=>s.id==='rina_aimed_shot'),false,'fallback does not mutate input');
 supplemented.skills.find(s=>s.id==='gald_kiai').effects[0].turns=88;assert.equal(content.skills.find(s=>s.id==='gald_kiai').effects[0].turns,3,'nested fallback effects are independent copies');
 const custom=structuredClone(oldDefinition);custom.characters.find(c=>c.id==='rina').job='野伏';custom.skills=custom.skills.filter(s=>!['rina_aimed_shot','rina_comet_arrow'].includes(s.id));const customResult=withJobs(custom,content);
@@ -105,3 +105,34 @@ const collisionLegacy=structuredClone(legacyEquipment);collisionLegacy.items.pus
 console.log('PASS: equipment rarity/effects validation, shop/drop gates, legacy fixed gear supplementation and stable references');
 assert.deepEqual(['astel_ember_shower','rina_scatter_shot','gald_sweep','noel_light_motes'].map(id=>content.skills.find(s=>s.id===id)?.target),Array(4).fill('allEnemies'),'early all-enemy attack skills are valid damage skills');
 console.log('PASS: attack buff schema, target-only stats, physical critical/magic separation, duration/refresh, normalization and snapshot-compatible saves');
+// Debuff skills and monster actions: schema, ranges and the item ban.
+assert.deepEqual(['rina_pinning_arrow','noel_weakening_prayer','gald_war_cry','astel_star_break'].map(id=>content.skills.find(s=>s.id===id)?.effect),Array(4).fill('debuff'));
+assert.ok(content.monsters.filter(m=>m.actions).length===6&&content.monsters.filter(m=>m.zoneId==='grassland').every(m=>!m.actions),'early area has no debuffing monsters');
+for(const mutate of [
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').effects[0].multiplier=1,
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').effects[0].multiplier=0.2,
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').effects[0].turns=0,
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').type='physical',
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').target='ally',
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').effects.push({type:'attackDown',multiplier:.7,turns:3}),
+ d=>d.skills.find(s=>s.id==='rina_pinning_arrow').effects[0]={type:'magicDamage',power:1,base:0},
+ d=>d.skills.find(s=>s.id==='flame').effects[0]={type:'attackDown',multiplier:.7,turns:3},
+ d=>d.items.find(i=>i.id==='herb').effects=[{type:'defenseDown',multiplier:.7,turns:3}],
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions[0].rate=0,
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions[0].rate=1.5,
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions[0].target='self',
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions[0].effects=[{type:'attackBuff',multiplier:1.5,turns:3}],
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions[0].id='Bad id',
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions.push(structuredClone(d.monsters.find(m=>m.id==='moon_owl').actions[0])),
+ d=>d.monsters.find(m=>m.id==='moon_owl').actions='attack',
+]){const changed=structuredClone(content);mutate(changed);assert.ok(validate(changed).length,'invalid debuff definition is rejected: '+mutate);}
+assert.equal(rules.debuffSkillEffect(content.skills.find(s=>s.id==='gald_war_cry')).multiplier,0.8);
+assert.equal(rules.enemyActions(content.monsters.find(m=>m.id==='crimson_dragon')).length,1);
+assert.equal(rules.enemyActions({actions:[{name:'x',rate:2,target:'ally',effects:[{type:'attackDown',multiplier:.7,turns:3}]}]}).length,0,'invalid runtime actions are ignored');
+const debuffState={lv:5,weapon:'twig',armor:'cloth',turn:2,hp:50,companions:[{characterId:'rina',hp:10},{characterId:'gald',hp:10},{characterId:'noel',hp:10}],enemy:{name:'敵',hp:5,max:5,atk:30,def:10},enemies:[{name:'敵',hp:5,max:5,atk:30,def:10},{name:'敵2',hp:0,max:5,atk:30,def:10}]};
+assert.equal(rules.applyDebuff(debuffState,content,'enemy',1,{type:'attackDown',multiplier:.7,turns:3},'noel_weakening_prayer'),false,'fallen enemy cannot be debuffed');
+assert.equal(rules.applyDebuff(debuffState,content,'enemy',0,{type:'attackDown',multiplier:1.5,turns:3},'x'),false,'out-of-range multiplier');
+assert.equal(rules.applyDebuff(debuffState,content,'enemy',0,{type:'attackDown',multiplier:.7,turns:3},'noel_weakening_prayer'),true);
+assert.equal(rules.enemyAttack(debuffState,content,0),21);
+assert.equal(rules.applyDebuff({...debuffState,enemy:null},content,'enemy',0,{type:'attackDown',multiplier:.7,turns:3},'x'),false,'battle only');
+console.log('PASS: debuff skill/action schema, multiplier and turn ranges, item ban, runtime action filtering and target checks');

@@ -2131,19 +2131,37 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   }
 }
 
-/* Compact attack-up badges sit along the portrait's upper edge. */
+/* Compact buff/debuff badges sit along the portrait's upper edge. */
 .party-member {
   position: relative;
 }
-.adventure-layout .party-member > .buff-icon {
+.adventure-layout .party-member > .status-icons,
+#enemy .enemy-unit > .status-icons {
   position: absolute;
   z-index: 2;
   top: 1px;
   left: 9px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: calc(100% - 18px);
+  pointer-events: none;
+}
+#enemy .enemy-unit {
+  position: relative;
+}
+#enemy .enemy-unit > .status-icons {
+  top: 40px;
+  left: 50%;
+  max-width: none;
+  flex-wrap: nowrap;
+  transform: translateX(-50%);
+}
+.status-icons > .buff-icon,
+.status-icons > .debuff-icon {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  max-width: 58px;
   padding: 1px 3px;
   background: #47391b;
   color: #fff0b8;
@@ -2151,24 +2169,36 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   border-radius: 4px;
   font-size: 11px;
   line-height: 1.35;
-  pointer-events: none;
+  white-space: nowrap;
   box-shadow: 0 1px 3px #0008;
 }
-.buff-icon b {
+.status-icons > .debuff-icon {
+  background: #43202a;
+  color: #ffd0d0;
+  border-color: #d9787f;
+}
+.status-icons > span > span {
+  display: inline;
+  font-size: inherit;
+}
+.status-icons b {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
-.buff-details {
+.buff-details,
+.debuff-details {
   margin-top: 16px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
-.buff-details h3 {
+.buff-details h3,
+.debuff-details h3 {
   margin: 0;
   font-size: 14px;
   color: var(--gold);
 }
-.buff-details p {
+.buff-details p,
+.debuff-details p {
   margin: 6px 0;
   font-size: 12px;
   line-height: 1.65;
@@ -2177,33 +2207,47 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 .buff-details span {
   color: #f2d88d;
 }
+.debuff-details strong,
+.debuff-details span {
+  color: #ffb3b3;
+}
 @media (max-width: 600px) {
-  .adventure-layout .party-member > .buff-icon {
+  .adventure-layout .party-member > .status-icons {
     left: 50%;
+    max-width: none;
+    flex-wrap: nowrap;
     transform: translateX(-50%);
+  }
+  .status-icons > .buff-icon,
+  .status-icons > .debuff-icon {
     font-size: 10px;
-    white-space: nowrap;
+  }
+}
+@media (max-width: 450px) {
+  .status-icons > .buff-icon,
+  .status-icons > .debuff-icon {
+    gap: 1px;
+    padding: 0 2px;
+    font-size: 9px;
+  }
+  .status-icons b {
+    font-size: 9px;
   }
 }
 @media (max-height: 450px) and (min-width: 600px) {
-  .adventure-layout .party-member > .buff-icon {
+  .adventure-layout .party-member > .status-icons {
     left: 4px;
     top: 0;
-    font-size: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+  }
+  .status-icons > .buff-icon,
+  .status-icons > .debuff-icon,
+  .status-icons b {
+    font-size: 7px;
     padding: 0 1px;
     gap: 0;
-  }
-  .buff-icon b {
-    font-size: 8px;
-  }
-}
-.adventure-layout .party-member > .buff-icon > span {
-  font-size: inherit;
-}
-@media (max-height: 450px) and (min-width: 600px) {
-  .adventure-layout .party-member > .buff-icon,
-  .adventure-layout .party-member > .buff-icon > b {
-    font-size: 7px;
   }
 }
 @media (max-height: 680px) and (max-width: 450px) {

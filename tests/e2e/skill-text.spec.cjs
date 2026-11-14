@@ -16,7 +16,7 @@ test('物理特技の威力を%で表示し、会心の守備力無視を明記�
  await page.locator('[data-screen="party"]').click();await page.locator('[data-character="1"]').click();
  const rina=page.locator('#partyDetails .character-card');
  await expect(rina).toContainText('物理攻撃（威力160%）');await expect(rina).toContainText('物理攻撃（威力220%）');
- await expect(rina).not.toContainText('倍');
+ await expect(rina).not.toContainText(/威力[\d.]+倍/);
  await page.screenshot({path:test.info().outputPath('rina-skills.png')});
  // 戦闘のスキル詳細
  await page.locator('#backToParty').click();await page.locator('[data-screen="adventure"]').click();

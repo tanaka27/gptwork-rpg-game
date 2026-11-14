@@ -235,6 +235,21 @@
         "shard",
         "pearl",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "confusing_wingbeat",
+          "name": "惑わしの羽音",
+          "rate": 0.25,
+          "target": "ally",
+          "effects": [
+            {
+              "type": "attackDown",
+              "multiplier": 0.75,
+              "turns": 2
+            }
+          ]
+        }
       ]
     },
     {
@@ -254,6 +269,21 @@
         "shard",
         "pearl",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "armor_rend",
+          "name": "装甲裂き",
+          "rate": 0.25,
+          "target": "ally",
+          "effects": [
+            {
+              "type": "defenseDown",
+              "multiplier": 0.7,
+              "turns": 3
+            }
+          ]
+        }
       ]
     },
     {
@@ -311,6 +341,21 @@
         "scale",
         "ruby",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "crushing_bite",
+          "name": "噛み砕き",
+          "rate": 0.25,
+          "target": "ally",
+          "effects": [
+            {
+              "type": "defenseDown",
+              "multiplier": 0.7,
+              "turns": 3
+            }
+          ]
+        }
       ]
     },
     {
@@ -349,6 +394,21 @@
         "scale",
         "ruby",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "dazzling_sparks",
+          "name": "火花の幻惑",
+          "rate": 0.25,
+          "target": "ally",
+          "effects": [
+            {
+              "type": "attackDown",
+              "multiplier": 0.75,
+              "turns": 2
+            }
+          ]
+        }
       ]
     },
     {
@@ -385,6 +445,21 @@
         "shard",
         "pearl",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "moonshadow_pressure",
+          "name": "月影の重圧",
+          "rate": 0.2,
+          "target": "allAllies",
+          "effects": [
+            {
+              "type": "defenseDown",
+              "multiplier": 0.75,
+              "turns": 2
+            }
+          ]
+        }
       ]
     },
     {
@@ -403,6 +478,21 @@
         "scale",
         "ruby",
         "starcore"
+      ],
+      "actions": [
+        {
+          "id": "dragon_roar",
+          "name": "竜の咆哮",
+          "rate": 0.2,
+          "target": "allAllies",
+          "effects": [
+            {
+              "type": "attackDown",
+              "multiplier": 0.75,
+              "turns": 2
+            }
+          ]
+        }
       ]
     }
   ],
@@ -856,6 +946,80 @@
           "type": "magicDamage",
           "power": 0.5,
           "base": 3
+        }
+      ]
+    },
+    {
+      "id": "rina_pinning_arrow",
+      "name": "影縫いの矢",
+      "characterId": "rina",
+      "type": "magic",
+      "effect": "debuff",
+      "lv": 3,
+      "cost": 3,
+      "desc": "影を射抜いて敵1体の守備力を下げる",
+      "icon": "⛉↓",
+      "effects": [
+        {
+          "type": "defenseDown",
+          "multiplier": 0.5,
+          "turns": 3
+        }
+      ]
+    },
+    {
+      "id": "noel_weakening_prayer",
+      "name": "弱体の祈り",
+      "characterId": "noel",
+      "type": "magic",
+      "effect": "debuff",
+      "lv": 3,
+      "cost": 3,
+      "desc": "祈りで敵1体の攻撃力を下げる",
+      "icon": "⚔↓",
+      "effects": [
+        {
+          "type": "attackDown",
+          "multiplier": 0.7,
+          "turns": 3
+        }
+      ]
+    },
+    {
+      "id": "gald_war_cry",
+      "name": "威嚇の雄叫び",
+      "characterId": "gald",
+      "type": "magic",
+      "effect": "debuff",
+      "target": "allEnemies",
+      "lv": 6,
+      "cost": 6,
+      "desc": "雄叫びで敵全体の攻撃力を下げる",
+      "icon": "吼↓",
+      "effects": [
+        {
+          "type": "attackDown",
+          "multiplier": 0.8,
+          "turns": 3
+        }
+      ]
+    },
+    {
+      "id": "astel_star_break",
+      "name": "星砕き",
+      "characterId": "astel",
+      "type": "magic",
+      "effect": "debuff",
+      "target": "allEnemies",
+      "lv": 6,
+      "cost": 7,
+      "desc": "星の力で敵全体の守備力を下げる",
+      "icon": "✶↓",
+      "effects": [
+        {
+          "type": "defenseDown",
+          "multiplier": 0.7,
+          "turns": 3
         }
       ]
     }

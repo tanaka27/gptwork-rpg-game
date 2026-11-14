@@ -104,6 +104,8 @@
   function effectAmount(effect, context, combat) {
     switch (effect.type) {
       case 'attackBuff':
+      case 'attackDown':
+      case 'defenseDown':
         return 0;
       case 'physicalDamage':
         return combat.physicalDamage({
@@ -229,7 +231,9 @@
       .map(record => buffRecord(state, data, record));
   }
   function allyAttack(state, data, index) {
-    const multiplier = activeBuffs(state, data, index).reduce((value, buff) => value * buff.effect.multiplier, 1);
+    const multiplier =
+      activeBuffs(state, data, index).reduce((value, buff) => value * buff.effect.multiplier, 1) *
+      debuffMultiplier(state, data, 'ally', data.rules.party[index], 'attackDown');
     return Math.floor(stats(state, data, index).attack * multiplier);
   }
   function applyAttackBuff(state, data, index, skill, casterIndex = skillOwnerIndex(skill, data)) {
@@ -271,6 +275,180 @@
     state.buffs = state.buffs.filter(record => record.remainingTurns > 0);
     return expired;
   }
+  // 状態異常（攻撃ダウン・守備ダウン）。味方は characterId、敵は state.enemies の添字で対象を記録する。
+  const debuffTypes = ['attackDown', 'defenseDown'];
+  const debuffMin = 0.3;
+  function debuffEffect(effect) {
+    return effect &&
+      debuffTypes.includes(effect.type) &&
+      Number.isFinite(effect.multiplier) &&
+      effect.multiplier >= debuffMin &&
+      effect.multiplier < 1 &&
+      Number.isSafeInteger(effect.turns) &&
+      effect.turns >= 1 &&
+      effect.turns <= 99
+      ? effect
+      : null;
+  }
+  function debuffSkillEffect(skill) {
+    return skill?.effect === 'debuff' && skill.effects?.length === 1 ? debuffEffect(skill.effects[0]) : null;
+  }
+  function enemyActions(enemy) {
+    return (Array.isArray(enemy?.actions) ? enemy.actions : []).filter(
+      action =>
+        action &&
+        typeof action.name === 'string' &&
+        action.name.trim() &&
+        Number.isFinite(action.rate) &&
+        action.rate > 0 &&
+        action.rate <= 1 &&
+        ['ally', 'allAllies'].includes(action.target) &&
+        action.effects?.length === 1 &&
+        debuffEffect(action.effects[0])
+    );
+  }
+  // 強攻撃のターンは必ず通常攻撃。それ以外は定義順に確率で抽選し、最初に当たった行動を使う。
+  function chooseEnemyAction(state, data, enemy, rng = Math.random) {
+    if (state.turn % data.rules.battle.strongEvery === 0) return null;
+    for (const action of enemyActions(enemy)) if (rng() < action.rate) return action;
+    return null;
+  }
+  function battleEnemyList(state) {
+    return Array.isArray(state.enemies) && state.enemies.length ? state.enemies : state.enemy ? [state.enemy] : [];
+  }
+  function debuffTargetAlive(state, data, side, target) {
+    if (side === 'ally') {
+      const index = data.rules.party.indexOf(target);
+      return index >= 0 && allyHealth(state, data, index) > 0;
+    }
+    return Number.isSafeInteger(target) && target >= 0 && battleEnemyList(state)[target]?.hp > 0;
+  }
+  function debuffRecord(state, data, record) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return null;
+    if (
+      !['ally', 'enemy'].includes(record.side) ||
+      !debuffTypes.includes(record.type) ||
+      !debuffTargetAlive(state, data, record.side, record.target) ||
+      typeof record.sourceId !== 'string' ||
+      !record.sourceId ||
+      record.sourceId.length > 64 ||
+      !Number.isFinite(record.multiplier) ||
+      record.multiplier < debuffMin ||
+      record.multiplier >= 1 ||
+      !Number.isSafeInteger(record.remainingTurns) ||
+      record.remainingTurns < 1 ||
+      record.remainingTurns > 99 ||
+      !Number.isSafeInteger(record.appliedTurn) ||
+      record.appliedTurn < 1 ||
+      record.appliedTurn > state.turn
+    )
+      return null;
+    const { side, target, type, sourceId, multiplier, remainingTurns, appliedTurn } = record;
+    return { side, target, type, sourceId, multiplier, remainingTurns, appliedTurn };
+  }
+  const debuffKey = record => record.side + ':' + record.target + ':' + record.type;
+  function debuffLimit(state, data) {
+    return (data.rules.party.length + battleEnemyList(state).length) * debuffTypes.length;
+  }
+  function validateDebuffs(state, data) {
+    if (state.debuffs === undefined) return [];
+    if (!Array.isArray(state.debuffs) || state.debuffs.length > debuffLimit(state, data))
+      return ['状態異常の配列が不正です'];
+    const errors = [],
+      seen = new Set();
+    for (const record of state.debuffs) {
+      const valid = state.enemy ? debuffRecord(state, data, record) : null;
+      if (!valid || seen.has(debuffKey(valid))) errors.push('状態異常の対象・種類・倍率・残りターンが不正です');
+      if (valid) seen.add(debuffKey(valid));
+    }
+    return errors;
+  }
+  function normalizeDebuffs(state, data) {
+    const seen = new Set();
+    state.debuffs =
+      !state.enemy || !Array.isArray(state.debuffs)
+        ? []
+        : state.debuffs
+            .map(record => debuffRecord(state, data, record))
+            .filter(record => {
+              if (!record || seen.has(debuffKey(record))) return false;
+              seen.add(debuffKey(record));
+              return true;
+            })
+            .slice(0, debuffLimit(state, data));
+    return state.debuffs;
+  }
+  function activeDebuffs(state, data, side, target) {
+    if (!state.enemy || !Array.isArray(state.debuffs)) return [];
+    const seen = new Set();
+    return state.debuffs
+      .map(record => (record?.side === side && record.target === target ? debuffRecord(state, data, record) : null))
+      .filter(record => {
+        if (!record || seen.has(record.type)) return false;
+        seen.add(record.type);
+        return true;
+      })
+      .sort((a, b) => debuffTypes.indexOf(a.type) - debuffTypes.indexOf(b.type));
+  }
+  function debuffMultiplier(state, data, side, target, type) {
+    return activeDebuffs(state, data, side, target).find(record => record.type === type)?.multiplier ?? 1;
+  }
+  function allyDefense(state, data, index) {
+    return Math.floor(
+      stats(state, data, index).defense * debuffMultiplier(state, data, 'ally', data.rules.party[index], 'defenseDown')
+    );
+  }
+  function enemyAttack(state, data, index) {
+    return Math.floor(
+      Math.max(0, battleEnemyList(state)[index]?.atk || 0) * debuffMultiplier(state, data, 'enemy', index, 'attackDown')
+    );
+  }
+  function enemyDefense(state, data, index) {
+    return Math.floor(
+      Math.max(0, battleEnemyList(state)[index]?.def || 0) *
+        debuffMultiplier(state, data, 'enemy', index, 'defenseDown')
+    );
+  }
+  // 同じ対象・種類は重ならず、付け直すと倍率と残りターンを更新する。
+  function applyDebuff(state, data, side, target, effect, sourceId) {
+    const valid = debuffEffect(effect);
+    if (
+      !state.enemy ||
+      !valid ||
+      !['ally', 'enemy'].includes(side) ||
+      !debuffTargetAlive(state, data, side, target) ||
+      typeof sourceId !== 'string' ||
+      !sourceId ||
+      !Number.isSafeInteger(state.turn) ||
+      state.turn < 1
+    )
+      return false;
+    normalizeDebuffs(state, data);
+    state.debuffs = state.debuffs.filter(
+      record => !(record.side === side && record.target === target && record.type === valid.type)
+    );
+    state.debuffs.push({
+      side,
+      target,
+      type: valid.type,
+      sourceId: sourceId.slice(0, 64),
+      multiplier: valid.multiplier,
+      remainingTurns: valid.turns,
+      appliedTurn: state.turn,
+    });
+    return true;
+  }
+  function tickDebuffs(state, data) {
+    normalizeDebuffs(state, data);
+    const expired = [];
+    for (const record of state.debuffs) {
+      if (record.appliedTurn >= state.turn) continue;
+      record.remainingTurns--;
+      if (record.remainingTurns === 0) expired.push({ ...record });
+    }
+    state.debuffs = state.debuffs.filter(record => record.remainingTurns > 0);
+    return expired;
+  }
   function travelEvent(rules, fought, roll) {
     if (!fought && roll < rules.battleRate) return 'battle';
     if (roll < (fought ? rules.materialRate : rules.battleRate + rules.materialRate)) return 'material';
@@ -295,5 +473,19 @@
     tickBuffs,
     normalizeBuffs,
     validateBuffs,
+    debuffTypes,
+    debuffEffect,
+    debuffSkillEffect,
+    enemyActions,
+    chooseEnemyAction,
+    activeDebuffs,
+    debuffMultiplier,
+    allyDefense,
+    enemyAttack,
+    enemyDefense,
+    applyDebuff,
+    tickDebuffs,
+    normalizeDebuffs,
+    validateDebuffs,
   };
 });

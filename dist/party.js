@@ -51,7 +51,17 @@ function setAllyHP(i, hp) {
       if (buff.characterId === id)
         log(`${partyNames[i]}の${skillList.find(skill => skill.id === buff.skillId)?.name || 'バフ'}が解除された。`);
     state.buffs = (state.buffs || []).filter(buff => buff.characterId !== id);
+    state.debuffs = (state.debuffs || []).filter(record => !(record?.side === 'ally' && record.target === id));
   }
+}
+function allyDefense(i) {
+  return GameRules.allyDefense(state, GameData, i);
+}
+function enemyIndexOf(enemy) {
+  return battleEnemies().indexOf(enemy);
+}
+function debuffStatText(type) {
+  return debuffStatLabels[type] || '能力';
 }
 function allyAttack(i) {
   return GameRules.allyAttack(state, GameData, i);
@@ -269,7 +279,10 @@ function renderAdventureLayout() {
   screen.classList.toggle('battle-menu', battle && skillMenuMode !== 'commands' && !battleMessageResolve);
   screen.classList.toggle(
     'choosing-enemy',
-    battle && !!pendingSkill && skillMenuMode === 'detail' && activeSkill(pendingSkill.id)?.effect === 'damage'
+    battle &&
+      !!pendingSkill &&
+      skillMenuMode === 'detail' &&
+      ['damage', 'debuff'].includes(activeSkill(pendingSkill.id)?.effect)
   );
   // Battle messages belong to the field, above the party, not below commands.
   const party = $('partyStatus');
@@ -279,6 +292,12 @@ function renderAdventureLayout() {
   if (arena && command) {
     const parent = battle ? arena : command;
     if (message.parentElement !== parent) parent.append(message);
+  }
+  // Debuff badges sit just under each enemy's HP bar, over the sprite, without changing the layout.
+  for (const unit of $('enemy').querySelectorAll?.('.enemy-unit') || []) {
+    const icons = unit.querySelector('.status-icons'),
+      hp = unit.querySelector('.enemy-hp');
+    if (icons && hp) icons.style.top = hp.offsetTop + hp.offsetHeight + 4 + 'px';
   }
   if (!party.querySelectorAll) return;
   party.querySelectorAll('.party-member').forEach((member, i) => {
@@ -329,7 +348,7 @@ function renderSkillMenu() {
       ? `味方1人のHPを最大${GameRules.skillAmount(skill, { wisdom: allyStats().wisdom, attack: allyStats().attack }, CombatRules)}回復します。`
       : skillDescription(skill);
   $('skillMenu').innerHTML =
-    `<article id="skillDetail"><h3>${skill.name}<span>消費MP ${skill.cost}</span></h3><p>${skillTypeLabel(skill)} · ${description}</p><p class="skill-target-note">${skill.effect === 'buff' && skill.target === 'self' ? '自分を強化します。自分の状態欄を選んでください。' : skillTargetsAlly(skill) ? (skill.effect === 'buff' ? '強化する味方を選んでください。' : '回復する味方を選んでください。') : skillTargetsAllEnemies(skill) ? '敵全体に当たります。フィールドの敵をどれか選んでください。' : 'だれにつかいますか？ フィールドの敵を選んでください。'}</p></article>` +
+    `<article id="skillDetail"><h3>${skill.name}<span>消費MP ${skill.cost}</span></h3><p>${skillTypeLabel(skill)} · ${description}</p><p class="skill-target-note">${skill.effect === 'buff' && skill.target === 'self' ? '自分を強化します。自分の状態欄を選んでください。' : skillTargetsAlly(skill) ? (skill.effect === 'buff' ? '強化する味方を選んでください。' : '回復する味方を選んでください。') : skillTargetsAllEnemies(skill) ? (skill.effect === 'debuff' ? '敵全体に効きます。フィールドの敵をどれか選んでください。' : '敵全体に当たります。フィールドの敵をどれか選んでください。') : skill.effect === 'debuff' ? 'どの敵の能力を下げますか？ フィールドの敵を選んでください。' : 'だれにつかいますか？ フィールドの敵を選んでください。'}</p></article>` +
     btn('スキル一覧へ戻る', 'skill-list');
 }
 function chooseSkillTarget(skill) {
@@ -377,6 +396,38 @@ function buffIcons(index) {
     )
     .join('');
 }
+// 状態異常の出どころ（特技または魔物の行動）の名前。
+function debuffSourceName(record) {
+  if (record.side === 'enemy') return skillList.find(skill => skill.id === record.sourceId)?.name || '状態異常';
+  for (const enemy of battleEnemies())
+    for (const action of enemy.actions || []) if (action?.id === record.sourceId) return action.name;
+  return '状態異常';
+}
+function debuffIconMarkup(record) {
+  const label = `${debuffSourceName(record)}：${debuffStatText(record.type)}${record.multiplier}倍、残り${record.remainingTurns}ターン`;
+  return `<span class="debuff-icon ${record.type}" role="img" aria-label="${label}" title="${label}"><span aria-hidden="true">${record.type === 'attackDown' ? '⚔↓' : '盾↓'}</span><b aria-hidden="true">${record.remainingTurns}</b></span>`;
+}
+function statusIcons(side, target, index) {
+  const markup =
+    (side === 'ally' ? buffIcons(index) : '') +
+    GameRules.activeDebuffs(state, GameData, side, target).map(debuffIconMarkup).join('');
+  return markup ? `<span class="status-icons">${markup}</span>` : '';
+}
+function debuffDetails(index) {
+  const debuffs = GameRules.activeDebuffs(state, GameData, 'ally', initialParty[index]?.id);
+  return (
+    '<section class="debuff-details" aria-label="状態異常の詳細"><h3>状態異常</h3>' +
+    (debuffs.length
+      ? debuffs
+          .map(
+            record =>
+              `<p><strong>${debuffSourceName(record)}</strong> · ${debuffStatText(record.type)}${record.multiplier}倍<br><span>残り${record.remainingTurns}ターン</span>（付与したターンを除き、ターン終了時に減少）</p>`
+          )
+          .join('')
+      : '<p>状態異常はありません。</p>') +
+    '</section>'
+  );
+}
 function buffDetails(index) {
   const buffs = GameRules.activeBuffs(state, GameData, index);
   return (
@@ -403,6 +454,8 @@ function skillEffectDescription(skill) {
   if (skill.effect === 'buff')
     return `${skill.target === 'self' ? '自分' : '味方1人'}の攻撃力を${effect.multiplier}倍にする（${effect.turns}ターン）`;
   if (skill.effect === 'heal') return `HPを回復（${effect.base} + 賢さ × ${effect.power}）`;
+  if (skill.effect === 'debuff')
+    return `${debuffTargetText(skill)}の${debuffStatText(effect.type)}を${effect.multiplier}倍に下げる（${effect.turns}ターン）`;
   const area = skillTargetsAllEnemies(skill) ? '敵全体に' : '';
   if (skill.type === 'physical') return `${area}物理攻撃（${physicalPowerText(skill)}）`;
   return `${area}魔法攻撃（${effect.base} + 賢さ × ${effect.power}）`;
@@ -416,7 +469,7 @@ function characterStatusCard(a, i, headingId = 'characterName') {
     ['HP', `${allyHP(i)} / ${allyStats(i).maxHP}`],
     ['MP', `${a.mp} / ${allyStats(i).maxMP}`],
     ['攻撃力', allyAttack(i), allyStats(i).attack],
-    ['守備力', allyStats(i).defense],
+    ['守備力', allyDefense(i), allyStats(i).defense],
     ['賢さ', allyStats(i).wisdom],
     ['素早さ', speedOf(i)],
     ['うんのよさ', allyStats(i).luck],
@@ -424,7 +477,7 @@ function characterStatusCard(a, i, headingId = 'characterName') {
     ['防具', gear[GameRules.memberState(state, GameData, i).armor]?.name],
   ]
     .map(([label, value, base]) => `<div><dt>${label}</dt>${statusValueMarkup(label, value, base)}</div>`)
-    .join('')}</dl>${characterSkillsMarkup(i)}${buffDetails(i)}</article>`;
+    .join('')}</dl>${characterSkillsMarkup(i)}${buffDetails(i)}${debuffDetails(i)}</article>`;
 }
 function canInspectCharacter() {
   return !busy && skillMenuMode === 'commands' && (state.enemy ? !!commandResolve : !roundActive);
@@ -481,6 +534,7 @@ startBattle = function (boss = false, travelEncounter = false) {
   originalStart(boss, travelEncounter);
   if (!state.enemy) return;
   state.buffs = [];
+  state.debuffs = [];
   damagePopups = [];
   const first = state.enemy;
   state.enemies = [
@@ -503,6 +557,7 @@ startBattle = function (boss = false, travelEncounter = false) {
 };
 render = function (persist = true) {
   GameRules.normalizeBuffs(state, GameData);
+  GameRules.normalizeDebuffs(state, GameData);
   if (pendingItem && (pendingItem.inBattle !== !!state.enemy || allyHP(actingAlly) <= 0)) {
     pendingItem = null;
     skillMenuMode = 'commands';
@@ -543,14 +598,14 @@ render = function (persist = true) {
   $('partyStatus').innerHTML = allies()
     .map(
       (a, i) =>
-        `<${healingSkill || inspectCharacter ? 'button' : 'div'} ${healingSkill ? `type="button" data-ally-target="${i}" aria-label="${a.name}に${healingSkill.name}を使う" ${busy || !(pendingItem ? state.items[pendingItem.id] > 0 && validItemTarget(pendingItem.id, i) : validSkillTarget(healingSkill, i)) ? 'disabled' : ''}` : inspectCharacter ? `type="button" data-battle-character="${i}" aria-haspopup="dialog" aria-label="${a.name}のステータスを見る"` : ''} class="party-member ${allyHP(i) <= 0 ? 'fallen' : ''}">${characterPortrait(a.characterId)}${buffIcons(i)}<strong>${healingSkill ? '<span class="ally-target-marker" aria-hidden="true">▼</span>' : ''}${a.name}${allyHP(i) <= 0 ? ' · 戦闘不能' : ''}</strong>${meter('HP', allyHP(i), allyStats(i).maxHP)}${meter('MP', a.mp, allyStats(i).maxMP, 'mp')}</${healingSkill || inspectCharacter ? 'button' : 'div'}>`
+        `<${healingSkill || inspectCharacter ? 'button' : 'div'} ${healingSkill ? `type="button" data-ally-target="${i}" aria-label="${a.name}に${healingSkill.name}を使う" ${busy || !(pendingItem ? state.items[pendingItem.id] > 0 && validItemTarget(pendingItem.id, i) : validSkillTarget(healingSkill, i)) ? 'disabled' : ''}` : inspectCharacter ? `type="button" data-battle-character="${i}" aria-haspopup="dialog" aria-label="${a.name}のステータスを見る"` : ''} class="party-member ${allyHP(i) <= 0 ? 'fallen' : ''}">${characterPortrait(a.characterId)}${statusIcons('ally', a.characterId, i)}<strong>${healingSkill ? '<span class="ally-target-marker" aria-hidden="true">▼</span>' : ''}${a.name}${allyHP(i) <= 0 ? ' · 戦闘不能' : ''}</strong>${meter('HP', allyHP(i), allyStats(i).maxHP)}${meter('MP', a.mp, allyStats(i).maxMP, 'mp')}</${healingSkill || inspectCharacter ? 'button' : 'div'}>`
     )
     .join('');
   if (state.enemy) {
     $('enemy').innerHTML = enemies
       .map(
         (e, i) =>
-          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && (allEnemySkill ? e.hp > 0 : i === selectedEnemy)}" aria-label="${allEnemySkill ? `敵全体に${allEnemySkill.name}を使う（${e.name}）` : `${e.name}を攻撃対象に選択`}" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}${damagePopupHTML(i)}</button>`
+          `<button class="enemy-unit ${e.hp <= 0 ? 'fallen' : ''}" data-target="${i}" aria-pressed="${!healingSkill && (allEnemySkill ? e.hp > 0 : i === selectedEnemy)}" aria-label="${allEnemySkill ? `敵全体に${allEnemySkill.name}を使う（${e.name}）` : `${e.name}を攻撃対象に選択`}" ${e.hp <= 0 || busy || healingSkill ? 'disabled' : ''}><span class="enemy-target-marker" aria-hidden="true">▼</span>${e.hp > 0 ? statusIcons('enemy', i) : ''}${monster(e)}<strong>${e.name}</strong>${enemyHPMeter(e)}${damagePopupHTML(i)}</button>`
       )
       .join('');
     $('enemy').classList.toggle('all-targets', !!allEnemySkill);
@@ -611,6 +666,7 @@ async function executePartyRound(getCommand) {
           }
           if (Math.random() < GameData.rules.battle.escapeRate) {
             state.buffs = [];
+            state.debuffs = [];
             state.enemy = null;
             state.enemies = [];
             log('旅団は逃げきった。');
@@ -659,7 +715,8 @@ async function executePartyRound(getCommand) {
         await showBattleMessages();
         continue;
       }
-      const targetIndex = kind === 'skill' && skill.effect === 'damage' ? skillTargetIndex : selectedEnemy;
+      const targetIndex =
+        kind === 'skill' && ['damage', 'debuff'].includes(skill.effect) ? skillTargetIndex : selectedEnemy;
       let target = enemies[targetIndex]?.hp > 0 ? enemies[targetIndex] : enemies.find(e => e.hp > 0);
       if (kind === 'guard') {
         guarding.add(i);
@@ -683,6 +740,20 @@ async function executePartyRound(getCommand) {
               `${partyNames[skillTargetIndex]}に${skill.name}！ 攻撃力${effect.multiplier}倍・${effect.turns}ターン。`
             );
           } else log(`${skill.name}を使えないため、MPを消費せず見送った。`);
+        } else if (skill.effect === 'debuff') {
+          const effect = GameRules.debuffSkillEffect(skill),
+            all = skillTargetsAllEnemies(skill),
+            targets = all ? enemies.map((e, index) => index).filter(index => enemies[index].hp > 0) : [targetIndex],
+            applied =
+              effect && allyMP(i) >= skill.cost
+                ? targets.filter(index => GameRules.applyDebuff(state, GameData, 'enemy', index, effect, skill.id))
+                : [];
+          if (applied.length) {
+            setAllyMP(i, allyMP(i) - skill.cost);
+            log(
+              `${actor.name}の${skill.name}！ ${all ? `敵${applied.length}体` : enemies[applied[0]].name}の${debuffStatText(effect.type)}が${effect.multiplier}倍に下がった（${effect.turns}ターン）。`
+            );
+          } else log(`${skill.name}を使えないため、MPを消費せず見送った。`);
         } else if (skill.effect === 'heal') {
           if (allyMP(i) >= skill.cost && validSkillTarget(skill, skillTargetIndex)) {
             const healed = Math.min(
@@ -700,7 +771,12 @@ async function executePartyRound(getCommand) {
             .map(e => {
               const result = GameRules.skillResult(
                 skill,
-                { wisdom: allyStats(i).wisdom, attack: allyAttack(i), defense: e.def, luck: allyStats(i).luck },
+                {
+                  wisdom: allyStats(i).wisdom,
+                  attack: allyAttack(i),
+                  defense: GameRules.enemyDefense(state, GameData, enemyIndexOf(e)),
+                  luck: allyStats(i).luck,
+                },
                 CombatRules
               );
               e.hp = Math.max(0, e.hp - result.amount);
@@ -716,7 +792,12 @@ async function executePartyRound(getCommand) {
           setAllyMP(i, allyMP(i) - skill.cost);
           const result = GameRules.skillResult(
               skill,
-              { wisdom: allyStats(i).wisdom, attack: allyAttack(i), defense: target.def, luck: allyStats(i).luck },
+              {
+                wisdom: allyStats(i).wisdom,
+                attack: allyAttack(i),
+                defense: GameRules.enemyDefense(state, GameData, enemyIndexOf(target)),
+                luck: allyStats(i).luck,
+              },
               CombatRules
             ),
             damage = result.amount;
@@ -727,7 +808,7 @@ async function executePartyRound(getCommand) {
       } else {
         const damage = CombatRules.physicalDamage({
           attack: allyAttack(i),
-          defense: target.def,
+          defense: GameRules.enemyDefense(state, GameData, enemyIndexOf(target)),
           power: normalAttack.power,
         });
         target.hp = Math.max(0, target.hp - damage);
@@ -738,20 +819,35 @@ async function executePartyRound(getCommand) {
       const enemy = enemies[actor.index];
       if (enemy.hp <= 0) continue;
       state.lastRoundOrder.push(actor.name);
-      log(`${enemy.name}の攻撃！`);
+      const enemyAction = GameRules.chooseEnemyAction(state, GameData, enemy);
+      log(enemyAction ? `${enemy.name}の${enemyAction.name}！` : `${enemy.name}の攻撃！`);
       await showBattleMessages();
       const targets = allies()
         .map((a, i) => i)
         .filter(i => allyHP(i) > 0);
-      const target = targets[Math.floor(Math.random() * targets.length)];
-      const damage = CombatRules.physicalDamage({
-        attack: enemy.atk,
-        defense: allyStats(target).defense,
-        strong: state.turn % GameData.rules.battle.strongEvery === 0,
-        guard: guarding.has(target),
-      });
-      setAllyHP(target, Math.max(0, allyHP(target) - damage));
-      log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);
+      if (enemyAction) {
+        const effect = enemyAction.effects[0],
+          all = enemyAction.target === 'allAllies',
+          chosen = all ? targets : [targets[Math.floor(Math.random() * targets.length)]],
+          applied = chosen.filter(index =>
+            GameRules.applyDebuff(state, GameData, 'ally', initialParty[index].id, effect, enemyAction.id)
+          );
+        log(
+          applied.length
+            ? `${all ? `味方${applied.length}人` : partyNames[applied[0]]}の${debuffStatText(effect.type)}が${effect.multiplier}倍に下がった（${effect.turns}ターン）。`
+            : `${enemy.name}の${enemyAction.name}は効かなかった。`
+        );
+      } else {
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        const damage = CombatRules.physicalDamage({
+          attack: GameRules.enemyAttack(state, GameData, actor.index),
+          defense: allyDefense(target),
+          strong: state.turn % GameData.rules.battle.strongEvery === 0,
+          guard: guarding.has(target),
+        });
+        setAllyHP(target, Math.max(0, allyHP(target) - damage));
+        log(`${enemy.name}の攻撃！ ${partyNames[target]}に${damage}。`);
+      }
     }
     state.enemy = enemies.find(e => e.hp > 0) || enemies[0];
     render(false);
@@ -760,6 +856,10 @@ async function executePartyRound(getCommand) {
   if (enemies.some(e => e.hp > 0) && allies().some((a, i) => allyHP(i) > 0)) {
     for (const buff of GameRules.tickBuffs(state, GameData))
       log(`${partyNames[initialParty.findIndex(a => a.id === buff.characterId)]}の${buff.skill.name}の効果が切れた。`);
+    for (const record of GameRules.tickDebuffs(state, GameData))
+      log(
+        `${record.side === 'ally' ? partyNames[initialParty.findIndex(a => a.id === record.target)] : enemies[record.target].name}の${debuffStatText(record.type)}が元に戻った。`
+      );
     await showBattleMessages();
   }
   state.turn++;
@@ -767,6 +867,7 @@ async function executePartyRound(getCommand) {
     const lost = Math.floor(state.gold * GameData.rules.battle.rescueRate);
     state.gold -= lost;
     state.buffs = [];
+    state.debuffs = [];
     state.enemy = null;
     state.enemies = [];
     state.journey = null;
@@ -777,6 +878,7 @@ async function executePartyRound(getCommand) {
     log(`旅団は全滅。救助費${lost} Gで街へ戻った。`);
   } else if (enemies.every(e => e.hp <= 0)) {
     state.buffs = [];
+    state.debuffs = [];
     for (const e of [...enemies].sort((a, b) => Number(a.boss) - Number(b.boss))) {
       state.enemy = e;
       const oldLevel = state.lv;
@@ -821,7 +923,7 @@ useSkill = function (id, targetIndex = null) {
   }
   if (!validSkillTarget(skill, targetIndex)) return false;
   if (state.enemy) {
-    if (skill.effect === 'damage') selectedEnemy = targetIndex;
+    if (['damage', 'debuff'].includes(skill.effect)) selectedEnemy = targetIndex;
     return submitCommand('skill', id, null, targetIndex);
   }
   const healed = Math.min(
@@ -1028,7 +1130,7 @@ resetAdventure = function () {
 };
 $('help').addEventListener('click', () => {
   $('modalContent').innerHTML +=
-    '<p>旅団は最大4人、敵は最大4体。全員をコマンド操作できます。戦闘開始後は素早さ順に進み、各人の番で行動を選択します。能力・装備・HP・MPは個別、レベルと経験値は旅団共通です。もちものの操作する人物で、非戦闘の回復スキル使用者と装備対象を選べます。購入済み装備は全員が装着できます。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の各人のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵の行動・味方の結果表示中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次の味方の番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。攻撃力は補正後の値を表示し、上昇中は青、下降中は赤になります。戦闘終了・戦闘不能で解除されます。宿屋で全員回復します。</p>';
+    '<p>旅団は最大4人、敵は最大4体。全員をコマンド操作できます。戦闘開始後は素早さ順に進み、各人の番で行動を選択します。能力・装備・HP・MPは個別、レベルと経験値は旅団共通です。もちものの操作する人物で、非戦闘の回復スキル使用者と装備対象を選べます。購入済み装備は全員が装着できます。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の各人のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵の行動・味方の結果表示中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次の味方の番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。攻撃力は補正後の値を表示し、上昇中は青、下降中は赤になります。戦闘終了・戦闘不能で解除されます。状態異常の「攻撃力ダウン」「守備力ダウン」は、リナ・ノエル（Lv.3）、ガルド・アステル（Lv.6）の弱体特技で敵にかけられます。月影の遺跡より先の一部の魔物とボスも、通常攻撃の代わりに味方へかけてくることがあります（3ターン目ごとの強攻撃のターンを除く）。同じ種類は重ならず、かけ直すと残りターンを更新します。赤い剣↓・盾↓と残数が目印で、敵の絵の上と味方の状態欄に表示されます。強化と同じくターン終了時に減り、戦闘終了・戦闘不能・撃破で解除されます。守備力が下がっている間はステータス詳細で赤く表示します。宿屋で全員回復します。</p>';
 });
 allies();
 render();

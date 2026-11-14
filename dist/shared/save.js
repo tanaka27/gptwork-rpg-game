@@ -106,6 +106,7 @@
       }
     }
     errors.push(...gameRules.validateBuffs(state, buffContent));
+    errors.push(...gameRules.validateDebuffs(state, buffContent));
     return errors;
   }
   return { validate };

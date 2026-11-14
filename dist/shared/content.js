@@ -5,7 +5,17 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, () => {
   'use strict';
   const categories = ['characters', 'zones', 'monsters', 'items', 'skills', 'nodes', 'rarities', 'materials', 'shops'];
-  const effectTypes = ['physicalDamage', 'magicDamage', 'magicHeal', 'restoreHP', 'restoreMP', 'attackBuff'];
+  const effectTypes = [
+    'physicalDamage',
+    'magicDamage',
+    'magicHeal',
+    'restoreHP',
+    'restoreMP',
+    'attackBuff',
+    'attackDown',
+    'defenseDown',
+  ];
+  const debuffEffectTypes = ['attackDown', 'defenseDown'];
   const equipmentRarities = ['common', 'uncommon', 'rare', 'legendary'];
   const bonusEffectStats = ['maxHP', 'maxMP', 'attack', 'defense', 'wisdom', 'speed', 'luck'];
   const safeId = id => typeof id === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(id);
@@ -74,6 +84,16 @@
             effect.turns > 99)
         )
           add(path + '.effects[' + i + ']', '攻撃上昇は倍率1超〜3・継続ターン1〜99の整数が必要です');
+        if (
+          debuffEffectTypes.includes(effect.type) &&
+          (!Number.isFinite(effect.multiplier) ||
+            effect.multiplier < 0.3 ||
+            effect.multiplier >= 1 ||
+            !Number.isSafeInteger(effect.turns) ||
+            effect.turns < 1 ||
+            effect.turns > 99)
+        )
+          add(path + '.effects[' + i + ']', '能力低下は倍率0.3以上1未満・継続ターン1〜99の整数が必要です');
         for (const field of ['amount', 'base', 'power'])
           if (
             effect[field] != null &&
@@ -120,6 +140,35 @@
       if (!Number.isFinite(e.hp) || e.hp <= 0) add('monsters.' + e.id + '.hp', 'HPは正の値が必要です');
       if (!Array.isArray(e.drops)) add('monsters.' + e.id + '.drops', '素材IDの配列が必要です');
       else e.drops.forEach(id => ref('materials', id, 'monsters.' + e.id + '.drops'));
+      if (e.actions !== undefined) {
+        const path = 'monsters.' + e.id + '.actions';
+        if (!Array.isArray(e.actions) || e.actions.length > 4) add(path, '行動は4件以内の配列が必要です');
+        else {
+          const actionIds = new Set();
+          e.actions.forEach((action, i) => {
+            const actionPath = path + '[' + i + ']';
+            if (!action || typeof action !== 'object' || Array.isArray(action)) {
+              add(actionPath, 'オブジェクトが必要です');
+              return;
+            }
+            if (!safeId(action.id) || actionIds.has(action.id)) add(actionPath + '.id', 'IDが不正または重複しています');
+            actionIds.add(action.id);
+            if (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 40)
+              add(actionPath + '.name', '1〜40文字の名前が必要です');
+            if (!Number.isFinite(action.rate) || action.rate <= 0 || action.rate > 1)
+              add(actionPath + '.rate', '確率は0より大きく1以下です');
+            if (!['ally', 'allAllies'].includes(action.target))
+              add(actionPath + '.target', '対象はallyまたはallAlliesです');
+            effects(action, actionPath);
+            if (
+              !Array.isArray(action.effects) ||
+              action.effects.length !== 1 ||
+              !debuffEffectTypes.includes(action.effects[0]?.type)
+            )
+              add(actionPath + '.effects', '魔物の行動には能力低下を1件指定してください');
+          });
+        }
+      }
     }
     for (const e of data.zones || []) {
       ref('monsters', e.bossId, 'zones.' + e.id + '.bossId');
@@ -175,20 +224,24 @@
         e.target !== undefined &&
         (e.effect === 'buff'
           ? !['ally', 'self'].includes(e.target)
-          : e.effect !== 'damage' || e.target !== 'allEnemies')
+          : !['damage', 'debuff'].includes(e.effect) || e.target !== 'allEnemies')
       )
-        add('skills.' + e.id + '.target', '補助技能の対象はallyまたはself、攻撃技能の対象はallEnemiesです');
-      if (!['damage', 'heal', 'buff'].includes(e.effect) || !['physical', 'magic'].includes(e.type))
-        add('skills.' + e.id, '攻撃/回復/補助と物理/魔法の分類が必要です');
+        add('skills.' + e.id + '.target', '補助技能の対象はallyまたはself、攻撃・弱体技能の対象はallEnemiesです');
+      if (!['damage', 'heal', 'buff', 'debuff'].includes(e.effect) || !['physical', 'magic'].includes(e.type))
+        add('skills.' + e.id, '攻撃/回復/補助/弱体と物理/魔法の分類が必要です');
       if (e.effect === 'buff' && (e.effects?.length !== 1 || e.type !== 'physical'))
         add('skills.' + e.id + '.effects', '補助特技には攻撃力上昇を1件指定してください');
+      if (e.effect === 'debuff' && (e.effects?.length !== 1 || e.type !== 'magic'))
+        add('skills.' + e.id + '.effects', '弱体特技は魔法に分類し、能力低下を1件指定してください');
       for (const effect of Array.isArray(e.effects) ? e.effects : [])
         if (
           e.effect === 'buff'
             ? effect?.type !== 'attackBuff'
-            : e.effect === 'heal'
-              ? effect?.type !== 'magicHeal'
-              : !['physicalDamage', 'magicDamage'].includes(effect?.type)
+            : e.effect === 'debuff'
+              ? !debuffEffectTypes.includes(effect?.type)
+              : e.effect === 'heal'
+                ? effect?.type !== 'magicHeal'
+                : !['physicalDamage', 'magicDamage'].includes(effect?.type)
         )
           add('skills.' + e.id + '.effects', '対象の種類と効果が一致しません');
     }
@@ -199,6 +252,8 @@
         effects(e, 'items.' + e.id);
         if (Array.isArray(e.effects) && e.effects.some(effect => effect?.type === 'attackBuff'))
           add('items.' + e.id + '.effects', '攻撃力上昇はスキル専用です');
+        if (Array.isArray(e.effects) && e.effects.some(effect => debuffEffectTypes.includes(effect?.type)))
+          add('items.' + e.id + '.effects', '能力低下は特技と魔物の行動専用です');
       } else {
         if (!['weapon', 'armor'].includes(e.type)) add('items.' + e.id + '.type', 'weaponまたはarmorが必要です');
         const hasRarity = Object.hasOwn(e, 'rarity'),
@@ -446,5 +501,14 @@
       normalAttack: data.rules.normalAttack,
     };
   }
-  return { validate, legacy, withJobs, categories, effectTypes, equipmentRarities, bonusEffectStats };
+  return {
+    validate,
+    legacy,
+    withJobs,
+    categories,
+    effectTypes,
+    debuffEffectTypes,
+    equipmentRarities,
+    bonusEffectStats,
+  };
 });

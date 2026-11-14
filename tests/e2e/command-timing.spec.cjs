@@ -27,7 +27,7 @@ test('全員の番で入力を待ち、仲間のスキル・回復・道具・�
  const saved=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
  const before=await page.evaluate(()=>[state.companions[0].mp,state.mp,state.enemies[2].hp]);
  await page.locator('[data-action="skills"]').click();
- await expect(page.locator('.skill-list button')).toHaveCount(2);await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();await expect(page.locator('[data-action="skill:rina_scatter_shot"]')).toBeVisible();
+ await expect(page.locator('.skill-list button')).toHaveCount(3);await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();await expect(page.locator('[data-action="skill:rina_scatter_shot"]')).toBeVisible();await expect(page.locator('[data-action="skill:rina_pinning_arrow"]')).toBeVisible();
  expect(await page.evaluate(()=>useSkill('flame'))).toBe(false,'Rina cannot invoke Astel\'s skill directly');
  await page.locator('[data-action="skill:rina_aimed_shot"]').click();
  await page.keyboard.press('Escape');expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]);
@@ -40,7 +40,7 @@ test('全員の番で入力を待ち、仲間のスキル・回復・道具・�
  expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(before[2]);
  await toInput(page);await expect(page.locator('#commandTitle')).toContainText('ノエルの番');
  await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
- await page.locator('[data-action="skills"]').click();await expect(page.locator('.skill-list button')).toHaveCount(1);await page.locator('[data-action="skill:noel_prayer_light"]').click();await page.locator('[data-ally-target="1"]').click();
+ await page.locator('[data-action="skills"]').click();await expect(page.locator('.skill-list button')).toHaveCount(2);await expect(page.locator('[data-action="skill:noel_weakening_prayer"]')).toBeVisible();await page.locator('[data-action="skill:noel_prayer_light"]').click();await page.locator('[data-ally-target="1"]').click();
  await page.locator('#fieldMessage').click();expect(await page.evaluate(()=>state.companions[0].hp)).toBe(60);expect(await page.evaluate(()=>state.companions[2].mp)).toBe(16);
  await toInput(page);await expect(page.locator('#commandTitle')).toContainText('アステルの番');
  await page.locator('[data-action="guard"]').click();await page.locator('#fieldMessage').click();
