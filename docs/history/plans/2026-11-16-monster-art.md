@@ -1,6 +1,6 @@
 # モンスター画像のイラスト化
 
-- 状態：承認済み
+- 状態：反映完了
 - 設計版：v1
 - 要求・背景：現在SVGで描画するモンスターを、生成したフラットなアニメ調イラストに置き換える。写実的な表現は使わない。
 - 設計作成者（子）：Codex
@@ -74,4 +74,4 @@
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --project=game-desktop --project=game-mobile tests/e2e/monster-art.spec.cjs`：10件成功。15種の画像ロード、通常戦・3ボス、攻撃とHP低下、画像失敗後の操作維持、console/pageerrorを確認。
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --project=game-desktop --project=game-mobile tests/e2e/battle-flow.spec.cjs tests/e2e/battle-layout.spec.cjs`：既存16件成功。PC・モバイル幅の戦闘回帰を確認。
 - 設計との差異・未検証事項：生成アトラスの出力寸法が均等な4×4ピクセル分割に適さなかったため、個体ごとの領域から512×512の透過PNG8へ切り出した。iOS/Android実機は未確認。
-- push・デプロイ結果：親担当。未実施。
+- push・デプロイ結果：GitHub main `19162c3` をpush。Sitesソース `d5c3a08`、デプロイ `appgdep_6afab1a5348081919dbc921b3097d4aa` 成功（所有者限定・D1維持）。公開パッケージは通過済みbuildから作成。Sitesヘルパー不在のため通常Gitと既存パッケージ手順を使用。
