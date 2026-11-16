@@ -24,8 +24,9 @@ test('4対4で素早さ順に行動し、隊列を保存する', async ({ page }
   await expect(page.locator('.party-member')).toHaveCount(4);
   await expect(page.locator('.enemy-unit')).toHaveCount(4);
   await expect(page.locator('#battleOrder')).toContainText('リナ');
-  const units=await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({box:n.getBoundingClientRect().toJSON(),svg:n.querySelector('svg').getBoundingClientRect().toJSON()})));
-  for(const u of units) expect(u.svg.width).toBeLessThanOrEqual(u.box.width);
+  const units=await page.locator('.enemy-unit').evaluateAll(nodes=>nodes.map(n=>({box:n.getBoundingClientRect().toJSON(),image:n.querySelector('.monster-art')?.getBoundingClientRect().toJSON(),source:n.querySelector('.monster-art')?.getAttribute('src'),naturalWidth:n.querySelector('.monster-art')?.naturalWidth})));
+  expect(units).toHaveLength(4);
+  for(const u of units){expect(u.image.width).toBeLessThanOrEqual(u.box.width);expect(u.naturalWidth).toBe(512);expect(u.source).toMatch(/^assets\/monsters\/[a-z0-9_]+\.png$/);}
   const message=await page.locator('.field-message').boundingBox();
   for(const u of units) expect(u.box.bottom).toBeLessThanOrEqual(message.y);
   await page.locator('[data-action="guard"]').click();

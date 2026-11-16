@@ -541,7 +541,7 @@ dialog button {
   align-items: center;
   flex-direction: column;
 }
-#enemy svg {
+#enemy :is(svg, .monster-art) {
   width: 160px;
   height: 160px;
   filter: drop-shadow(0 15px 6px #10291877);
@@ -560,7 +560,7 @@ dialog button {
   background: #132b29;
   margin: 7px auto 0;
 }
-#enemy.hit svg {
+#enemy.hit :is(svg, .monster-art) {
   animation: hit 0.3s;
 }
 #enemy .damage {
@@ -1238,7 +1238,7 @@ dialog {
   #enemy {
     inset: 42px 0 16px;
   }
-  #enemy svg {
+  #enemy :is(svg, .monster-art) {
     width: 125px;
     height: 125px;
   }

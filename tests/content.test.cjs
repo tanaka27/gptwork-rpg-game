@@ -1,5 +1,24 @@
-const assert=require('node:assert/strict');const fs=require('node:fs');const vm=require('node:vm');const {validate,legacy,withJobs}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
+const assert=require('node:assert/strict');const crypto=require('node:crypto');const fs=require('node:fs');const path=require('node:path');const vm=require('node:vm');const {validate,legacy,withJobs}=require('../shared/content.js');const rules=require('../shared/rules.js');const content=require('../content/game.json');
 assert.deepEqual(validate(content),[]);assert.equal(legacy(content).bestiary[0].length,4);
+const monsterArtDirectory=path.join(__dirname,'../dist/assets/monsters');
+const monsterArtIds=content.monsters.map(monster=>monster.id).sort();
+const monsterArtFiles=fs.readdirSync(monsterArtDirectory).filter(file=>file.endsWith('.png')).map(file=>path.parse(file).name).sort();
+assert.equal(monsterArtIds.length,15,'every bundled monster has generated art');
+assert.equal(monsterArtFiles.length,15,'only the 15 bundled monster images are present');
+assert.deepEqual(monsterArtFiles,monsterArtIds,'monster art files map one-to-one to content IDs');
+const monsterArtHashes=new Set();let monsterArtTotal=0;
+for(const id of monsterArtIds){
+ const file=path.join(monsterArtDirectory,`${id}.png`),image=fs.readFileSync(file);
+ assert.ok(image.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')),`${id} is a PNG image, not inline vector art`);
+ assert.equal(image.readUInt32BE(16),512,`${id} width`);assert.equal(image.readUInt32BE(20),512,`${id} height`);
+ let offset=8,hasTransparency=false;
+ while(offset+12<=image.length){const length=image.readUInt32BE(offset),type=image.toString('ascii',offset+4,offset+8);if(type==='tRNS')hasTransparency=image.subarray(offset+8,offset+8+length).includes(0);offset+=length+12;if(type==='IEND')break;}
+ assert.ok(hasTransparency,`${id} keeps transparent pixels`);
+ const hash=crypto.createHash('sha256').update(image).digest('hex');assert.ok(!monsterArtHashes.has(hash),`${id} has distinct artwork`);monsterArtHashes.add(hash);
+ assert.ok(image.length<=80*1024,`${id} stays within the per-image budget`);monsterArtTotal+=image.length;
+}
+assert.ok(monsterArtTotal<=Math.round(1.2*1024*1024),'monster art stays within the collection budget');
+console.log(`PASS: ${monsterArtIds.length} unique transparent monster illustrations, ${monsterArtTotal} bytes`);
 assert.deepEqual(content.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
 assert.deepEqual(content.rules.party.map(id=>rules.skillsForCharacter(content,id).length),[7,4,4,4]);
 assert.equal(content.skills.filter(s=>s.characterId===undefined).length,0,'all bundled skills state their owner');

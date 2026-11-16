@@ -32,6 +32,12 @@ Use case: stylized-concept. Asset type: full-body character illustration for the
 - ガルド（gald）：broad-shouldered adult male guardian in his thirties, short slate charcoal hair swept back, neatly trimmed short dark beard, brown eyes, strong eyebrows and kind dependable serious expression, dark steel armor with restrained warm copper trim, deep brown mantle.
 - ノエル（noel）：young adult male healer, soft silver-mint hair in a medium short rounded cut with long side fringe, gentle violet eyes, serene kind expression, ivory healer robe with muted teal collar, small silver star hair ornament. Delicate graceful features while clearly distinct from the navy-haired hero.
 
+## 魔物イラスト
+
+現行の通常魔物12種とボス3種は `dist/assets/monsters/{id}.png` にID別の画像を置き、`content/game.json` の固定IDに対応させます。各画像は透過背景の512×512 PNG8で、全身を中央に描きます。濃色の明瞭な輪郭、平坦な色面と2段階のセル塗りを使う、フラットな2Dアニメ調のオリジナルJRPGイラストにします。写実・3D・水彩、背景、文字、枠は使いません。
+
+生成時は各モンスターのシルエット、主色、種別の特徴を分けます。原画と確認用シートは `work/` に置き、配信用PNGだけをコミットします。1枚80 KiB以下、15枚合計1.2 MiB以下を保ちます。Workerでは既存のPNG配信処理により同じURLでlossless WebPとして返します。未登録IDの公開コンテンツは既存のSVG描画で表示し、既知IDの画像取得に失敗したときは中立の空プレースホルダーを使って名前と対象操作を維持します。
+
 ## 酒場の冒険者100人
 
 固定ID `adventurer_001`〜`adventurer_100` に1枚ずつ固有画像を割り当てます。ファイル名はIDと一致し、`adventurer_001` の配信先は `dist/assets/characters/adventurer_001.webp` です。全100枚のIDとジョブは `shared/adventurers.js` のロスターを正本とします。初期4人のPNGを酒場の人物へ流用しません。

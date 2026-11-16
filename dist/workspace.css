@@ -218,7 +218,7 @@ header #reset {
 #enemy {
   inset: 10px 0;
 }
-#enemy svg {
+#enemy :is(svg, .monster-art) {
   width: 160px;
   height: 160px;
   max-height: 60%;
@@ -584,7 +584,7 @@ dialog {
   #enemy .enemy-stats {
     display: none;
   }
-  #enemy svg {
+  #enemy :is(svg, .monster-art) {
     max-height: 48%;
   }
   #subactions {
@@ -647,9 +647,19 @@ dialog {
   background: transparent;
   font-size: 10px;
 }
-.enemy-unit svg {
+.enemy-unit :is(svg, .monster-art) {
   width: 100%;
   height: 70px;
+}
+.monster-art {
+  display: block;
+  object-fit: contain;
+}
+.monster-art-fallback {
+  box-sizing: border-box;
+  border: 1px dashed #a5bf9f55;
+  border-radius: 50%;
+  background: #a5bf9f0d;
 }
 .enemy-unit strong,
 .enemy-unit span {
@@ -673,7 +683,7 @@ dialog {
   .party-member span {
     font-size: 9px;
   }
-  .enemy-unit svg {
+  .enemy-unit :is(svg, .monster-art) {
     height: 45px;
   }
 }
@@ -681,7 +691,7 @@ dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px;
 }
-#enemy .enemy-unit svg {
+#enemy .enemy-unit :is(svg, .monster-art) {
   width: 100%;
   height: 90px;
   max-height: none;
@@ -697,7 +707,7 @@ dialog {
   overflow-wrap: anywhere;
 }
 @media (max-width: 450px) {
-  #enemy .enemy-unit svg {
+  #enemy .enemy-unit :is(svg, .monster-art) {
     height: 65px;
   }
 }
@@ -861,7 +871,7 @@ button.party-member:hover {
   }
 }
 @media (max-height: 540px) and (min-width: 600px) {
-  #enemy .enemy-unit svg {
+  #enemy .enemy-unit :is(svg, .monster-art) {
     height: 48px;
   }
   .enemy-unit {
@@ -946,7 +956,7 @@ button.party-member:hover {
   }
 }
 @media (max-height: 680px) and (max-width: 450px) {
-  #enemy .enemy-unit svg {
+  #enemy .enemy-unit :is(svg, .monster-art) {
     height: 52px;
   }
   .enemy-target-marker {
@@ -1650,7 +1660,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   max-width: 125px;
   height: 6px;
 }
-.adventure-layout #enemy .enemy-unit svg {
+.adventure-layout #enemy .enemy-unit :is(svg, .monster-art) {
   width: 100%;
   height: clamp(85px, 23dvh, 200px);
   max-height: none;
@@ -1809,7 +1819,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   .adventure-layout #enemy .enemy-unit strong {
     font-size: 10px;
   }
-  .adventure-layout #enemy .enemy-unit svg {
+  .adventure-layout #enemy .enemy-unit :is(svg, .monster-art) {
     height: clamp(68px, 20dvh, 140px);
   }
   .adventure-layout .command {
@@ -1842,7 +1852,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   .adventure-layout #enemy .enemy-unit {
     gap: 2px;
   }
-  .adventure-layout #enemy .enemy-unit svg {
+  .adventure-layout #enemy .enemy-unit :is(svg, .monster-art) {
     height: 70px;
   }
   .adventure-layout .party-member {
@@ -1897,7 +1907,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   .adventure-layout #enemy:has(.enemy-unit) {
     bottom: 100px;
   }
-  .adventure-layout #enemy .enemy-unit svg {
+  .adventure-layout #enemy .enemy-unit :is(svg, .monster-art) {
     height: 45px;
   }
 }
@@ -2011,7 +2021,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .adventure-layout.battle-active #enemy .enemy-unit svg {
+  .adventure-layout.battle-active #enemy .enemy-unit :is(svg, .monster-art) {
     height: 32px;
   }
 }
@@ -2251,7 +2261,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   }
 }
 @media (max-height: 680px) and (max-width: 450px) {
-  .adventure-layout.battle-menu #enemy .enemy-unit svg {
+  .adventure-layout.battle-menu #enemy .enemy-unit :is(svg, .monster-art) {
     height: 52px;
   }
 }

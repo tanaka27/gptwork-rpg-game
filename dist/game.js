@@ -356,7 +356,38 @@ function landscape() {
   }
   return `<svg viewBox="0 0 800 420" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="${sky}"/><stop offset="1" stop-color="#dbd2ab"/></linearGradient><linearGradient id="ground" x2="0" y2="1"><stop stop-color="${mount}"/><stop offset="1" stop-color="#243f3b"/></linearGradient></defs><rect width="800" height="420" fill="url(#sky)"/><circle cx="580" cy="90" r="33" fill="#f5e8b9" opacity=".8"/><path d="M0 220L130 110 215 185 335 70 455 198 570 118 690 203 800 135V420H0" fill="${mount}" opacity=".4"/><path d="M0 260L90 192 200 251 350 160 470 250 650 171 800 265V420H0" fill="${mount}" opacity=".8"/><path d="M0 280Q190 225 400 280T800 260V420H0" fill="url(#ground)"/>${z === 1 ? '<g fill="#39485c"><path d="M110 285V140h25v145m-28-145h31v-10h-31M620 282V130h26v152m-30-152h34v-13h-34"/><path d="M100 130L370 96 660 117v15L370 116 100 146z"/></g>' : trees}<path d="M335 420Q490 340 400 283Q510 330 520 420" fill="#b6b08a" opacity=".35"/><g fill="#e8d797" opacity=".7">${Array.from({ length: 20 }, (_, i) => `<circle cx="${(i * 137) % 790}" cy="${290 + ((i * 29) % 125)}" r="${1 + (i % 2)}"/>`).join('')}</g></svg>`;
 }
+const monsterArtIds = new Set([
+  'leaf_jelly',
+  'young_wolf',
+  'echo_bat',
+  'walking_mushroom',
+  'mist_jelly',
+  'moon_owl',
+  'ruin_sentinel',
+  'lake_spirit',
+  'magma_jelly',
+  'ash_hound',
+  'lava_golem',
+  'ember_spirit',
+  'grass_guardian',
+  'moon_golem',
+  'crimson_dragon',
+]);
+document.addEventListener(
+  'error',
+  event => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement) || !image.classList.contains('monster-art')) return;
+    const placeholder = document.createElement('span');
+    placeholder.className = 'monster-art monster-art-fallback';
+    placeholder.setAttribute('aria-hidden', 'true');
+    image.replaceWith(placeholder);
+  },
+  true
+);
 function monster(e) {
+  if (monsterArtIds.has(e.id))
+    return `<img class="monster-art" src="assets/monsters/${e.id}.png" alt="" width="512" height="512" decoding="async">`;
   if (!e.boss && e.shape && e.shape !== 'slime') return creatureSVG(e);
   const color = e.boss ? ['#d5aa68', '#9a99bf', '#c9755e'][state.zone] : ['#88bc8a', '#9cacc2', '#d5a06b'][state.zone];
   if (e.boss)

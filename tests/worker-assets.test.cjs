@@ -7,6 +7,8 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 fs.mkdirSync(path.join(root, 'work'), { recursive: true });
 const tempDir = fs.mkdtempSync(path.join(root, 'work', 'worker-assets-'));
+const monsterPngSources = require('../content/game.json').monsters.map(monster => `dist/assets/monsters/${monster.id}.png`);
+assert.equal(monsterPngSources.length, 15, 'all bundled monster images are checked in the Worker');
 const pngSources = [
   'dist/assets/village.png',
   'dist/assets/meadow.png',
@@ -14,6 +16,7 @@ const pngSources = [
   'dist/assets/characters/rina.png',
   'dist/assets/characters/gald.png',
   'dist/assets/characters/noel.png',
+  ...monsterPngSources,
 ];
 
 (async () => {
