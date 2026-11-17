@@ -9,6 +9,8 @@ for(const critical of [true,false])test(`うんのよさと物理スキルの${c
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');await advanceToInput(page);
  await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();
  await expect(page.locator('#partyDetails')).toContainText('うんのよさ');await expect(page.locator('#partyDetails dt').filter({hasText:'うんのよさ'}).locator('..')).toHaveText('うんのよさ18');
+ const displayedCriticalRate=await page.evaluate(()=>`${(CombatRules.criticalRate(allyStats(0).luck)*100).toFixed(2)}%`);
+ await expect(page.locator('#partyDetails dt').filter({hasText:'会心率'}).locator('..')).toHaveText(`会心率${displayedCriticalRate}`);
  await page.screenshot({path:test.info().outputPath('luck-status.png')});
  await page.locator('[data-screen="adventure"]').click();await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:slash"]').click();await expect(page.locator('#skillDetail')).toContainText('会心の一撃は相手の守備力を無視します');
  await page.evaluate(critical=>{Math.random=()=>critical?0:.99;},critical);

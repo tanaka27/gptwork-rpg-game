@@ -58,6 +58,8 @@ test('下部の仲間ボタンから縦一覧、個別詳細、一覧へ戻る',
     await expect(page.locator('.character-card')).toHaveCount(1);
     await expect(page.locator('#characterName')).toHaveText(name);
     await expect(page.locator('.character-card dd').nth(5)).toHaveText(String(speed));
+    const criticalRate = await page.evaluate(index => `${(CombatRules.criticalRate(allyStats(index).luck) * 100).toFixed(2)}%`, i);
+    await expect(page.locator('.character-card dt').filter({hasText:'会心率'}).locator('..')).toHaveText(`会心率${criticalRate}`);
     if(i===1)await expect(page.locator('.character-card')).toContainText('戦闘不能');
     if(i===2)await expect(page.locator('.character-card dd').first()).toHaveText('31 / 100');
     await page.screenshot({path:test.info().outputPath('character-'+i+'.png')});

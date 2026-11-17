@@ -612,6 +612,7 @@ function renderTavern() {
         ['防御', selected.defense],
         ['賢さ', selected.wisdom],
         ['運', selected.luck],
+        ['会心率', `${(CombatRules.criticalRate(selected.luck) * 100).toFixed(2)}%`],
         ['速さ', selected.speed],
       ]
         .map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`)

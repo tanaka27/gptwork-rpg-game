@@ -85,6 +85,12 @@ assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes('現在�
 assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes('class="tavern-adventurer-detail-portrait"'));
 assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes('src="assets/characters/adventurer_001.webp"'));
 assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes('賢さ'));
+const adventurerLuck = tavern.run("AdventurerRules.list().find(member => member.id === 'adventurer_001').luck");
+const adventurerCriticalRate = tavern.run(
+  `CombatRules.criticalRate(${adventurerLuck}) * 100`
+).toFixed(2) + '%';
+assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes(`<dt>運</dt><dd>${adventurerLuck}</dd>`));
+assert.ok(tavern.nodes.tavernAdventurerDetailContent.innerHTML.includes(`<div><dt>会心率</dt><dd>${adventurerCriticalRate}</dd></div>`));
 tavern.run("action('adventurer-back');action('tavern-view:quests')");
 assert.equal(tavern.nodes.tavernQuestView.hidden, false);
 assert.equal((tavern.nodes.tavernQuests.innerHTML.match(/class="tavern-quest"/g) || []).length, 3);

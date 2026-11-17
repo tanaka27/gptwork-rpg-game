@@ -473,6 +473,7 @@ function characterStatusCard(a, i, headingId = 'characterName') {
     ['賢さ', allyStats(i).wisdom],
     ['素早さ', speedOf(i)],
     ['うんのよさ', allyStats(i).luck],
+    ['会心率', `${(CombatRules.criticalRate(allyStats(i).luck) * 100).toFixed(2)}%`],
     ['武器', gear[GameRules.memberState(state, GameData, i).weapon]?.name],
     ['防具', gear[GameRules.memberState(state, GameData, i).armor]?.name],
   ]

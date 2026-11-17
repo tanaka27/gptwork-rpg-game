@@ -21,7 +21,9 @@ test('コマンド中だけ味方のステータスを開き、自動行動中�
   if(i===1){await trigger.focus();await page.keyboard.press('Enter');}else await trigger.locator('img').click();
   await expect(page.locator('#modal')).toBeVisible();
   await expect(page.locator('#battleCharacterName')).toHaveText(['アステル','リナ','ガルド','ノエル'][i]);
-  await expect(page.locator('#modal dt')).toHaveText(['HP','MP','攻撃力','守備力','賢さ','素早さ','うんのよさ','武器','防具']);
+  await expect(page.locator('#modal dt')).toHaveText(['HP','MP','攻撃力','守備力','賢さ','素早さ','うんのよさ','会心率','武器','防具']);
+  const criticalRate=await page.evaluate(index=>`${(CombatRules.criticalRate(allyStats(index).luck)*100).toFixed(2)}%`,i);
+  await expect(page.locator('#modal dt').filter({hasText:'会心率'}).locator('..')).toHaveText(`会心率${criticalRate}`);
   if(i===2)await expect(page.locator('#modal .character-heading')).toContainText('戦闘不能');
   await page.screenshot({path:test.info().outputPath(`battle-status-${i}.png`)});
   if(i%2)await page.keyboard.press('Escape');else await page.locator('#closeModal').click();

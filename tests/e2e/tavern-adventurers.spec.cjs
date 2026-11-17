@@ -151,7 +151,16 @@ test('酒場で街のNPC冒険者詳細を確認し、探索・道中行動tick�
   await expect(page.locator('#tavernAdventurerDetailContent')).toContainText('現在地：はじまりの村');
   for (const stat of ['HP', 'MP', '攻撃', '防御', '賢さ', '運', '速さ'])
     await expect(page.locator('#tavernAdventurerDetailContent')).toContainText(stat);
-  await page.screenshot({ path: testInfo.outputPath('tavern-adventurer-detail.png') });
+  await page.screenshot({ path: testInfo.outputPath('tavern-adventurer-detail-profile.png') });
+  const expectedCriticalRate = await page.evaluate(id => {
+    const adventurer = AdventurerRules.list().find(member => member.id === id);
+    return `${(CombatRules.criticalRate(adventurer.luck) * 100).toFixed(2)}%`;
+  }, firstId);
+  const criticalRateRow = page.locator('#tavernAdventurerDetailContent dt').filter({ hasText: '会心率' }).locator('..');
+  await criticalRateRow.scrollIntoViewIfNeeded();
+  await expect(criticalRateRow).toBeInViewport();
+  await expect(criticalRateRow).toHaveText(`会心率${expectedCriticalRate}`);
+  await page.screenshot({ path: testInfo.outputPath('tavern-adventurer-detail-stats.png') });
   await page.locator('[data-action="adventurer-back"]').click();
   await expect(page.locator('#tavernAdventurerList')).toBeVisible();
   await expect(first).toBeFocused();
