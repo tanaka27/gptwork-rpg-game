@@ -14,7 +14,7 @@
 - 主人公・仲間と酒場冒険者の詳細に、戦闘計算と同じ会心率を百分率・小数点以下2桁で表示。うんのよさ表示は維持。
 - 互換性：セーブ形式と戦闘計算は変更なし。
 - 検証：ロジック/構文/formatチェックと `npm run package:site` 成功。4つのE2E specをPC・スマホ相当幅で14件成功し、酒場specを再実行して2件成功。Playwrightは `/usr/bin/chromium` を使用し、詳細のスクリーンショットも目視。
-- 反映：親エージェントによるcommit/push・Sites反映待ち。[設計・検証記録](docs/plans/2026-11-17-character-critical-rate.md)
+- 反映：GitHub main `c565abd`、Sitesソース `0a18f72`、バージョン64、デプロイ `appgdep_6afc3052dbdc81918bb05066e43d4409` 成功（閲覧範囲・D1維持）。[設計・検証記録](docs/history/plans/2026-11-17-character-critical-rate.md)
 
 ## 2026-11-16 — モンスター画像のイラスト化
 
