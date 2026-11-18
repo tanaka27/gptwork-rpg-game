@@ -164,17 +164,52 @@ function submitCommand(kind, skillId, itemId, skillTargetIndex = selectedEnemy) 
   render(false);
   return true;
 }
-// ラウンド中のログを、時間ではなくメッセージ窓の操作で1件ずつ送る。
+// ラウンド中のログをメッセージ窓で1件ずつ送る。自動送りでは一定時間で、手動送りではクリック等で進む。
 let battleMessageResolve = null,
-  battleMessageText = null;
+  battleMessageText = null,
+  battleMessageTimer = null,
+  pendingAnnouncement = null;
 const battleMessages = [];
+const messageModeKey = 'starlight-rpg-message-mode';
+function messageAutoAdvance() {
+  try {
+    return localStorage.getItem(messageModeKey) !== 'manual';
+  } catch {
+    return true;
+  }
+}
+function setMessageAutoAdvance(auto) {
+  try {
+    localStorage.setItem(messageModeKey, auto ? 'auto' : 'manual');
+  } catch {}
+  renderMessageMode();
+}
+function renderMessageMode() {
+  const auto = messageAutoAdvance();
+  $('messageMode').textContent = 'メッセージ送り：' + (auto ? '自動' : '手動');
+  $('messageMode').ariaPressed = String(auto);
+  $('messageNext').textContent = auto ? '自動で進みます（タップで次へ）▾' : 'クリック / タップで次へ ▾';
+}
+function battleMessageDelay(message) {
+  return Math.min(2600, 900 + 30 * String(message).length);
+}
+// 行動の宣言は保留し、続く結果のメッセージと1件にまとめる。
+function announce(message) {
+  pendingAnnouncement = message;
+}
 const originalLog = log;
 log = function (message) {
+  if (busy && pendingAnnouncement) {
+    if (!message.startsWith(pendingAnnouncement)) message = pendingAnnouncement + ' ' + message;
+    pendingAnnouncement = null;
+  }
   originalLog(message);
   if (busy) battleMessages.push(message);
 };
 function advanceBattleMessage() {
   if (!battleMessageResolve) return;
+  clearTimeout(battleMessageTimer);
+  battleMessageTimer = null;
   const resolve = battleMessageResolve;
   battleMessageResolve = null;
   battleMessageText = null;
@@ -185,9 +220,20 @@ function waitForBattleMessage(message) {
   return new Promise(resolve => {
     battleMessageResolve = resolve;
     render(false);
+    if (messageAutoAdvance()) {
+      const current = resolve;
+      battleMessageTimer = setTimeout(() => {
+        if (battleMessageResolve === current) advanceBattleMessage();
+      }, battleMessageDelay(message));
+    }
   });
 }
 async function showBattleMessages() {
+  if (pendingAnnouncement) {
+    const message = pendingAnnouncement;
+    pendingAnnouncement = null;
+    log(message);
+  }
   while (battleMessages.length) await waitForBattleMessage(battleMessages.shift());
 }
 $('fieldMessage').onclick = advanceBattleMessage;
@@ -307,6 +353,8 @@ function renderAdventureLayout() {
   if (arena) screen.style.setProperty('--party-height', party.getBoundingClientRect().height + 'px');
 }
 globalThis.addEventListener?.('resize', renderAdventureLayout);
+$('messageMode').onclick = () => setMessageAutoAdvance(!messageAutoAdvance());
+renderMessageMode();
 function renderSkillMenu() {
   const active = skillMenuMode !== 'commands';
   $('actions').hidden = active;
@@ -658,8 +706,7 @@ async function executePartyRound(getCommand) {
         busy = true;
         skill = kind === 'skill' ? activeSkill(skillId, i) : null;
         if (kind === 'run') {
-          log('旅団は逃走を試みた！');
-          await showBattleMessages();
+          announce('旅団は逃走を試みた！');
           if (allyHP(i) <= 0 || activeEnemies().some(e => e.boss)) {
             log('逃走できないため見送った。');
             await showBattleMessages();
@@ -701,8 +748,7 @@ async function executePartyRound(getCommand) {
             : kind === 'skill'
               ? `${actor.name}の${skill.name}！`
               : `${actor.name}の攻撃！`;
-      log(announcement);
-      await showBattleMessages();
+      announce(announcement);
       if (
         allyHP(i) <= 0 ||
         (kind === 'skill' &&
@@ -725,7 +771,6 @@ async function executePartyRound(getCommand) {
           i,
           Math.max(allyMP(i), Math.min(allyStats(i).maxMP, allyMP(i) + GameData.rules.battle.guardMPRestore))
         );
-        log(`${partyNames[i]}は身を守った。`);
       } else if (kind === 'item') {
         if (!applyItem(itemId, skillTargetIndex ?? 0)) log('道具の対象を回復できないため、消費せず見送った。');
       } else if (kind === 'skill') {
@@ -737,9 +782,7 @@ async function executePartyRound(getCommand) {
           ) {
             setAllyMP(i, allyMP(i) - skill.cost);
             const effect = skill.effects[0];
-            log(
-              `${partyNames[skillTargetIndex]}に${skill.name}！ 攻撃力${effect.multiplier}倍・${effect.turns}ターン。`
-            );
+            log(`${partyNames[skillTargetIndex]}の攻撃力が${effect.multiplier}倍に上がった（${effect.turns}ターン）。`);
           } else log(`${skill.name}を使えないため、MPを消費せず見送った。`);
         } else if (skill.effect === 'debuff') {
           const effect = GameRules.debuffSkillEffect(skill),
@@ -821,8 +864,7 @@ async function executePartyRound(getCommand) {
       if (enemy.hp <= 0) continue;
       state.lastRoundOrder.push(actor.name);
       const enemyAction = GameRules.chooseEnemyAction(state, GameData, enemy);
-      log(enemyAction ? `${enemy.name}の${enemyAction.name}！` : `${enemy.name}の攻撃！`);
-      await showBattleMessages();
+      announce(enemyAction ? `${enemy.name}の${enemyAction.name}！` : `${enemy.name}の攻撃！`);
       const targets = allies()
         .map((a, i) => i)
         .filter(i => allyHP(i) > 0);

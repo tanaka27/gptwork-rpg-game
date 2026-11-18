@@ -41,9 +41,8 @@ test('物理の全体攻撃：詳細で敵全員にマークを出し、敵ご�
  // 1・3体目は会心、2・4体目は通常になる乱数列（rは0）
  await page.evaluate(()=>{const seq=[0,0,.99,0];let n=0;Math.random=()=>seq[n++%seq.length];});
  await units.nth(2).click();
- await expect(page.locator('#latestLog')).toHaveText('リナのばらまき撃ち！');
- expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before.mp);
- await page.locator('#fieldMessage').click();
+ // 宣言と結果は1件のメッセージで、表示と同時に反映する。
+ await expect(page.locator('#latestLog')).toContainText('リナのばらまき撃ち！ ');
  const after=await page.evaluate(()=>({hp:state.enemies.map(e=>e.hp),mp:state.companions[0].mp}));
  const dealt=before.hp.map((hp,i)=>hp-after.hp[i]);
  expect(dealt.every(d=>d>0)).toBe(true);
@@ -63,11 +62,9 @@ test('魔法の全体攻撃で敵が全滅したら残りの行動を飛ばし�
  await expect(page.locator('#enemy .enemy-unit').nth(3)).toBeDisabled();
  await expect(page.locator('#enemy .enemy-unit').nth(3)).toHaveAttribute('aria-pressed','false');
  const mp=await page.evaluate(()=>state.mp),wisdom=await page.evaluate(()=>allyStats(0).wisdom);
- await page.locator('#enemy .enemy-unit').nth(0).click();
- await expect(page.locator('#latestLog')).toHaveText('アステルの火の粉！');
  // 選んだ敵が反映前に倒れていても、生存中の敵がいれば見送らない
  await page.evaluate(()=>{state.enemies[0].hp=0;});
- await page.locator('#fieldMessage').click();
+ await page.locator('#enemy .enemy-unit').nth(0).click();
  await expect(page.locator('#latestLog')).toHaveText(`アステルの火の粉！ 敵2体に平均${Math.floor(5+wisdom*.8)}のダメージ。`);
  expect(await page.evaluate(()=>state.enemies.every(e=>e.hp<=0))).toBe(true);
  expect(await page.evaluate(()=>state.mp)).toBe(mp-5);

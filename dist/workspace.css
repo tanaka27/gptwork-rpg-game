@@ -1680,6 +1680,17 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
+/* 戦闘中は「にげる」を加えた5コマンドを1行に並べ、狭い幅でもラベルを折り返さない。 */
+.adventure-layout #actions:has(> :nth-child(5)) {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  container-type: inline-size;
+}
+.adventure-layout #actions:has(> :nth-child(5)) button {
+  padding-inline: 2px;
+  white-space: nowrap;
+  font-size: min(15px, 4cqi);
+}
 .adventure-layout #actions button {
   min-height: 58px;
   padding: 8px 3px;

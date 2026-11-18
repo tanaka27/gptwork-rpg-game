@@ -37,12 +37,12 @@ const {boot} = require('./boot.cjs');
   }
   const invalidBuff=boot(null,true,true);
   invalidBuff.run("state.lv=7;state.hp=maxhp();state.mp=maxmp();GameData.characters[0].speed=999;allies();startBattle();state.enemies.forEach(e=>{e.hp=10000;e.max=10000;e.atk=0;});render(false)");
+  // 宣言と結果は同時に解決するため、反映時に対象が倒れていればバフもMP消費も起きない。
+  invalidBuff.run('setAllyHP(1,0)');
   const invalidMP=invalidBuff.run('state.mp'),invalidRound=invalidBuff.run("partyRound('skill','inspire',null,1)");
   for(let i=0;i<10;i++)await Promise.resolve();
-  assert.equal(invalidBuff.run('state.buffs.length'),0);assert.equal(invalidBuff.run('state.mp'),invalidMP);
-  invalidBuff.run('setAllyHP(1,0)');invalidBuff.nodes.fieldMessage.onclick();
-  for(let i=0;i<10;i++)await Promise.resolve();
-  assert.equal(invalidBuff.run('state.buffs.length'),0,'death after announcement prevents buff');assert.equal(invalidBuff.run('state.mp'),invalidMP,'invalid target spends no MP');
+  assert.equal(invalidBuff.run('state.buffs.length'),0,'dead target at resolution prevents buff');assert.equal(invalidBuff.run('state.mp'),invalidMP,'invalid target spends no MP');
+  assert.match(invalidBuff.nodes.latestLog.textContent,/^アステルの鼓舞！ .*見送った。$/);
   for(let i=0;i<80&&invalidBuff.run('busy');i++){invalidBuff.nodes.fieldMessage.onclick();for(let j=0;j<6;j++)await Promise.resolve();}
   await invalidRound;
   const learnBuff=boot();learnBuff.run("state.xp=threshold()-1;startBattle();state.enemy.xp=1;win()");for(const entry of ['アステルは「鼓舞」を覚えた！','アステルは「火花の魔法」を覚えた！','リナは「ねらい撃ち」を覚えた！','ガルドは「気合い」を覚えた！','ノエルは「祈りの光」を覚えた！'])assert.ok(learnBuff.run(`state.log.includes('${entry}')`),entry);

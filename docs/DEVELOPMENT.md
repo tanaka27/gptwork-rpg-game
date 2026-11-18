@@ -55,6 +55,8 @@ npm run test:e2e -- --project=admin-mobile tests/e2e/backend.spec.cjs
 
 `npm run test:e2e` は一回の実行ごとに新しいSQLiteを `work/playwright/<run>/` に作り、開発DB・別runから状態を分離します。gameと管理APIの書込みを分けるため、設定は4つのprojectを使います。`game-desktop` / `game-mobile` はゲームspecだけを、`admin-desktop` / `admin-mobile` は管理・クラウドAPIを変更する `backend.spec.cjs` だけを実行します。各projectは別のlocalhost portとSQLiteを使い、backend specは各viewport内でserialのままです。4 projectはdesktop 1440×900とmobile相当390×844の2 viewportを保ちます。mobileはPC上のChromiumによる幅の確認で、iOS/Android実機確認とは別です。
 
+共通fixture（`tests/e2e/fixtures.cjs`）は、送り回数を数えるspecのため戦闘メッセージを手動送りにします（`messageMode` option、既定 `manual`）。自動送りを確認するspecは `test.use({messageMode:null})` で外します（例：`message-auto.spec.cjs`）。ロジックテストの `tests/game/boot.cjs` も同じく手動送りが既定です。
+
 ### Playwright MCPによる探索
 
 探索やaccessibility snapshotの確認に `npm run qa:mcp` を使う場合だけ、[Playwright MCPの手順](PLAYWRIGHT_MCP.md)を読みます。

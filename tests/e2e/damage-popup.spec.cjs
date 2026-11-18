@@ -26,9 +26,6 @@ test('通常攻撃で、攻撃した敵の上にだけダメージ数値を表�
  await page.locator('[data-target="1"]').click();
  const before=await page.evaluate(()=>state.enemies.map(e=>e.hp));
  await page.locator('[data-action="attack"]').click();
- await expect(page.locator('#latestLog')).toHaveText('アステルの攻撃！');
- await expect(page.locator('.damage-popup')).toHaveCount(0);
- await page.locator('#fieldMessage').click();
  await expect(page.locator('#latestLog')).toContainText('アステルの攻撃！ 試験の敵1に');
  const dealt=before[1]-await page.evaluate(()=>state.enemies[1].hp);
  expect(dealt).toBeGreaterThan(0);
@@ -56,7 +53,6 @@ test('全体攻撃で、敵ごとのダメージ数値と会心を個別に表�
  // 1・3体目は会心、2・4体目は通常
  await page.evaluate(()=>{const seq=[0,0,.99,0];let n=0;Math.random=()=>seq[n++%seq.length];});
  await page.locator('#enemy .enemy-unit').nth(0).click();
- await page.locator('#fieldMessage').click();
  await expect(page.locator('#latestLog')).toContainText('敵4体に平均');
  const after=await page.evaluate(()=>state.enemies.map(e=>e.hp)),dealt=before.map((hp,i)=>hp-after[i]);
  expect(await popups(page)).toEqual(dealt.map(String));

@@ -53,9 +53,7 @@ async function attackTarget(page, index, targetName) {
   await target.click();
   await expect(target).toHaveAttribute('aria-pressed', 'true');
   await page.locator('[data-action="attack"]').click();
-  await expect(page.locator('#latestLog')).toHaveText(`${actorName}の攻撃！`);
-  await expect(page.locator('#messageNext')).toBeVisible();
-  await page.locator('#fieldMessage').click();
+  await expect(page.locator('#latestLog')).toContainText(`${actorName}の攻撃！ `);
   await expect.poll(() => page.evaluate(enemyIndex => state.enemies[enemyIndex].hp, index)).toBeLessThan(before);
   await expect(page.locator('#latestLog')).toContainText(`${targetName}に`);
   await expect(page.locator('#messageNext')).toBeVisible();

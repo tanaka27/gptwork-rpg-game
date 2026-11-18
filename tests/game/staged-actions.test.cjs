@@ -1,8 +1,7 @@
-// 行動の開始メッセージ確認まで効果を反映しない段階処理
+// 行動の宣言と結果を1件で表示し、送るまで次の行動へ進まない段階処理
 const assert = require('node:assert/strict');
 const {boot,flush} = require('./boot.cjs');
 (async () => {
-  // Every actor must stop before applying damage and again before the next actor.
   const staged=boot(null,true,true);
   staged.run("startBattle();state.enemies.forEach((e,i)=>{e.name='敵'+i;e.hp=1000;e.max=1000;e.atk=20;e.def=0;});render()");
   const hpState=app=>app.run('JSON.stringify({hp:state.hp,mp:state.mp,allies:state.companions,enemies:state.enemies.map(e=>e.hp),turn:state.turn})');
@@ -12,18 +11,14 @@ const {boot,flush} = require('./boot.cjs');
   const stagedRound=staged.run("partyRound('attack')");
   for(let i=0;i<order.length;i++){
     await flush();
-    assert.equal(staged.nodes.latestLog.textContent,order[i].name+'の攻撃！');
-    assert.equal(hpState(staged),beforeHP,'announcement does not apply damage for '+order[i].name);
-    assert.equal(hpView(staged),beforeView,'HP bars remain unchanged until attack is confirmed');
-    staged.run('render(false)');await flush();
-    assert.equal(hpState(staged),beforeHP,'rendering and waiting cannot apply damage');
-    staged.nodes.fieldMessage.onclick();await flush();
-    assert.notEqual(hpState(staged),beforeHP,'only confirmed actor applies damage');
+    // 宣言と結果は1件のメッセージで、表示と同時に効果を反映する。
+    assert.match(staged.nodes.latestLog.textContent,new RegExp('^'+order[i].name+'の攻撃！ .+に\\d+。$'),'announcement and result share one message for '+order[i].name);
+    assert.notEqual(hpState(staged),beforeHP,'the shown action has applied its damage');
     assert.equal(staged.run('state.lastRoundOrder.length'),i+1,'next actor has not started');
     beforeHP=hpState(staged);beforeView=hpView(staged);
-    await flush();
-    assert.equal(hpState(staged),beforeHP,'result wait blocks subsequent damage');
-    assert.equal(hpView(staged),beforeView,'result wait blocks subsequent HP bar changes');
+    staged.run('render(false)');await flush();
+    assert.equal(hpState(staged),beforeHP,'message wait blocks subsequent damage');
+    assert.equal(hpView(staged),beforeView,'message wait blocks subsequent HP bar changes');
     staged.nodes.fieldMessage.onclick();
   }
   await stagedRound;
@@ -37,18 +32,13 @@ const {boot,flush} = require('./boot.cjs');
     app.run(prepare+";startBattle();state.enemies.forEach(e=>{e.hp=1000;e.max=1000;e.atk=0;});render()");
     const pending=app.run(command);await flush();
     for(let i=0;i<20&&!app.nodes.latestLog.textContent.startsWith('アステル');i++){app.nodes.fieldMessage.onclick();await flush();}
-    const hp=hpState(app),items=app.run('state.items.herb');
-    if(kind==='skill'){assert.equal(app.run('state.mp'),28);assert.equal(app.run('state.companions[0].hp'),1);}
-    if(kind==='item')assert.equal(app.run('state.hp'),1);
-    if(kind==='guard')assert.equal(app.run('state.mp'),0);
-    await flush();assert.equal(hpState(app),hp,'action announcement preserves HP/MP');
-    assert.equal(app.run('state.items.herb'),items,'items are not spent before confirmation');
-    app.nodes.fieldMessage.onclick();await flush();
-    if(kind==='skill'){assert.equal(app.run('state.mp'),23);assert.equal(app.run('state.companions[0].hp'),53);}
-    if(kind==='item'){assert.equal(app.run('state.hp'),46);assert.equal(app.run('state.items.herb'),items-1);}
-    if(kind==='guard')assert.equal(app.run('state.mp'),3);
+    if(kind==='skill'){assert.equal(app.run('state.mp'),23);assert.equal(app.run('state.companions[0].hp'),53);assert.equal(app.nodes.latestLog.textContent,'アステルの星のいやし！ リナのHPが52回復。');}
+    if(kind==='item'){assert.equal(app.run('state.hp'),46);assert.equal(app.nodes.latestLog.textContent,'アステルはいやし草を使う！ いやし草でアステルのHPが45回復。');}
+    if(kind==='guard'){assert.equal(app.run('state.mp'),3);assert.equal(app.nodes.latestLog.textContent,'アステルは身を守る！');}
+    const hp=hpState(app);app.run('render(false)');await flush();
+    assert.equal(hpState(app),hp,'message wait holds the next action');
     for(let i=0;i<60&&app.run('busy');i++){app.nodes.fieldMessage.onclick();await flush();}
     await pending;
   }
-  console.log('PASS: all eight actors defer HP/MP changes until announcement confirmation, hold results until next click, and stage skill/item/guard effects');
+  console.log('PASS: all eight actors show announcement and result in one message, hold the next action until the click, and stage skill/item/guard effects');
 })().catch(error=>{console.error(error);process.exit(1)});

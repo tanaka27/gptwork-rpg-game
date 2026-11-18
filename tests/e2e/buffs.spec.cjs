@@ -8,7 +8,7 @@ async function setup(page){
 }
 const {heroInput:toInput}=require('./party-helpers.cjs');
 async function cast(page,index){await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:inspire"]:visible').click();await page.locator(`[data-ally-target="${index}"] img`).click();}
-test('鼓舞の対象・開始確認・アイコン・詳細・再使用・3ターン解除と保存再開',async({page})=>{
+test('鼓舞の対象・結果メッセージ・アイコン・詳細・再使用・3ターン解除と保存再開',async({page})=>{
  test.setTimeout(120000);
  const errors=await setup(page);
  // Field use is disabled and processing rejects it without spending MP.
@@ -22,8 +22,7 @@ test('鼓舞の対象・開始確認・アイコン・詳細・再使用・3タ�
  await page.locator('[data-action="skill-list"]').click();await page.locator('[data-action="skill-back"]').click();
  expect(await page.evaluate(()=>state.mp)).toBe(before.mp);
  await cast(page,0);
- expect(await page.evaluate(()=>({mp:state.mp,buffs:state.buffs.length}))).toEqual({mp:before.mp,buffs:0});
- await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).toHaveText('アステルの鼓舞！ アステルの攻撃力が1.5倍に上がった（3ターン）。');
  await expect(page.locator('#partyStatus .buff-icon')).toHaveCount(1);
  await expect(page.locator('#partyStatus .buff-icon')).toHaveAttribute('aria-label',/鼓舞.*1.5.*残り3ターン/);
  expect(await page.evaluate(()=>state.mp)).toBe(before.mp-4);

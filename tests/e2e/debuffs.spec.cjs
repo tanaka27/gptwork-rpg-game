@@ -33,7 +33,7 @@ async function layoutCheck(page,name,selector){
  await page.setViewportSize(viewport);
 }
 
-test('影縫いの矢：開始確認・敵のアイコン・守備力低下・再読み込み・3ターンで解除',async({page})=>{
+test('影縫いの矢：結果メッセージ・敵のアイコン・守備力低下・再読み込み・3ターンで解除',async({page})=>{
  test.setTimeout(120000);
  const errors=collectErrors(page);
  await startBattleAt(page,3);
@@ -45,8 +45,7 @@ test('影縫いの矢：開始確認・敵のアイコン・守備力低下・�
  await expect(page.locator('#skillDetail')).toContainText('敵1体の守備力を0.5倍に下げる');
  await expect(page.locator('#skillDetail')).toContainText('どの敵の能力を下げますか');
  await page.locator('#enemy .enemy-unit').nth(2).click();
- expect(await page.evaluate(()=>({mp:allyMP(1),debuffs:state.debuffs.length}))).toEqual({mp,debuffs:0});
- await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).toContainText('リナの影縫いの矢！ ');
  await expect(page.locator('#latestLog')).toContainText('守備力が0.5倍に下がった（3ターン）');
  const icon=page.locator('#enemy .enemy-unit').nth(2).locator('.debuff-icon');
  await expect(icon).toHaveCount(1);await expect(icon).toHaveAttribute('aria-label',/影縫いの矢.*守備力0.5倍.*残り3ターン/);
@@ -77,7 +76,6 @@ test('星砕き：敵全体に対象マーク・1回のMP・全員にアイコ�
  await expect(page.locator('#skillDetail')).toContainText('敵全体に効きます');
  await expect(page.locator('#enemy .enemy-unit[aria-pressed="true"]')).toHaveCount(4);
  await page.locator('#enemy .enemy-unit').nth(1).click();
- await page.locator('#fieldMessage').click();
  await expect(page.locator('#latestLog')).toContainText('敵4体の守備力が0.7倍に下がった（3ターン）');
  await expect(page.locator('#enemy .debuff-icon.defenseDown')).toHaveCount(4);
  expect(await page.evaluate(()=>state.mp)).toBe(mp-7);

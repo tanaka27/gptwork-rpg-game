@@ -61,9 +61,7 @@ test('各行動者の技だけを出し、ガルドの気合いを本人に適�
  const mp=await page.evaluate(()=>state.companions[1].mp);
  expect(await page.evaluate(()=>castPendingSkill(1,'ally'))).toBe(false,'self-only buff rejects a different recipient');
  await page.locator('[data-ally-target="2"]').click();
- await expect(page.locator('#latestLog')).toHaveText('ガルドの気合い！');
- expect(await page.evaluate(()=>state.companions[1].mp)).toBe(mp,'skill waits for the manual confirmation');
- await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).toHaveText('ガルドの気合い！ ガルドの攻撃力が1.5倍に上がった（3ターン）。');
  expect(await page.evaluate(()=>state.companions[1].mp)).toBe(mp-3);
  expect(await page.evaluate(()=>state.buffs.some(b=>b.characterId==='gald'&&b.skillId==='gald_kiai'))).toBe(true);
  expect(await page.locator('#partyStatus .party-member').nth(2).locator('.buff-icon').getAttribute('aria-label')).toContain('気合い');

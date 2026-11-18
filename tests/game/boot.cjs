@@ -10,8 +10,9 @@ function boot(saved = null, party = false, manualMessages = false) {
     addEventListener(){}, querySelectorAll(){return [];}, focus(){}, classList:{add(){}, remove(){}, toggle(){}}, showModal(){}, close(){}, append(child){this.children??=[];this.children.push(child)}, scrollIntoView(){}});
   const context = {
     document:{getElementById:id=>nodes[id]??=node(), querySelectorAll:()=>[], addEventListener(){}, createElement:node},
-    localStorage:{getItem:()=>saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},
-    console, setTimeout:fn=>{fn();return 1}, Math:Object.create(Math)
+    // メッセージ送りは、テストで送り回数を数えられるよう既定で手動にする。
+    localStorage:{getItem:key=>key==='starlight-rpg-message-mode'?storage[key]??'manual':saved, setItem:(key,value)=>storage[key]=value, removeItem:key=>delete storage[key]},
+    console, setTimeout:fn=>{fn();return 1}, clearTimeout(){}, Math:Object.create(Math)
   };
   context.Math.random = () => .5;
   vm.createContext(context);

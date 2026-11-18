@@ -1,5 +1,5 @@
 const {test,expect}=require('./fixtures.cjs');
-test('道具で味方を選び、取消・HP/MP回復・戦闘の開始確認を行う',async({page})=>{
+test('道具で味方を選び、取消・HP/MP回復・戦闘の結果メッセージを確認する',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.companions[0].hp=1;state.companions[0].mp=0;state.companions[1].hp=0;state.items.potion=1;render();});
@@ -28,8 +28,7 @@ test('道具で味方を選び、取消・HP/MP回復・戦闘の開始確認を
  await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
  await page.locator('[data-action="items"]').click();await page.locator('[data-action="use:herb"]:visible').click();
  await page.locator('[data-ally-target="1"]').click();
- expect(await page.evaluate(()=>[state.companions[0].hp,state.items.herb])).toEqual([1,2]);
- await page.locator('#fieldMessage').click();
+ await expect(page.locator('#latestLog')).toContainText('いやし草でリナのHPが45回復。');
  expect(await page.evaluate(()=>[state.companions[0].hp,state.items.herb])).toEqual([46,1]);
  await expect(page.locator('#skillDetail')).toContainText('残り 1 個');
  await expect(page.locator('[data-ally-target]')).toHaveCount(0);

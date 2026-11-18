@@ -69,7 +69,7 @@ test('探索・道中・街・回復・逃走後も同じ味方欄とコマン�
  }
  await page.evaluate(()=>{Math.random=()=>0;});
  await page.locator('[data-action="explore"]').click();await toInput(page);
- await page.locator('[data-action="items"]').click();await page.locator('[data-action="run"]').click();
+ await page.locator('[data-action="run"]').click();
  for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
  await expect(page.locator('.enemy-unit')).toHaveCount(0);await check('escaped');
  await expect(page.locator('[data-action="explore"]')).toBeVisible();
@@ -101,13 +101,14 @@ test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操�
  expect(await page.evaluate(()=>[state.mp,state.turn])).toEqual(before);
  await page.locator('[data-action="skill:flame"]').click();
  await page.locator('[data-target="2"]').click();
- expect(await page.evaluate(()=>state.mp)).toBe(before[0]);
- const announcement=await page.locator('#latestLog').textContent();
- await page.locator('.party-member').first().click();
- await expect(page.locator('#latestLog')).not.toHaveText(announcement);
- await expect(page.locator('#modal')).not.toBeVisible();
+ // 宣言と結果は1件のメッセージで、表示と同時にMPとダメージを反映する。
+ await expect(page.locator('#latestLog')).toHaveText(/^アステルの火花の魔法！ .+に\d+。$/);
  expect(await page.evaluate(()=>state.mp)).toBe(before[0]-4);
  expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(1000);
+ const message=await page.locator('#latestLog').textContent();
+ await page.locator('.party-member').first().click();
+ await expect(page.locator('#latestLog')).not.toHaveText(message);
+ await expect(page.locator('#modal')).not.toBeVisible();
  await toInput(page);
  await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:heal"]').click();
  await expect(page.locator('#partyStatus')).toBeVisible();

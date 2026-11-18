@@ -15,11 +15,8 @@ for(const critical of [true,false])test(`うんのよさと物理スキルの${c
  await page.locator('[data-screen="adventure"]').click();await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:slash"]').click();await expect(page.locator('#skillDetail')).toContainText('会心の一撃は相手の守備力を無視します');
  await page.evaluate(critical=>{Math.random=()=>critical?0:.99;},critical);
  const before=await page.evaluate(()=>({hp:state.enemies[0].hp,mp:state.mp}));
- await page.locator('[data-target="0"]').click();await expect(page.locator('#latestLog')).toHaveText('アステルの流星斬り！');
- expect(await page.evaluate(()=>state.enemies[0].hp)).toBe(before.hp);expect(await page.evaluate(()=>state.mp)).toBe(before.mp);
- await page.screenshot({path:test.info().outputPath('before-skill.png')});
- await page.locator('#fieldMessage').click();
- await expect(page.locator('#latestLog')).toContainText(critical?'会心の一撃！':'流星斬り！ 守備の試験0');
+ await page.locator('[data-target="0"]').click();
+ await expect(page.locator('#latestLog')).toContainText(critical?'アステルの流星斬り！ 会心の一撃！':'アステルの流星斬り！ 守備の試験0');
  if(!critical)await expect(page.locator('#latestLog')).not.toContainText('会心の一撃');
  expect(await page.evaluate(()=>state.mp)).toBe(before.mp-8);
  expect(before.hp-await page.evaluate(()=>state.enemies[0].hp)).toBe(critical?62:2);

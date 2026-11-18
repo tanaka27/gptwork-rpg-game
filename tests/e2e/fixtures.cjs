@@ -10,7 +10,10 @@ function allowExpectedRequestFailure(page,url){
 }
 
 const test=base.extend({
- browserDiagnostics:[async({context},use,testInfo)=>{
+ // 送り回数を数えるspecが多いため、戦闘メッセージは既定で手動送りにする。自動送りを確認するspecは test.use({messageMode:null}) などで変える。
+ messageMode:['manual',{option:true}],
+ browserDiagnostics:[async({context,messageMode},use,testInfo)=>{
+  if(messageMode)await context.addInitScript(mode=>{try{if(!localStorage.getItem('starlight-rpg-message-mode'))localStorage.setItem('starlight-rpg-message-mode',mode);}catch{}},messageMode);
   const baseURL=testInfo.project.use.baseURL;
   if(!baseURL)throw new Error(`Project ${testInfo.project.name} needs a baseURL`);
   const appOrigin=new URL(baseURL).origin;

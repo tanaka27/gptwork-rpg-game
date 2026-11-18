@@ -124,30 +124,30 @@ test('行動待機で生存中の敵を薄くせず、攻撃を送った時だ�
     save.enemy=save.enemies[0];localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
   });
   await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
-  await page.locator('[data-action="attack"]').click();
   const target=page.locator('[data-target="0"]');
-  await expect(target).toHaveCSS('opacity','1');
-  await expect(page.locator('#latestLog')).toHaveText('リナの攻撃！');
+  // 入力待ちの間は、生存中の敵を薄くしない。
+  await expect(page.locator('#latestLog')).toHaveText('リナの番です。行動を選んでください。');
   for(const enemy of await page.locator('.enemy-unit').all()){
-    await expect(enemy).toBeDisabled();
     await expect(enemy).toHaveCSS('opacity','1');
     await expect(enemy).not.toHaveClass(/fallen/);
     await expect(enemy.locator('.enemy-hp')).toHaveAttribute('aria-valuenow','100');
   }
-  await page.screenshot({path:test.info().outputPath('before-message-confirmation.png')});
-  await page.waitForTimeout(600);
-  await expect(target).toHaveCSS('opacity','1');
-  await page.locator('#fieldMessage').click();
-  await expect(page.locator('#latestLog')).toContainText('敵0に');
+  await page.screenshot({path:test.info().outputPath('before-attack.png')});
+  await page.locator('[data-action="attack"]').click();
+  // 宣言と結果は1件のメッセージで、表示と同時に倒れた敵だけを薄くする。
+  await expect(page.locator('#latestLog')).toHaveText(/^リナの攻撃！ 敵0に\d+。$/);
   await expect(target).toHaveClass(/fallen/);
   await expect(target).toHaveCSS('opacity','0.4');
   await expect(target.locator('.enemy-hp')).toHaveAttribute('aria-valuenow','0');
-  for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all())await expect(enemy).toHaveCSS('opacity','1');
-  await page.screenshot({path:test.info().outputPath('after-message-confirmation.png')});
+  for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all()){
+    await expect(enemy).toBeDisabled();
+    await expect(enemy).toHaveCSS('opacity','1');
+  }
+  await page.screenshot({path:test.info().outputPath('after-attack.png')});
   await page.waitForTimeout(600);
   await expect(page.locator('.enemy-unit.fallen')).toHaveCount(1);
   await page.locator('#fieldMessage').click();
-  await expect(page.locator('#latestLog')).toHaveText('敵3の攻撃！');
+  await expect(page.locator('#latestLog')).toHaveText(/^敵3の攻撃！ /);
   for(const enemy of await page.locator('.enemy-unit:not(.fallen)').all())await expect(enemy).toHaveCSS('opacity','1');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth&&document.documentElement.scrollHeight<=innerHeight)).toBe(true);
   await readBattleRound(page);

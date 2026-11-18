@@ -32,10 +32,9 @@ test('全員の番で入力を待ち、仲間のスキル・回復・道具・�
  await page.locator('[data-action="skill:rina_aimed_shot"]').click();
  await page.keyboard.press('Escape');expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]);
  await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:rina_aimed_shot"]').click();await page.locator('[data-target="2"]').click();
- await expect(page.locator('#latestLog')).toHaveText('リナのねらい撃ち！');
- expect(await page.evaluate(()=>[state.companions[0].mp,state.mp,state.enemies[2].hp])).toEqual(before);
+ // 宣言と結果は1件のメッセージで、表示と同時に反映する。待機中は次の入力を受け付けない。
+ await expect(page.locator('#latestLog')).toHaveText(/^リナのねらい撃ち！ .*に\d+。$/);
  expect(await page.evaluate(()=>combat('attack'))).toBe(false);
- await page.locator('#fieldMessage').click();
  expect(await page.evaluate(()=>state.companions[0].mp)).toBe(before[0]-3);expect(await page.evaluate(()=>state.mp)).toBe(before[1]);
  expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(before[2]);
  await toInput(page);await expect(page.locator('#commandTitle')).toContainText('ノエルの番');
@@ -49,8 +48,8 @@ test('全員の番で入力を待ち、仲間のスキル・回復・道具・�
  await page.evaluate(()=>{state.companions[0].hp=1;render(false);});
  const herbs=await page.evaluate(()=>state.items.herb);
  await page.locator('[data-action="items"]').click();await page.locator('[data-action="use:herb"]:visible').click();await page.locator('[data-ally-target="1"]').click();
- expect(await page.evaluate(()=>state.items.herb)).toBe(herbs);await page.locator('#fieldMessage').click();
- expect(await page.evaluate(()=>state.items.herb)).toBe(herbs-1);expect(await page.evaluate(()=>state.companions[0].hp)).toBe(46);
+ await expect(page.locator('#latestLog')).toHaveText('ガルドはいやし草を使う！ いやし草でリナのHPが45回復。');
+ expect(await page.evaluate(()=>state.items.herb)).toBe(herbs-1);expect(await page.evaluate(()=>state.companions[0].hp)).toBe(46);await page.locator('#fieldMessage').click();
  await toInput(page);await expect(page.locator('#commandTitle')).toContainText('リナの番');
  await expect(page.locator('#skillMenu')).toBeHidden();
  expect(await page.evaluate(()=>state.turn)).toBe(2);
