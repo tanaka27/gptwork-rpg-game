@@ -41,6 +41,19 @@ const gearRarityLabels = { common: 'コモン', uncommon: 'アンコモン', rar
 let selectedGearId = null,
   gearDetailOrigin = 'bag';
 const equipmentRarity = item => item?.rarity || 'common';
+const gearLevel = item => GameRules.gearLevel(item);
+const canEquipGear = item => GameRules.canEquip(state.lv, item);
+const gearLevelLabel = (item, prefix = '装備') =>
+  `<span class="gear-level${canEquipGear(item) ? '' : ' insufficient'}">${prefix}Lv.${gearLevel(item)}</span>`;
+const gearSummary = item =>
+  `<span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${gearLevelLabel(item)} · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
+const equipButton = (id, equipped) =>
+  btn(
+    equipped ? '装備中' : canEquipGear(gear[id]) ? '装備' : 'Lv不足',
+    'equip:' + id,
+    '',
+    equipped || !canEquipGear(gear[id]) || !!state.enemy || busy
+  );
 const equipmentEligible = id => !!gear[id] && ['common', 'uncommon'].includes(equipmentRarity(gear[id]));
 function currentShopStock() {
   return state.village && !state.journey && !state.enemy
@@ -516,11 +529,7 @@ function renderInventory() {
       .map(id => {
         const a = gear[id],
           equipped = state[a.type] === id;
-        return itemRow(
-          a,
-          `${a.type === 'weapon' ? '攻撃' : '守備'} +${a.value}`,
-          btn(equipped ? '装備中' : '装備', 'equip:' + id, '', equipped || !!state.enemy || busy)
-        );
+        return itemRow(a, gearSummary(a), equipButton(id, equipped));
       })
       .join('');
 }
@@ -542,9 +551,7 @@ function renderShop() {
     .map(id => {
       const item = consumables[id] || gear[id],
         owned = !!gear[id] && state.owned.includes(id);
-      const description = consumables[id]
-        ? item.desc
-        : `<span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
+      const description = consumables[id] ? item.desc : gearSummary(item);
       return itemRow(
         item,
         description,
@@ -742,9 +749,12 @@ function gearDetailMarkup(id, origin) {
             owned || !currentShopStock().includes(id) || state.gold < item.price
           )
         : owned
-          ? btn(equipped ? '装備中' : '装備', 'equip:' + id, '', equipped || !!state.enemy || busy)
-          : '';
-  return `<section class="gear-detail" aria-label="${item.name}の詳細"><div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>基礎補正</dt><dd>${primary} +${primaryValue}</dd></div></dl><h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
+          ? equipButton(id, equipped)
+          : '',
+    levelNote = canEquipGear(item)
+      ? ''
+      : `<p class="gear-level-note">旅団がLv.${gearLevel(item)}になると装備できます（現在Lv.${state.lv}）。</p>`;
+  return `<section class="gear-detail" aria-label="${item.name}の詳細"><div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${primaryValue}</dd></div></dl>${levelNote}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
 }
 function itemRow(a, desc, button, secondary = '') {
   return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;
@@ -1121,6 +1131,11 @@ function action(a) {
     }
     case 'equip':
       if (state.enemy || !state.owned.includes(id) || !gear[id]) return;
+      if (!canEquipGear(gear[id])) {
+        log(`${gear[id].name}は旅団Lv.${gearLevel(gear[id])}から装備できます。`);
+        render();
+        return;
+      }
       state[gear[id].type] = id;
       log(`${gear[id].name}を装備した。`);
       render();

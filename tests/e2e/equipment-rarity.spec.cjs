@@ -9,7 +9,7 @@ test('uncommon shop gear detail, purchase, inventory detail and bonus stats work
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
- await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(s,{node:'luna',zone:1,village:true,journey:null,enemy:null,lastTown:'luna',gold:1000,cleared:[true,false,false]});localStorage.setItem('starlight-rpg-v1',JSON.stringify(s));});
+ await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));Object.assign(s,{lv:8,node:'luna',zone:1,village:true,journey:null,enemy:null,lastTown:'luna',gold:1000,cleared:[true,false,false]});localStorage.setItem('starlight-rpg-v1',JSON.stringify(s));});
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  const before=await page.evaluate(()=>({gold:state.gold,stats:GameRules.stats(state,GameData,0)}));
  await page.locator('[data-action="shop"]').click();

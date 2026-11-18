@@ -2415,6 +2415,15 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 .gear-detail .muted {
   font-size: 12px;
 }
+.gear-level.insufficient {
+  color: #f0a08f;
+  font-weight: 600;
+}
+.gear-detail .gear-level-note {
+  margin: 10px 0 0;
+  color: #f0a08f;
+  font-size: 12px;
+}
 .gear-detail-actions {
   display: flex;
   flex-wrap: wrap;

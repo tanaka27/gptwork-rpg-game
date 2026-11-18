@@ -449,6 +449,12 @@
     state.debuffs = state.debuffs.filter(record => record.remainingTurns > 0);
     return expired;
   }
+  function gearLevel(item) {
+    return Number.isSafeInteger(item?.level) && item.level >= 1 ? item.level : 1;
+  }
+  function canEquip(level, item) {
+    return !!item && Number(level) >= gearLevel(item);
+  }
   function travelEvent(rules, fought, roll) {
     if (!fought && roll < rules.battleRate) return 'battle';
     if (roll < (fought ? rules.materialRate : rules.battleRate + rules.materialRate)) return 'material';
@@ -467,6 +473,8 @@
     skillResult,
     skillAmount,
     travelEvent,
+    gearLevel,
+    canEquip,
     activeBuffs,
     allyAttack,
     applyAttackBuff,

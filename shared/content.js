@@ -256,6 +256,11 @@
           add('items.' + e.id + '.effects', '能力低下は特技と魔物の行動専用です');
       } else {
         if (!['weapon', 'armor'].includes(e.type)) add('items.' + e.id + '.type', 'weaponまたはarmorが必要です');
+        if (Object.hasOwn(e, 'level')) {
+          const maxLevel = Number.isSafeInteger(data.rules?.growth?.maxLevel) ? data.rules.growth.maxLevel : 100000000;
+          if (!Number.isSafeInteger(e.level) || e.level < 1 || e.level > Math.max(1, maxLevel))
+            add('items.' + e.id + '.level', '1〜レベル上限の整数が必要です');
+        }
         const hasRarity = Object.hasOwn(e, 'rarity'),
           hasBonus = Object.hasOwn(e, 'bonusEffects'),
           path = 'items.' + e.id;
@@ -431,6 +436,19 @@
       usedItemIds.add(id);
       builtinItemIds.set(fallback.id, id);
     }
+    const defaultGearLevels = new Map(
+      normalizedDefaults.items
+        .filter(
+          item =>
+            item.category === 'gear' &&
+            Number.isSafeInteger(item.level) &&
+            (!builtinItemIds.has(item.id) || builtinItemIds.get(item.id) === item.id)
+        )
+        .map(item => [item.id, item.level])
+    );
+    for (const item of result.items)
+      if (item.category === 'gear' && !Object.hasOwn(item, 'level'))
+        item.level = Math.min(defaultGearLevels.get(item.id) ?? 1, Math.max(1, result.rules.growth.maxLevel));
     for (const zone of result.zones) {
       if (zone.equipmentDropIds !== undefined) continue;
       const standard = normalizedDefaults.zones.find(row => row.id === zone.id);
