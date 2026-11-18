@@ -21,7 +21,18 @@
 
 ### 共通指定
 
-Use case: stylized-concept. Asset type: full-body character illustration for the original Japanese browser RPG 星灯りの旅団. Create ONE original character only, centered, standing and facing slightly three-quarter while looking toward the viewer. Show the complete head, both hands, and both feet with small margins; the face and upper chest must fit within the top 28 percent of the portrait for the tavern crop. 2D Japanese anime game illustration, crisp clean dark outlines, flat cel shading with two shadow tones, expressive readable eyes, polished hand-drawn JRPG art. NOT realistic, NOT 3D, NOT painterly or watercolor. Portrait composition, 2:3 aspect ratio. Simple uniform dark desaturated teal background (#203638), no scenery, no letters, no UI, no frame, no watermark. Moonlit fantasy color harmony, varied muted jewel colors, cream and silver accents. Design a distinct face, hair, skin tone, build, silhouette, and accessories for this person; do not reuse another character design. Clothing and optional props should clearly match the assigned role, but never obscure the face.
+```text
+RPG向けのキャラクター1人の全身立ち絵を描く。
+
+【構図】
+幅2：高さ3の縦長画面。人物を中央に立たせ、体は軽く斜めに、視線は鑑賞者に向ける。頭頂から靴先までと両手を画面内に収め、周囲に少し余白を取る。画像の上端から28％を切り出したときに、頭頂から胸の上部までが見えるように配置する。髪や装備、小道具で目や顔を隠さない。
+
+【画風】
+手描きの日本の2Dアニメゲーム風。濃く明瞭な輪郭線と、境界がはっきりした2段階の影で形を描く。全身を縮小しても姿勢と輪郭が読み取りやすく、顔を切り出したときに目と表情が見分けやすいようにする。写実、3D、水彩、絵画調の質感は避ける。
+
+【背景】
+暗い青緑（#203638）の均一な単色。風景、文字、UI、枠、透かしは入れない。
+```
 
 ### 初期4人の人物指定
 
