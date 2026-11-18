@@ -99,6 +99,7 @@ test('魔物の行動で味方全体の守備力が下がり、状態欄・詳�
  await expect(page.locator('#partyStatus .party-member').first().locator('.buff-icon')).toHaveCount(1);
  await layoutCheck(page,'ally-debuff','#partyStatus .party-member');
  await page.locator('[data-battle-character="0"] img').click();
+ await page.locator('#modal [data-character-tab="status"]').click();await expect(page.locator('#modal .debuff-details')).toBeVisible();
  await expect(page.locator('#modal .debuff-details')).toContainText('月影の重圧');
  await expect(page.locator('#modal .debuff-details')).toContainText('守備力0.75倍');
  const defense=await page.evaluate(()=>({now:allyDefense(0),base:allyStats(0).defense}));

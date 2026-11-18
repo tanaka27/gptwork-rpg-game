@@ -512,8 +512,45 @@ function characterSkillsMarkup(index) {
   const skills = skillsForAlly(index);
   return `<section class="character-skills" aria-label="${initialParty[index].name}の特技"><h3>固有特技</h3>${skills.length ? skills.map(skill => `<article class="character-skill"><div><strong>${skill.name}</strong><span>${state.lv >= skill.lv ? '習得済み' : `Lv.${skill.lv}で習得`}</span></div><p>消費MP ${skill.cost} · ${skillEffectDescription(skill)}</p></article>`).join('') : '<p>固有特技はありません。</p>'}</section>`;
 }
+// キャラクター詳細は「能力・装備・特技・状態」のタブで切り替える。選んだタブは人物を替えても保つ。
+const characterTabs = [
+  ['stats', '能力'],
+  ['gear', '装備'],
+  ['skills', '特技'],
+  ['status', '状態'],
+];
+let characterTab = 'stats',
+  characterGearDetail = null;
+function characterGearMarkup(i, prefix) {
+  const member = GameRules.memberState(state, GameData, i);
+  const rows = ['weapon', 'armor']
+    .map(slot => {
+      const id = member[slot],
+        item = gear[id],
+        label = slot === 'weapon' ? '武器' : '防具';
+      if (!item)
+        return `<li class="character-gear-row empty"><span class="character-gear-slot">${label}</span><strong>なし</strong></li>`;
+      const primary = item.type === 'weapon' ? '攻撃力' : '守備力';
+      return `<li><button type="button" class="character-gear-row" data-character-gear="${id}" aria-label="${label}：${item.name}の詳細を見る" aria-expanded="${characterGearDetail === id}" aria-controls="${prefix}-gear-${slot}"><span class="character-gear-slot">${label}</span><strong>${item.name}</strong><small><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${primary} +${item.value || 0}${item.bonusEffects?.length ? ` · 追加効果${item.bonusEffects.length}` : ''}</small><span aria-hidden="true">›</span></button></li>`;
+    })
+    .join('');
+  const details = ['weapon', 'armor']
+    .map(slot => {
+      const id = member[slot],
+        item = gear[id];
+      return item
+        ? `<section class="gear-detail character-gear-detail" id="${prefix}-gear-${slot}" data-gear-detail="${id}" aria-label="${item.name}の詳細"${characterGearDetail === id ? '' : ' hidden'}>${gearInfoMarkup(item)}<div class="gear-detail-actions"><button type="button" data-character-gear-back="${id}">装備一覧へ戻る</button></div></section>`
+        : '';
+    })
+    .join('');
+  const showingDetail = ['weapon', 'armor'].some(
+    slot => member[slot] === characterGearDetail && gear[characterGearDetail]
+  );
+  return `<ul class="character-gear-list"${showingDetail ? ' hidden' : ''}>${rows}</ul>${details}<p class="character-gear-note">装備の付け替えは「もちもの」で行います。</p>`;
+}
 function characterStatusCard(a, i, headingId = 'characterName') {
-  return `<article class="character-card" aria-label="${a.name}のステータス"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i) <= 0 ? '戦闘不能' : '行動可能'}</span></div><p>${i ? '仲間' : '主人公'} · ${initialParty[i].job || '冒険者'} · コマンド操作（レベル・経験値は旅団共通）</p><dl>${[
+  const prefix = headingId;
+  const stats = `<dl>${[
     ['HP', `${allyHP(i)} / ${allyStats(i).maxHP}`],
     ['MP', `${a.mp} / ${allyStats(i).maxMP}`],
     ['攻撃力', allyAttack(i), allyStats(i).attack],
@@ -522,12 +559,85 @@ function characterStatusCard(a, i, headingId = 'characterName') {
     ['素早さ', speedOf(i)],
     ['うんのよさ', allyStats(i).luck],
     ['会心率', `${(CombatRules.criticalRate(allyStats(i).luck) * 100).toFixed(2)}%`],
-    ['武器', gear[GameRules.memberState(state, GameData, i).weapon]?.name],
-    ['防具', gear[GameRules.memberState(state, GameData, i).armor]?.name],
   ]
     .map(([label, value, base]) => `<div><dt>${label}</dt>${statusValueMarkup(label, value, base)}</div>`)
-    .join('')}</dl>${characterSkillsMarkup(i)}${buffDetails(i)}${debuffDetails(i)}</article>`;
+    .join('')}</dl>`;
+  const panels = {
+    stats,
+    gear: characterGearMarkup(i, prefix),
+    skills: characterSkillsMarkup(i),
+    status: buffDetails(i) + debuffDetails(i),
+  };
+  const tabs = characterTabs
+    .map(
+      ([key, label]) =>
+        `<button type="button" role="tab" id="${prefix}-tab-${key}" data-character-tab="${key}" aria-selected="${characterTab === key}" aria-controls="${prefix}-panel-${key}" tabindex="${characterTab === key ? 0 : -1}">${label}</button>`
+    )
+    .join('');
+  const panelMarkup = characterTabs
+    .map(
+      ([key]) =>
+        `<div class="character-panel" role="tabpanel" id="${prefix}-panel-${key}" data-character-panel="${key}" aria-labelledby="${prefix}-tab-${key}"${characterTab === key ? '' : ' hidden'}>${panels[key]}</div>`
+    )
+    .join('');
+  return `<article class="character-card" aria-label="${a.name}のステータス" data-character-card="${i}"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i) <= 0 ? '戦闘不能' : '行動可能'}</span></div><p>${i ? '仲間' : '主人公'} · ${initialParty[i].job || '冒険者'} · コマンド操作（レベル・経験値は旅団共通）</p><div class="character-tabs" role="tablist" aria-label="${a.name}の表示内容">${tabs}</div>${panelMarkup}</article>`;
 }
+function selectCharacterTab(card, key, focus = false) {
+  if (!characterTabs.some(([tab]) => tab === key)) return;
+  characterTab = key;
+  for (const tab of card.querySelectorAll('[data-character-tab]')) {
+    const selected = tab.dataset.characterTab === key;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    if (selected && focus) tab.focus();
+  }
+  for (const panel of card.querySelectorAll('[data-character-panel]'))
+    panel.hidden = panel.dataset.characterPanel !== key;
+}
+function showCharacterGearDetail(card, id) {
+  characterGearDetail = id;
+  const list = card.querySelector('.character-gear-list');
+  if (list) list.hidden = !!id;
+  for (const detail of card.querySelectorAll('[data-gear-detail]')) detail.hidden = detail.dataset.gearDetail !== id;
+  for (const row of card.querySelectorAll('[data-character-gear]'))
+    row.setAttribute('aria-expanded', String(row.dataset.characterGear === id));
+}
+document.addEventListener('click', event => {
+  const card = event.target.closest?.('[data-character-card]');
+  if (!card) return;
+  const tab = event.target.closest('[data-character-tab]');
+  if (tab) return selectCharacterTab(card, tab.dataset.characterTab);
+  const row = event.target.closest('[data-character-gear]');
+  if (row && gear[row.dataset.characterGear]) {
+    showCharacterGearDetail(card, row.dataset.characterGear);
+    card.querySelector(`[data-gear-detail="${row.dataset.characterGear}"] h3`)?.focus();
+    return;
+  }
+  const back = event.target.closest('[data-character-gear-back]');
+  if (back) {
+    showCharacterGearDetail(card, null);
+    card.querySelector(`[data-character-gear="${back.dataset.characterGearBack}"]`)?.focus();
+  }
+});
+document.addEventListener('keydown', event => {
+  const tab = event.target.closest?.('[data-character-tab]');
+  if (!tab) return;
+  const keys = characterTabs.map(([key]) => key),
+    index = keys.indexOf(tab.dataset.characterTab);
+  const next =
+    event.key === 'ArrowRight'
+      ? keys[(index + 1) % keys.length]
+      : event.key === 'ArrowLeft'
+        ? keys[(index - 1 + keys.length) % keys.length]
+        : event.key === 'Home'
+          ? keys[0]
+          : event.key === 'End'
+            ? keys[keys.length - 1]
+            : null;
+  if (!next) return;
+  event.preventDefault();
+  selectCharacterTab(tab.closest('[data-character-card]'), next, true);
+});
 function canInspectCharacter() {
   return !busy && skillMenuMode === 'commands' && (state.enemy ? !!commandResolve : !roundActive);
 }
@@ -535,6 +645,7 @@ function openCharacterStatus(index) {
   if (!canInspectCharacter() || !Number.isInteger(index)) return;
   const member = allies()[index];
   if (!member) return;
+  characterGearDetail = null;
   modal(member.name + 'のステータス', '');
   $('modal').setAttribute('aria-labelledby', 'battleCharacterName');
   $('modalContent').innerHTML = characterStatusCard(member, index, 'battleCharacterName');
@@ -1151,6 +1262,7 @@ document.addEventListener('click', event => {
     const index = Number(button.dataset.character);
     if (Number.isInteger(index) && index >= 0 && index < allies().length) {
       selectedCharacter = index;
+      characterGearDetail = null;
       renderCharacterScreen();
       $('characterName').focus();
     }

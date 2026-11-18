@@ -2527,3 +2527,105 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
     }
   }
 }
+
+/* キャラクター詳細のタブと装備詳細。dialog内のbutton既定値も上書きする。 */
+.character-card .character-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 12px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+.character-card .character-tabs button {
+  display: block;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.character-card .character-tabs button[aria-selected='true'] {
+  border-bottom-color: var(--gold);
+  color: var(--gold);
+}
+.character-card .character-tabs button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+.character-panel > .character-skills,
+.character-panel > .buff-details:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.character-gear-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.character-gear-list li + li {
+  margin-top: 8px;
+}
+.character-card .character-gear-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'slot name arrow'
+    'slot meta arrow';
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 8px 12px;
+  text-align: left;
+  line-height: 1.5;
+}
+.character-gear-row.empty {
+  color: var(--muted);
+}
+.character-gear-slot {
+  grid-area: slot;
+  color: var(--muted);
+  font-size: 12px;
+}
+.character-gear-row strong {
+  grid-area: name;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.character-gear-row small {
+  grid-area: meta;
+  color: var(--muted);
+  font-size: 12px;
+}
+.character-gear-row > span[aria-hidden] {
+  grid-area: arrow;
+  color: var(--muted);
+}
+.character-card .character-gear-detail {
+  padding-top: 0;
+}
+.character-card .character-gear-detail dl {
+  display: block;
+  margin: 0;
+}
+.character-card .character-gear-detail dd {
+  font-size: 13px;
+}
+.character-card .character-gear-detail .gear-detail-actions button {
+  display: block;
+  margin: 0;
+  padding: 10px 16px;
+}
+.character-card .character-gear-note {
+  margin: 12px 0 0;
+}
+.character-card .character-gear-detail .muted {
+  text-align: left;
+}

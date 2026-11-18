@@ -739,8 +739,6 @@ function gearDetailMarkup(id, origin) {
         ? GameRules.memberState(state, GameData, actingAlly)
         : state,
     equipped = member?.[item.type] === id,
-    primary = item.type === 'weapon' ? '攻撃力' : '守備力',
-    primaryValue = item.value || 0,
     action =
       origin === 'shop'
         ? btn(
@@ -755,7 +753,12 @@ function gearDetailMarkup(id, origin) {
     levelNote = canEquipGear(item)
       ? ''
       : `<p class="gear-level-note">旅団がLv.${gearLevel(item)}になると装備できます（現在Lv.${state.lv}）。</p>`;
-  return `<section class="gear-detail" aria-label="${item.name}の詳細"><div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${primaryValue}</dd></div></dl>${levelNote}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
+  return `<section class="gear-detail" aria-label="${item.name}の詳細">${gearInfoMarkup(item, levelNote)}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
+}
+// 装備詳細の本文。もちもの・ショップとキャラクター詳細で共通に使う。
+function gearInfoMarkup(item, note = '') {
+  const primary = item.type === 'weapon' ? '攻撃力' : '守備力';
+  return `<div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${item.value || 0}</dd></div></dl>${note}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}`;
 }
 function itemRow(a, desc, button, secondary = '') {
   return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;

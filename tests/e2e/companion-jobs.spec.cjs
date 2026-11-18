@@ -104,6 +104,7 @@ test('狭い縦画面と横画面でもジョブ詳細・戦闘状態を画面�
   await page.screenshot({path:test.info().outputPath(`party-list-${suffix}.png`)});
   await page.locator('[data-character="3"]').click();await expect(page.locator('#partyDetails')).toContainText('僧侶');
   await page.screenshot({path:test.info().outputPath(`noel-detail-${suffix}.png`)});
+  await page.locator('#partyDetails [data-character-tab="skills"]').click();
   const target=page.locator('#partyDetails .character-skill').nth(1);await target.scrollIntoViewIfNeeded();
   const targetBox=await target.boundingBox(),navBox=await page.locator('.screen-nav').boundingBox();
   expect(targetBox.y+targetBox.height).toBeLessThanOrEqual(navBox.y,`Noel's lower skill is obscured by navigation at ${suffix}`);

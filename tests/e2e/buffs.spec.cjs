@@ -28,9 +28,10 @@ test('鼓舞の対象・結果メッセージ・アイコン・詳細・再使�
  expect(await page.evaluate(()=>state.mp)).toBe(before.mp-4);
  await toInput(page);
  await page.locator('[data-battle-character="0"] img').click();
- await expect(page.locator('#modal .buff-details')).toContainText('残り3ターン');await expect(page.locator('#modal dd').nth(2)).toHaveText(String(Math.floor(before.attack*1.5)));
+ await page.locator('#modal [data-character-tab="status"]').click();await expect(page.locator('#modal .buff-details')).toBeVisible();
+ await expect(page.locator('#modal .buff-details')).toContainText('残り3ターン');await page.locator('#modal [data-character-tab="stats"]').click();await expect(page.locator('#modal [data-character-panel="stats"] dd').nth(2)).toHaveText(String(Math.floor(before.attack*1.5)));
  await page.screenshot({path:test.info().outputPath('buff-popup.png')});await page.keyboard.press('Escape');
- await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();await expect(page.locator('#partyDetails .buff-details')).toContainText('攻撃力1.5倍');
+ await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();await page.locator('#partyDetails [data-character-tab="status"]').click();await expect(page.locator('#partyDetails .buff-details')).toContainText('攻撃力1.5倍');
  await page.locator('[data-screen="adventure"]').click();
  const viewport=page.viewportSize();
  for(const size of [viewport,{width:320,height:568},{width:844,height:390}]){

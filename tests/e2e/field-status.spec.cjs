@@ -10,14 +10,18 @@ test('探索・道中・街の味方ステータスと回復対象選択を両�
   const baseline=await page.evaluate(()=>({state:JSON.stringify(state),save:localStorage.getItem('starlight-rpg-v1')}));
   for(let i=0;i<4;i++){
    const trigger=page.locator(`[data-battle-character="${i}"]`);
-   const expected=await page.evaluate(i=>{const a=allies()[i];return [`${allyHP(i)} / ${allyStats(i).maxHP}`,`${a.mp} / ${allyStats(i).maxMP}`,allyAttack(i),allyStats(i).defense,allyStats(i).wisdom,speedOf(i),allyStats(i).luck,`${(CombatRules.criticalRate(allyStats(i).luck)*100).toFixed(2)}%`,gear[GameRules.memberState(state,GameData,i).weapon].name,gear[GameRules.memberState(state,GameData,i).armor].name].map(String);},i);
+   const expected=await page.evaluate(i=>{const a=allies()[i];return [`${allyHP(i)} / ${allyStats(i).maxHP}`,`${a.mp} / ${allyStats(i).maxMP}`,allyAttack(i),allyStats(i).defense,allyStats(i).wisdom,speedOf(i),allyStats(i).luck,`${(CombatRules.criticalRate(allyStats(i).luck)*100).toFixed(2)}%`].map(String);},i);
+   const gearNames=await page.evaluate(i=>[gear[GameRules.memberState(state,GameData,i).weapon].name,gear[GameRules.memberState(state,GameData,i).armor].name],i);
    if(i===0){await trigger.focus();await page.keyboard.press('Enter');}
    else if(i===1)await trigger.locator('strong').first().click();
    else if(i===2)await trigger.locator('.meter-head').first().click();
    else await trigger.locator('img').click();
    await expect(page.locator('#modal')).toBeVisible();
    await expect(page.locator('#battleCharacterName')).toHaveText(names[i]);
-   await expect(page.locator('#modal dd')).toHaveText(expected);
+   // 能力タブの数値と、装備タブの武器・防具を確認する。
+   await expect(page.locator('#modal [data-character-tab="stats"]')).toHaveAttribute('aria-selected','true');
+   await expect(page.locator('#modal [data-character-panel="stats"] dd')).toHaveText(expected);
+   await expect(page.locator('#modal [data-character-gear] strong')).toHaveText(gearNames);
    if(i===3)await expect(page.locator('#modal')).toContainText('戦闘不能');
    if(i===0)await page.screenshot({path:test.info().outputPath(`field-status-${location}.png`)});
    if(i%2)await page.keyboard.press('Escape');else await page.locator('#closeModal').click();
