@@ -1,6 +1,6 @@
 # 装備品の画像アイコン
 
-- 状態：検証済み
+- 状態：反映完了
 - 設計版：v2
 - 要求・背景：装備品の一覧とキャラクター詳細に小さな画像アイコンを追加する。
 - 設計作成者（子）：Codex
@@ -14,7 +14,7 @@
 ## 対象範囲
 - 変更するファイル・機能：親が生成するローカル画像 `dist/assets/equipment-atlas.webp`、`dist/game.js`（画像選択、ショップ・もちもの行、共通装備詳細）、`dist/party.js`（キャラクター装備行）、`dist/workspace.css`（表示・sprite位置・サイズ）、`dist/index.html`（CSSキャッシュ更新）、`docs/DESIGN.md`、関連E2E。
 - 画像セット：5列×2行の等寸セル。セル順は1行目 `twig`、`iron`、`star`、`cloth`、`leather`、2行目 `moon`、`moonsteel_blade`、`starward_armor`、`eclipse_robe`、`starlight_blade`。武器5種・防具5種を別々の生成イラストとして描き、濃紺背景・余白・大きく読み取れる形をそろえる。文字やセル枠は入れない。
-- 影響する既存仕様・関連文書：装備の詳細とキャラクター表示は[ゲーム仕様](../GAME_SPEC.md)・[デザイン指針](../DESIGN.md)に従う。
+- 影響する既存仕様・関連文書：装備の詳細とキャラクター表示は[ゲーム仕様](../../GAME_SPEC.md)・[デザイン指針](../../DESIGN.md)に従う。
 - 対象外：アイテム定義、装備性能、セーブ/API/DB形式、絵文字を使う消耗品・特技の行。
 
 ## 実装設計
@@ -43,4 +43,4 @@
 - 受け入れ条件と結果：10装備のローカルWebP画像をショップ・もちもの一覧（40px）とキャラクター装備行・詳細（48px）へ表示。未知IDの既存アイコンフォールバックとアクセシブル名を維持。`npm test` 成功。
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e -- --project=game-desktop --project=game-mobile tests/e2e/equipment-rarity.spec.cjs tests/e2e/character-tabs.spec.cjs`：10/10成功。PC・スマホ相当幅の一覧・仲間詳細・冒険詳細を操作し、スクリーンショットとconsole/pageerrorを確認。
 - 設計との差異・未検証事項：v2で配信 atlas を800×320 WebP（31KB）へ最適化。iOS/Android実機は未確認。
-- push・デプロイ結果：親の実装レビュー・反映待ち。
+- push・デプロイ結果：GitHub `4289620` をmainへpush。Sitesソース `a73a41d`、version 67、deployment `appgdep_6afe5563462c81918a05cb82c536d0d2` 成功。
