@@ -2725,3 +2725,47 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 .character-card .character-gear-detail .muted {
   text-align: left;
 }
+
+/* Gear list sorting, comparison and selling. */
+.gear-list-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.gear-list-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gear-list-controls select {
+  min-height: 36px;
+  font: inherit;
+  color: var(--text);
+  background: #17232d;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+.gear-compare {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #34414880;
+}
+.gear-compare ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.gear-compare .stat-up {
+  color: #77baff;
+}
+.gear-compare .stat-down {
+  color: #ff8f8f;
+}
+.gear-sell-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}

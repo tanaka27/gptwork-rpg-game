@@ -71,7 +71,7 @@ test('ドロップした装備は1本ずつ抽選されたレアリティと追�
  const detail=page.locator('#inventory .gear-detail');
  await expect(detail.locator('.gear-detail-heading .rarity')).toHaveText('レジェンダリー');
  const labels={maxHP:'最大HP',attack:'攻撃力',defense:'守備力',wisdom:'賢さ',speed:'素早さ',luck:'うんのよさ'};
- await expect(detail.locator('li')).toHaveText(drops[0].bonusEffects.map(e=>`${labels[e.stat]} +${e.amount}`));
+ await expect(detail.locator('h4:text-is("追加効果") + ul li')).toHaveText(drops[0].bonusEffects.map(e=>`${labels[e.stat]} +${e.amount}`));
  await expect(detail.locator('.gear-slot')).toHaveText('武器');
  const before=await page.evaluate(()=>GameRules.stats(state,GameData,0));
  await detail.locator('[data-action^="equip:"]').click();
@@ -95,5 +95,64 @@ test('ドロップした装備は1本ずつ抽選されたレアリティと追�
  expect(await page.evaluate(()=>SaveRules.validate(state,GameData))).toEqual([]);
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  expect(await page.evaluate(()=>state.gear.filter(e=>e.baseId==='star'))).toEqual(drops);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('もちものの装備を並べ替え・絞り込み、装着中と比べ、街で確認してから売却する',async({page})=>{
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.evaluate(()=>{
+  Object.assign(state,{lv:16,node:'home',zone:0,village:true,journey:null,enemy:null,gold:0});
+  const rolls=[.995,0,.5,0,.5,0,.5];
+  GameRules.addGear(state,GameData,'iron',()=>rolls.shift()??0);GameRules.addGear(state,GameData,'starlight_blade');GameRules.addGear(state,GameData,'leather');render();
+ });
+ await page.locator('[data-screen="bag"]').click();
+ const names=()=>page.locator('#inventory .item:has(.gear-image) strong').allTextContents();
+ await page.locator('#gearFilter').selectOption('stored');
+ expect(await names()).toEqual(['鉄のつるぎ','星灯りの剣','革のよろい']);
+ await page.locator('#gearSort').selectOption('rarity');
+ expect(await names()).toEqual(['鉄のつるぎ','星灯りの剣','革のよろい']);
+ await page.locator('#gearSort').selectOption('level');
+ expect(await names()).toEqual(['星灯りの剣','鉄のつるぎ','革のよろい']);
+ await page.locator('#gearFilter').selectOption('armor');
+ expect(new Set(await names())).toEqual(new Set(['旅人の服','革のよろい']));
+ // 選択はこのブラウザに残る。
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.locator('[data-screen="bag"]').click();
+ await expect(page.locator('#gearSort')).toHaveValue('level');await expect(page.locator('#gearFilter')).toHaveValue('armor');
+ await page.locator('#gearFilter').selectOption('stored');
+ await page.screenshot({path:test.info().outputPath('gear-list-controls.png')});
+ // 比較：アステルの旅人の剣と比べた差を青（上昇）で出す。
+ await page.locator('#inventory .item:has([data-gear-id="starlight_blade"]) [data-action^="gear-detail:"]').click();
+ const detail=page.locator('#inventory .gear-detail');
+ await expect(detail.locator('.gear-compare h4')).toHaveText('アステルの装着中（旅人の剣）と比べて');
+ await expect(detail.locator('.gear-compare li')).toHaveText(['攻撃力 +25','素早さ +4','うんのよさ +6']);
+ expect(await detail.locator('.gear-compare li').first().evaluate(node=>getComputedStyle(node).color)).toBe('rgb(119, 186, 255)');
+ await expect(detail.locator('.gear-sell-note')).toHaveText('売却額 800 G');
+ await page.locator('#inventory [data-action="gear-detail-back"]').click();
+ // 売却：確認を出し、確定で売る。
+ const ironRow=page.locator('#inventory .item:has([data-gear-id="iron"])');
+ await ironRow.locator('[data-action^="gear-detail:"]').click();
+ await expect(detail.locator('.gear-heading, .gear-detail-heading .rarity')).toHaveText('レジェンダリー');
+ await detail.locator('[data-action^="sell-gear:"]').click();
+ await expect(detail.locator('[role="status"]')).toHaveText('鉄のつるぎを175 Gで売却しますか？');
+ await expect(detail.locator('[data-action^="sell-gear-confirm:"]')).toBeFocused();
+ await page.screenshot({path:test.info().outputPath('gear-sell-confirm.png')});
+ await detail.locator('[data-action="sell-gear-cancel"]').click();
+ await expect(detail.locator('[data-action^="sell-gear-confirm:"]')).toHaveCount(0);
+ await detail.locator('[data-action^="sell-gear:"]').click();await detail.locator('[data-action^="sell-gear-confirm:"]').click();
+ await expect(page.locator('#inventory .gear-detail')).toHaveCount(0);
+ await expect(page.locator('#latestLog')).toHaveText('鉄のつるぎ［レジェンダリー］を175 Gで売却した。');
+ expect(await page.evaluate(()=>({gold:state.gold,iron:state.gear.some(e=>e.baseId==='iron'),errors:SaveRules.validate(state,GameData)}))).toEqual({gold:175,iron:false,errors:[]});
+ expect(await names()).toEqual(['星灯りの剣','革のよろい']);
+ // 装着中の装備と、街の外では売れない。
+ await page.locator('#gearFilter').selectOption('weapon');
+ await page.locator('#inventory .item:has([data-gear-id="twig"]) [data-action^="gear-detail:"]').first().click();
+ await expect(detail.locator('.gear-sell-note')).toHaveText('売却額 10 G（装着中は売れません）');
+ await expect(detail.locator('[data-action^="sell-gear"]')).toHaveCount(0);
+ await page.locator('#inventory [data-action="gear-detail-back"]').click();
+ await page.evaluate(()=>{Object.assign(state,{node:'meadow',village:false});render(false);});
+ await page.locator('#inventory .item:has([data-gear-id="starlight_blade"]) [data-action^="gear-detail:"]').click();
+ await expect(detail.locator('.gear-sell-note')).toHaveText('売却額 800 G（街で売却できます）');
+ await expect(detail.locator('[data-action^="sell-gear"]')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

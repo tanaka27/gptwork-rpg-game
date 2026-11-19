@@ -91,14 +91,87 @@ const ownedGearSummary = item => {
   const wearer = gearWearer(item.uid);
   return gearSummary(item) + (wearer >= 0 ? ` · ${partyMemberName(wearer)}が装備中` : '');
 };
+// 一覧の並べ替えと絞り込み。選択はこのブラウザだけに覚える（セーブには含めない）。
+const gearViewKey = 'starlight-rpg-gear-view',
+  gearSortOptions = [
+    ['acquired', '入手順'],
+    ['newest', '新しい順'],
+    ['rarity', 'レアリティ順'],
+    ['level', '装備Lv順'],
+  ],
+  gearFilterOptions = [
+    ['all', 'すべて'],
+    ['weapon', '武器'],
+    ['armor', '防具'],
+    ['stored', '装着していない品'],
+  ],
+  gearRarityRank = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+let gearView = { sort: 'acquired', filter: 'all' },
+  pendingSellUid = null;
+try {
+  const saved = JSON.parse(localStorage.getItem(gearViewKey));
+  if (gearSortOptions.some(([id]) => id === saved?.sort)) gearView.sort = saved.sort;
+  if (gearFilterOptions.some(([id]) => id === saved?.filter)) gearView.filter = saved.filter;
+} catch {}
+function setGearView(key, value) {
+  const options = key === 'sort' ? gearSortOptions : gearFilterOptions;
+  if (!options.some(([id]) => id === value)) return;
+  gearView = { ...gearView, [key]: value };
+  try {
+    localStorage.setItem(gearViewKey, JSON.stringify(gearView));
+  } catch {}
+  render(false);
+}
+function gearListControls() {
+  const select = (id, label, options, value) =>
+    `<label>${label}<select id="${id}">${options.map(([key, text]) => `<option value="${key}"${key === value ? ' selected' : ''}>${text}</option>`).join('')}</select></label>`;
+  return `<div class="gear-list-controls">${select('gearSort', '並べ替え', gearSortOptions, gearView.sort)}${select('gearFilter', '表示', gearFilterOptions, gearView.filter)}</div>`;
+}
 function gearInventoryRows(index = 0) {
-  return (state.gear || [])
-    .map(instance => GameRules.gearItem(GameData, instance))
-    .filter(Boolean)
+  const items = (state.gear || []).map(instance => GameRules.gearItem(GameData, instance)).filter(Boolean),
+    visible = items.filter(item =>
+      gearView.filter === 'stored'
+        ? gearWearer(item.uid) < 0
+        : gearView.filter === 'all' || item.type === gearView.filter
+    ),
+    order = {
+      acquired: (a, b) => a.uid - b.uid,
+      newest: (a, b) => b.uid - a.uid,
+      rarity: (a, b) => gearRarityRank[a.rarity] - gearRarityRank[b.rarity] || a.uid - b.uid,
+      level: (a, b) => gearLevel(b) - gearLevel(a) || a.uid - b.uid,
+    }[gearView.sort];
+  if (!visible.length) return '<p class="muted gear-list-empty">該当する装備はありません。</p>';
+  return visible
+    .sort(order)
     .map(item =>
       itemRow(item, ownedGearSummary(item), equipButton(item, index), btn('詳細', 'gear-detail:' + item.uid))
     )
     .join('');
+}
+const gearStatOrder = ['maxHP', 'maxMP', 'attack', 'defense', 'wisdom', 'speed', 'luck'];
+// 操作する人物が同じ部位に着けている装備との差。
+function gearComparisonMarkup(item, index) {
+  const current = GameRules.memberGear(state, GameData, index, item.type);
+  if (current?.uid === item.uid) return '';
+  const next = GameRules.gearContribution(item),
+    now = GameRules.gearContribution(current),
+    rows = gearStatOrder
+      .map(stat => [stat, (next[stat] || 0) - (now[stat] || 0)])
+      .filter(([, diff]) => diff)
+      .map(
+        ([stat, diff]) =>
+          `<li class="${diff > 0 ? 'stat-up' : 'stat-down'}">${gearStatLabels[stat] || stat} ${diff > 0 ? '+' : ''}${diff}</li>`
+      );
+  return `<section class="gear-compare" aria-label="装着中の装備との比較"><h4>${partyMemberName(index)}の装着中（${current?.name || 'なし'}）と比べて</h4>${rows.length ? `<ul>${rows.join('')}</ul>` : '<p class="muted">能力の変化なし</p>'}</section>`;
+}
+function gearSellMarkup(item) {
+  const price = GameRules.gearSellPrice(item);
+  if (gearWearer(item.uid) >= 0) return `<p class="gear-sell-note">売却額 ${price} G（装着中は売れません）</p>`;
+  if (!state.village || state.journey || state.enemy)
+    return `<p class="gear-sell-note">売却額 ${price} G（街で売却できます）</p>`;
+  return pendingSellUid === item.uid
+    ? `<p class="gear-sell-note" role="status">${item.name}を${price} Gで売却しますか？</p><div class="gear-detail-actions">${btn(`売却を確定（${price} G）`, 'sell-gear-confirm:' + item.uid)}${btn('やめる', 'sell-gear-cancel')}</div>`
+    : `<p class="gear-sell-note">売却額 ${price} G</p><div class="gear-detail-actions">${btn(`売却する`, 'sell-gear:' + item.uid)}</div>`;
 }
 // uid のほか装備IDも受け付ける（その装備のうち、誰も着けていない1本を優先）。
 function resolveGearUid(key) {
@@ -599,6 +672,7 @@ function renderInventory() {
       )
       .join('') +
     '<p style="border-top:1px solid #344148;padding-top:14px">装備品</p>' +
+    gearListControls() +
     gearInventoryRows(0);
 }
 function renderShop() {
@@ -813,8 +887,12 @@ function gearDetailMarkup(id, origin) {
         : equipButton(item, typeof actingAlly !== 'undefined' ? actingAlly : 0),
     levelNote = canEquipGear(item)
       ? ''
-      : `<p class="gear-level-note">旅団がLv.${gearLevel(item)}になると装備できます（現在Lv.${state.lv}）。</p>`;
-  return `<section class="gear-detail" aria-label="${item.name}の詳細">${gearInfoMarkup(item, levelNote)}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div></section>`;
+      : `<p class="gear-level-note">旅団がLv.${gearLevel(item)}になると装備できます（現在Lv.${state.lv}）。</p>`,
+    extra =
+      origin === 'shop'
+        ? ''
+        : gearComparisonMarkup(item, typeof actingAlly !== 'undefined' ? actingAlly : 0) + gearSellMarkup(item);
+  return `<section class="gear-detail" aria-label="${item.name}の詳細">${gearInfoMarkup(item, levelNote)}<div class="gear-detail-actions">${action}${btn('一覧へ戻る', 'gear-detail-back')}</div>${extra}</section>`;
 }
 // 装備詳細の本文。もちもの・ショップとキャラクター詳細で共通に使う。
 function gearInfoMarkup(item, note = '') {
@@ -1163,6 +1241,7 @@ function action(a) {
     case 'gear-detail':
       if (shopOpen ? !gear[id] || !currentShopStock().includes(id) : !ownedGearItem(id)) return;
       selectedGearId = id;
+      pendingSellUid = null;
       gearDetailOrigin = shopOpen ? 'shop' : 'bag';
       render(false);
       document.querySelector?.('.gear-detail h3')?.focus();
@@ -1171,6 +1250,7 @@ function action(a) {
       const origin = gearDetailOrigin,
         previous = selectedGearId;
       selectedGearId = null;
+      pendingSellUid = null;
       gearDetailOrigin = 'bag';
       render(false);
       document
@@ -1204,6 +1284,29 @@ function action(a) {
     case 'equip':
       equipOwnedGear(0, id);
       break;
+    case 'sell-gear':
+      if (!ownedGearItem(id) || gearWearer(Number(id)) >= 0) return;
+      pendingSellUid = Number(id);
+      render(false);
+      document.querySelector?.('[data-action^="sell-gear-confirm:"]')?.focus();
+      break;
+    case 'sell-gear-cancel':
+      pendingSellUid = null;
+      render(false);
+      document.querySelector?.('[data-action^="sell-gear:"]')?.focus();
+      break;
+    case 'sell-gear-confirm': {
+      if (pendingSellUid !== Number(id) || !state.village || state.journey || state.enemy || busy) return;
+      pendingSellUid = null;
+      const result = GameRules.sellGear(state, GameData, Number(id));
+      if (!result.ok) return;
+      log(`${result.item.name}［${gearRarityLabels[result.item.rarity]}］を${result.price} Gで売却した。`);
+      selectedGearId = null;
+      gearDetailOrigin = 'bag';
+      render();
+      document.querySelector?.('#gearSort')?.focus();
+      break;
+    }
   }
 }
 document.addEventListener('click', e => {
@@ -1288,4 +1391,8 @@ function showScreen(name) {
 document.addEventListener('click', event => {
   const button = event.target.closest('[data-screen]');
   if (button) showScreen(button.dataset.screen);
+});
+document.addEventListener('change', event => {
+  if (event.target.id === 'gearSort') setGearView('sort', event.target.value);
+  else if (event.target.id === 'gearFilter') setGearView('filter', event.target.value);
 });

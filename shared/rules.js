@@ -671,6 +671,32 @@
     if (state.gear.length - worn.size > gearStorageLimit) errors.push('装備の所持数が上限を超えています');
     return errors;
   }
+  // 売却額：基準額（ショップ価格の半分、非売品は装備Lv×10）にレアリティの倍率を掛ける。
+  const gearSellMultipliers = { common: 1, uncommon: 1.5, rare: 2.5, legendary: 5 };
+  function gearSellPrice(item) {
+    const base = item?.price > 0 ? Math.floor(item.price / 2) : gearLevel(item) * 10;
+    return Math.floor(base * (gearSellMultipliers[item?.rarity] ?? 1));
+  }
+  // 装着していない個体だけを売れる。街にいるかどうかは呼び出し側で確かめる。
+  function sellGear(state, data, uid) {
+    const instance = Array.isArray(state.gear) ? state.gear.find(e => e.uid === uid) : null,
+      item = instance ? gearItem(data, instance) : null;
+    if (!item) return { ok: false, reason: 'missing' };
+    if (equippedGearUids(state, data).has(uid)) return { ok: false, reason: 'equipped', item };
+    const price = gearSellPrice(item);
+    state.gear = state.gear.filter(e => e.uid !== uid);
+    state.gold += price;
+    syncGearMirrors(state, data);
+    return { ok: true, item, price };
+  }
+  // 装着した場合の能力の加算分（基礎補正と追加効果）。
+  function gearContribution(item) {
+    const result = {};
+    if (!item) return result;
+    result[item.type === 'weapon' ? 'attack' : 'defense'] = item.value || 0;
+    for (const effect of item.bonusEffects || []) result[effect.stat] = (result[effect.stat] || 0) + effect.amount;
+    return result;
+  }
   // 装備の付け替え。他の人物が着けている個体なら、互いの装備を交換する。
   function equipGear(state, data, index, uid) {
     const instance = Array.isArray(state.gear) ? state.gear.find(e => e.uid === uid) : null,
@@ -724,6 +750,9 @@
     normalizeGear,
     validateGear,
     equipGear,
+    gearSellPrice,
+    sellGear,
+    gearContribution,
     activeBuffs,
     allyAttack,
     applyAttackBuff,

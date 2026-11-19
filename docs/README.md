@@ -24,6 +24,7 @@
 | 場所 | 内容 |
 | --- | --- |
 | [docs/history/plans/](history/plans/) | 反映完了した案件の設計書 |
+| [2026-11-14〜11-18の変更履歴](history/2026-11-14-to-11-18-changelog.md) | CHANGELOGから移した2026-11-14〜11-18の記録 |
 | [2026-11-13の変更履歴](history/2026-11-13-to-11-13-changelog.md) | CHANGELOGから移した2026-11-13の記録 |
 | [2026-11-11〜11-12の変更履歴](history/2026-11-11-to-11-12-changelog.md) | CHANGELOGから移した2026-11-11〜11-12の記録 |
 | [2026-11-11の変更履歴](history/2026-11-11-to-11-11-changelog.md) | CHANGELOGから移した2026-11-11の記録 |
