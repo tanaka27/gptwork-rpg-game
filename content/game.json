@@ -603,6 +603,7 @@
       "category": "gear",
       "level": 12,
       "rarity": "rare",
+      "unique": true,
       "bonusEffects": [{"stat":"maxHP","amount":20},{"stat":"wisdom","amount":4}]
     },
     {
@@ -615,6 +616,7 @@
       "category": "gear",
       "level": 16,
       "rarity": "legendary",
+      "unique": true,
       "bonusEffects": [{"stat":"attack","amount":5},{"stat":"speed","amount":4},{"stat":"luck","amount":6}]
     },
     {
@@ -1293,6 +1295,11 @@
     }
   ],
   "rules": {
+    "gearRoll": {
+      "rarityRates": { "common": 0.7, "uncommon": 0.22, "rare": 0.07, "legendary": 0.01 },
+      "statRates": { "maxHP": 1.5, "attack": 0.35, "defense": 0.3, "wisdom": 0.35, "speed": 0.3, "luck": 0.35 },
+      "rarityRanges": { "uncommon": [0.5, 0.8], "rare": [0.6, 0.9], "legendary": [0.7, 1.0] }
+    },
     "normalAttack": {
       "name": "通常攻撃",
       "type": "physical",

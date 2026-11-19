@@ -82,7 +82,7 @@ test('uncommon shop gear detail, purchase, inventory detail and bonus stats work
  expect(errors).toEqual([]);
 });
 
-test('rare and legendary gear drop through victory, duplicate gear converts to ether and saves by ID',async({page})=>{
+test('rare and legendary gear drop through victory, duplicates are kept as separate instances and saved',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('net::ERR_FAILED'))errors.push(message.text());});
  await page.addInitScript(()=>{let queue=[];Math.random=()=>queue.length?queue.shift():0;window.setRewardRandoms=values=>{queue=[...values];};});
@@ -99,12 +99,13 @@ test('rare and legendary gear drop through victory, duplicate gear converts to e
   else await page.waitForTimeout(10);
  }
  await expect.poll(()=>page.evaluate(()=>!state.enemy&&!busy&&!roundActive)).toBe(true);
- const firstDrops=await page.evaluate(()=>({zone:state.zone,node:state.node,owned:state.owned,ether:state.items.ether,dropLogs:state.log.filter(line=>line==='星のしずくを拾った！').length}));
- expect(firstDrops).toMatchObject({zone:1,owned:expect.arrayContaining(['eclipse_robe']),ether:4,dropLogs:3});
- await page.locator('[data-screen="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="eclipse_robe"]) [data-action^="gear-detail:"]').click();
+ const firstDrops=await page.evaluate(()=>({zone:state.zone,node:state.node,owned:state.owned,robes:state.gear.filter(e=>e.baseId==='eclipse_robe').length,ether:state.items.ether,dropLogs:state.log.filter(line=>line==='月蝕のローブを発見！［レア］ もちものから装備できる。').length}));
+ // 4体それぞれが月蝕のローブを落とし、同じ装備も別の1本として持つ（固有装備なので値は固定）。
+ expect(firstDrops).toMatchObject({zone:1,owned:expect.arrayContaining(['eclipse_robe']),robes:4,ether:1,dropLogs:4});
+ await page.locator('[data-screen="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="eclipse_robe"]) [data-action^="gear-detail:"]').first().click();
  const epic=page.locator('#inventory .gear-detail');await expect(epic.locator('h3')).toBeFocused();await expect(epic.locator('.rarity.rare')).toBeVisible();await expect(epic).toContainText('レア');await expect(epic).toContainText('守備力 +13');await expect(epic).toContainText('最大HP +20');await expect(epic).toContainText('賢さ +4');
  await page.screenshot({path:test.info().outputPath('rare-inventory-detail.png')});
- const rareGearColor=await epic.locator('.rarity.rare').evaluate(node=>getComputedStyle(node).color);await page.locator('#inventory [data-action="gear-detail-back"]').click();await page.locator('[data-tab="materials"]').click();const rareMaterialColor=await page.locator('#inventory .rarity-guide .rarity.rare').evaluate(node=>getComputedStyle(node).color);expect(rareGearColor).toBe(rareMaterialColor);await page.locator('[data-tab="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="eclipse_robe"]) [data-action^="gear-detail:"]').click();
+ const rareGearColor=await epic.locator('.rarity.rare').evaluate(node=>getComputedStyle(node).color);await page.locator('#inventory [data-action="gear-detail-back"]').click();await page.locator('[data-tab="materials"]').click();const rareMaterialColor=await page.locator('#inventory .rarity-guide .rarity.rare').evaluate(node=>getComputedStyle(node).color);expect(rareGearColor).toBe(rareMaterialColor);await page.locator('[data-tab="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="eclipse_robe"]) [data-action^="gear-detail:"]').first().click();
  const save=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));expect(JSON.parse(save).owned).toContain('eclipse_robe');
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');expect(await page.evaluate(()=>state.owned.includes('eclipse_robe'))).toBe(true);
  await page.evaluate(()=>{Object.assign(state,{node:'ash',zone:2,village:false,journey:null,enemy:null,lastTown:'forge'});GameData.characters.forEach(c=>c.speed=1000);render(false);});
@@ -120,7 +121,7 @@ test('rare and legendary gear drop through victory, duplicate gear converts to e
  await expect.poll(()=>page.evaluate(()=>!state.enemy&&!busy&&!roundActive)).toBe(true);
  expect(await page.evaluate(()=>state.owned.includes('starlight_blade'))).toBe(true);
  expect(await page.evaluate(()=>state.log.some(line=>line.includes('星灯りの剣を発見')))).toBe(true);
- await page.locator('[data-screen="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="starlight_blade"]) [data-action^="gear-detail:"]').click();
+ await page.locator('[data-screen="bag"]').click();await page.locator('#inventory .item:has([data-gear-id="starlight_blade"]) [data-action^="gear-detail:"]').first().click();
  const legend=page.locator('#inventory .gear-detail');await expect(legend.locator('.rarity.legendary')).toBeVisible();await expect(legend).toContainText('レジェンダリー');await expect(legend).toContainText('攻撃力 +20');await expect(legend).toContainText('攻撃力 +5');await expect(legend).toContainText('素早さ +4');await expect(legend).toContainText('うんのよさ +6');
  await page.screenshot({path:test.info().outputPath('legendary-inventory-detail.png')});
  const legendaryGearColor=await legend.locator('.rarity.legendary').evaluate(node=>getComputedStyle(node).color);await page.locator('#inventory [data-action="gear-detail-back"]').click();await page.locator('[data-tab="materials"]').click();const legendaryMaterialColor=await page.locator('#inventory .rarity-guide .rarity.legendary').evaluate(node=>getComputedStyle(node).color);expect(legendaryGearColor).toBe(legendaryMaterialColor);

@@ -489,13 +489,68 @@
         .filter(member => companions.includes(member)),
     ];
   }
-  // 段階2では全個体が標準品。抽選の導入時にここで範囲を検証する。
+  // ドロップ時の抽選。固有装備と抽選ルールのない定義では、常に標準品になる。
+  const gearEffectCounts = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+  function gearRollable(data, base) {
+    return !!data.rules?.gearRoll && !!base && base.unique !== true;
+  }
+  function gearAmountRange(data, base, rarity, stat) {
+    const roll = data.rules.gearRoll,
+      rate = roll.statRates[stat],
+      [low, high] = roll.rarityRanges[rarity] || [0, 0],
+      level = gearLevel(base);
+    return [Math.max(1, Math.round(rate * level * low)), Math.max(1, Math.round(rate * level * high))];
+  }
+  function rollGear(data, baseId, rng = Math.random) {
+    const base = gearBase(data, baseId);
+    if (!base) return null;
+    if (!gearRollable(data, base)) return standardGear(base);
+    const roll = data.rules.gearRoll,
+      pick = rng();
+    let total = 0,
+      rarity = 'common';
+    for (const id of gearRarityIds) {
+      total += roll.rarityRates[id];
+      if (pick < total) {
+        rarity = id;
+        break;
+      }
+    }
+    const pool = Object.keys(roll.statRates),
+      bonusEffects = [];
+    for (let i = 0; i < gearEffectCounts[rarity] && pool.length; i++) {
+      const stat = pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1)[0],
+        [low, high] = roll.rarityRanges[rarity],
+        rate = roll.statRates[stat];
+      bonusEffects.push({
+        stat,
+        amount: Math.max(1, Math.round(rate * gearLevel(base) * (low + (high - low) * rng()))),
+      });
+    }
+    return { rarity, bonusEffects };
+  }
+  // 標準品と同じ値か、抽選ルールの範囲内の値なら有効。
   function gearInstanceValid(data, instance) {
     if (!instance || typeof instance !== 'object' || !Number.isSafeInteger(instance.uid) || instance.uid < 1)
       return false;
     const base = gearBase(data, instance.baseId);
     if (!base || !Array.isArray(instance.bonusEffects)) return false;
-    return JSON.stringify(standardGear(base)) === JSON.stringify(standardGear(instance));
+    const standard = standardGear(base);
+    if (
+      instance.rarity === standard.rarity &&
+      JSON.stringify(standard.bonusEffects) ===
+        JSON.stringify(instance.bonusEffects.map(effect => ({ stat: effect?.stat, amount: effect?.amount })))
+    )
+      return true;
+    if (!gearRollable(data, base) || !gearRarityIds.includes(instance.rarity)) return false;
+    if (instance.bonusEffects.length !== gearEffectCounts[instance.rarity]) return false;
+    const seen = new Set();
+    return instance.bonusEffects.every(effect => {
+      if (!effect || !Object.hasOwn(data.rules.gearRoll.statRates, effect.stat) || seen.has(effect.stat)) return false;
+      seen.add(effect.stat);
+      const [low, high] = gearAmountRange(data, base, instance.rarity, effect.stat);
+      return Number.isSafeInteger(effect.amount) && effect.amount >= low && effect.amount <= high;
+    });
   }
   function memberGear(state, data, index, slot) {
     const member = memberState(state, data, index),
@@ -519,10 +574,11 @@
     const equipped = equippedGearUids(state, data);
     return (state.gear || []).filter(e => !equipped.has(e.uid)).length;
   }
-  function addGear(state, data, baseId) {
+  // rng を渡すとドロップとして抽選し、省略すると標準品（ショップ品など）を加える。
+  function addGear(state, data, baseId, rng = null) {
     const base = gearBase(data, baseId);
     if (!base) return null;
-    const instance = { uid: state.nextGearUid, baseId, ...standardGear(base) };
+    const instance = { uid: state.nextGearUid, baseId, ...(rng ? rollGear(data, baseId, rng) : standardGear(base)) };
     state.nextGearUid += 1;
     state.gear.push(instance);
     return instance;
@@ -663,6 +719,8 @@
     memberGear,
     storedGearCount,
     addGear,
+    rollGear,
+    gearAmountRange,
     normalizeGear,
     validateGear,
     equipGear,

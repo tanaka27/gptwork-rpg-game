@@ -131,5 +131,15 @@ test('gear instances round-trip through cloud saves and forged or broken instanc
    const invalid=structuredClone(state);mutate(invalid);
    assert.equal((await app.call('/api/save','PUT',{revision:saved.body.revision,state:invalid})).status,422);
   }
+  // 抽選された個体（星銀のつるぎのレア）は範囲内なら保存でき、範囲外は拒否する。
+  const rolled={...state,gear:[...state.gear,{uid:4,baseId:'star',rarity:'rare',bonusEffects:[{stat:'attack',amount:3},{stat:'luck',amount:2}]}],nextGearUid:5,owned:['twig','cloth','iron','star']};
+  const accepted=await app.call('/api/save','PUT',{revision:saved.body.revision,state:rolled});assert.equal(accepted.status,200);
+  const forged=structuredClone(rolled);forged.gear[3].bonusEffects[0].amount=9;
+  assert.equal((await app.call('/api/save','PUT',{revision:accepted.body.revision,state:forged})).status,422);
+  // 保存済みの抽選値を範囲外にする公開は拒否する。
+  const narrowed=structuredClone(seed);narrowed.rules.gearRoll.statRates.attack=0.05;
+  const draft=await app.call('/api/admin/drafts','POST',{data:narrowed,label:'narrow gear roll'});assert.equal(draft.status,201);
+  const publish=await app.call('/api/admin/versions/'+draft.body.id+'/publish','POST',{revision:1});
+  assert.equal(publish.status,422);assert.match(publish.body.error,/既存セーブ/);
  }finally{app.DB.close();}
 });

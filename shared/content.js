@@ -19,6 +19,46 @@
   const equipmentRarities = ['common', 'uncommon', 'rare', 'legendary'];
   const bonusEffectStats = ['maxHP', 'maxMP', 'attack', 'defense', 'wisdom', 'speed', 'luck'];
   const safeId = id => typeof id === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(id);
+  // ドロップ装備の抽選ルール。確率は合計1、係数は能力ごとの装備Lv1あたりの値、幅は倍率の[最小, 最大]。
+  function validateGearRoll(roll, add) {
+    const path = 'rules.gearRoll';
+    if (!roll || typeof roll !== 'object' || Array.isArray(roll))
+      return add(path, '抽選ルールのオブジェクトが必要です');
+    const rates = roll.rarityRates;
+    if (
+      !rates ||
+      typeof rates !== 'object' ||
+      Object.keys(rates).length !== equipmentRarities.length ||
+      equipmentRarities.some(id => !(rates[id] >= 0 && rates[id] <= 1))
+    )
+      add(path + '.rarityRates', '4つのレアリティに0〜1の確率が必要です');
+    else if (Math.abs(equipmentRarities.reduce((sum, id) => sum + rates[id], 0) - 1) > 1e-9)
+      add(path + '.rarityRates', '確率の合計は1にしてください');
+    const stats = roll.statRates;
+    if (
+      !stats ||
+      typeof stats !== 'object' ||
+      Array.isArray(stats) ||
+      Object.keys(stats).length < 3 ||
+      Object.entries(stats).some(
+        ([stat, rate]) => !bonusEffectStats.includes(stat) || !Number.isFinite(rate) || rate <= 0 || rate > 1000
+      )
+    )
+      add(path + '.statRates', '3種類以上の能力値に0より大きく1000以下の係数が必要です');
+    const ranges = roll.rarityRanges;
+    if (
+      !ranges ||
+      typeof ranges !== 'object' ||
+      Object.keys(ranges).length !== 3 ||
+      ['uncommon', 'rare', 'legendary'].some(
+        id =>
+          !Array.isArray(ranges[id]) ||
+          ranges[id].length !== 2 ||
+          !(ranges[id][0] > 0 && ranges[id][0] <= ranges[id][1] && ranges[id][1] <= 10)
+      )
+    )
+      add(path + '.rarityRanges', 'アンコモン・レア・レジェンダリーに0より大きく10以下の[最小, 最大]が必要です');
+  }
   function validate(data) {
     const errors = [];
     const add = (path, message) => errors.push(path + ': ' + message);
@@ -261,6 +301,8 @@
           if (!Number.isSafeInteger(e.level) || e.level < 1 || e.level > Math.max(1, maxLevel))
             add('items.' + e.id + '.level', '1〜レベル上限の整数が必要です');
         }
+        if (Object.hasOwn(e, 'unique') && typeof e.unique !== 'boolean')
+          add('items.' + e.id + '.unique', '固有装備の指定はtrueかfalseです');
         const hasRarity = Object.hasOwn(e, 'rarity'),
           hasBonus = Object.hasOwn(e, 'bonusEffects'),
           path = 'items.' + e.id;
@@ -330,6 +372,7 @@
         ['battle', 'rescueRate'],
       ])
         if (!(r[section][key] >= 0 && r[section][key] <= 1)) add('rules.' + section + '.' + key, '0〜1の値が必要です');
+      if (r.gearRoll !== undefined) validateGearRoll(r.gearRoll, add);
       if (!Array.isArray(r.party) || r.party.length !== 4) add('rules.party', '初期隊列には4人のIDを指定してください');
       else {
         r.party.forEach(id => ref('characters', id, 'rules.party'));
@@ -449,6 +492,16 @@
     for (const item of result.items)
       if (item.category === 'gear' && !Object.hasOwn(item, 'level'))
         item.level = Math.min(defaultGearLevels.get(item.id) ?? 1, Math.max(1, result.rules.growth.maxLevel));
+    // 抽選ルールと固有装備の指定がない旧定義には、同梱定義の値を補う。
+    if (result.rules.gearRoll === undefined && normalizedDefaults.rules.gearRoll)
+      result.rules.gearRoll = JSON.parse(JSON.stringify(normalizedDefaults.rules.gearRoll));
+    const uniqueIds = new Set(
+      normalizedDefaults.items
+        .filter(item => item.category === 'gear' && item.unique === true)
+        .map(item => builtinItemIds.get(item.id) || item.id)
+    );
+    for (const item of result.items)
+      if (item.category === 'gear' && !Object.hasOwn(item, 'unique') && uniqueIds.has(item.id)) item.unique = true;
     for (const zone of result.zones) {
       if (zone.equipmentDropIds !== undefined) continue;
       const standard = normalizedDefaults.zones.find(row => row.id === zone.id);

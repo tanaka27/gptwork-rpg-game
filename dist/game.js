@@ -152,14 +152,15 @@ function rollEquipmentDrop(e, rng = Math.random) {
   if (e?.boss || rng() >= 0.13) return null;
   const candidates = zones[state.zone].equipmentDropIds || [zones[state.zone].bonusItemId].filter(Boolean),
     id = candidates.length ? candidates[Math.floor(rng() * candidates.length)] : null;
-  if (id && gear[id] && !state.owned.includes(id) && !gearStorageFull()) {
-    GameRules.addGear(state, GameData, id);
+  // 同じ装備も新しい1本として加える。固有装備以外はレアリティと追加効果を抽選する。
+  if (id && gear[id] && !gearStorageFull()) {
+    const instance = GameRules.addGear(state, GameData, id, rng);
     state.owned = [...new Set(state.gear.map(e => e.baseId))];
-    log(`${gear[id].name}を発見！ もちものから装備できる。`);
+    log(`${gear[id].name}を発見！［${gearRarityLabels[instance.rarity]}］ もちものから装備できる。`);
     return id;
   }
   state.items.ether++;
-  log('星のしずくを拾った！');
+  log(id && gear[id] ? '装備がいっぱいで持てない。代わりに星のしずくを拾った！' : '星のしずくを拾った！');
   return id || 'ether';
 }
 const travelSteps = GameData.rules.travel.steps;
@@ -818,7 +819,7 @@ function gearDetailMarkup(id, origin) {
 // 装備詳細の本文。もちもの・ショップとキャラクター詳細で共通に使う。
 function gearInfoMarkup(item, note = '') {
   const primary = item.type === 'weapon' ? '攻撃力' : '守備力';
-  return `<div class="gear-detail-heading">${gearIconMarkup(item, 'detail')}<h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${item.value || 0}</dd></div></dl>${note}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}`;
+  return `<div class="gear-detail-heading">${gearIconMarkup(item, 'detail')}<h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}${item.unique ? ' · 固有装備（レアリティと追加効果は固定）' : ''}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${item.value || 0}</dd></div></dl>${note}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}`;
 }
 function itemRow(a, desc, button, secondary = '') {
   const icon = a.category === 'gear' ? gearIconMarkup(a) : `<span class="itemicon">${a.icon}</span>`;
