@@ -32,7 +32,11 @@ const pngSources = [
     const response = await worker.fetch(new Request('https://example.test' + assetPath), {});
     assert.equal(response.status, 200, `${assetPath} must be available in the Worker`);
     assert.equal(response.headers.get('content-type'), 'image/webp', `${assetPath} must return WebP MIME`);
-    assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
+    assert.equal(response.headers.get('cache-control'), 'public, max-age=3600, stale-while-revalidate=86400');
+    const etag = response.headers.get('etag');
+    assert.match(etag || '', /^"[A-Za-z0-9_-]{27}"$/, `${assetPath} must have a content ETag`);
+    const revalidated = await worker.fetch(new Request('https://example.test' + assetPath, { headers: { 'if-none-match': etag } }), {});
+    assert.equal(revalidated.status, 304, `${assetPath} must return 304 for its own ETag`);
     const bytes = Buffer.from(await response.arrayBuffer());
     assert.equal(bytes.toString('ascii', 0, 4), 'RIFF', `${assetPath} must contain RIFF bytes`);
     assert.equal(bytes.toString('ascii', 8, 12), 'WEBP', `${assetPath} must contain WebP bytes`);
@@ -70,13 +74,20 @@ const pngSources = [
     assert.equal(String(compare.stderr || compare.stdout).trim(), '0', `${source} must be pixel-identical`);
   }
 
+  // HTML・JS・CSSは毎回再検証し、変わっていなければ304。
+  for (const assetPath of ['/', '/game.js', '/workspace.css']) {
+    const response = await worker.fetch(new Request('https://example.test' + assetPath), {});
+    assert.equal(response.headers.get('cache-control'), 'no-cache');
+    const again = await worker.fetch(new Request('https://example.test' + assetPath, { headers: { 'if-none-match': response.headers.get('etag') } }), {});
+    assert.equal(again.status, 304, `${assetPath} must revalidate with its ETag`);
+  }
   const missing = await worker.fetch(new Request('https://example.test/assets/characters/unknown.webp'), {});
   assert.equal(missing.status, 404);
   const head = await worker.fetch(new Request('https://example.test/assets/characters/adventurer_001.webp', { method: 'HEAD' }), {});
   assert.equal(head.status, 200);
   assert.equal(head.headers.get('content-type'), 'image/webp');
   assert.equal((await head.arrayBuffer()).byteLength, 0);
-  console.log(`PASS: ${imagePaths.length} Worker image URLs, cache/MIME, PNG pixel identity, ${Object.keys(deliveryRules).length} reduced delivery images, HEAD and missing asset handling`);
+  console.log(`PASS: ${imagePaths.length} Worker image URLs, cache/MIME, PNG pixel identity, ETag/304, ${Object.keys(deliveryRules).length} reduced delivery images, HEAD and missing asset handling`);
 })()
   .catch(error => {
     console.error(error);

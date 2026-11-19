@@ -163,6 +163,11 @@ function walk(dir) {
 }
 
 walk('dist');
+// 配信する内容のハッシュをETagにする（Workerが304を返すための検証子）。
+for (const asset of Object.values(assets)) {
+  const bytes = asset.base64 ? Buffer.from(asset.body, 'base64') : Buffer.from(asset.body, 'utf8');
+  asset.etag = '"' + crypto.createHash('sha256').update(bytes).digest('base64url').slice(0, 27) + '"';
+}
 fs.writeFileSync('server/assets.generated.mjs', 'export default ' + JSON.stringify(assets) + ';');
 fs.rmSync('build', { recursive: true, force: true });
 fs.mkdirSync('build/.openai', { recursive: true });

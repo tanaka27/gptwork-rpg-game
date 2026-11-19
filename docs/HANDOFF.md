@@ -6,7 +6,7 @@
 
 - フロントは `dist/` のHTML/CSS/JavaScriptです（敵画像は `dist/assets/monsters/`、地図などのSVGは `dist/game.js` 内で生成）。`dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` は生成物で、初期定義は `content/game.json`、共通処理は `shared/` にあります。
 - `dist/bootstrap.js` が公開・同梱・キャッシュ・戦闘中の定義を選び、`storage.js`、`combat.js`、`game.js`、`party.js`、`cloud-save.js` を起動します。
-- `server/api.mjs` はNode開発環境と本番Workerで共有するAPIです。開発環境はNode.js 24とSQLite、本番はWorker ESMとD1を使います。詳細は[BACKEND.md](BACKEND.md)を正本とします。
+- `server/worker.mjs` は本番Workerの入口で、静的素材は `server/static-assets.mjs`（ETag・キャッシュ方針）で配信します。`server/api.mjs` はNode開発環境と本番Workerで共有するAPIです。開発環境はNode.js 24とSQLite、本番はWorker ESMとD1を使います。詳細は[BACKEND.md](BACKEND.md)を正本とします。
 - 初期定義は同梱JSON、公開中の定義はD1の公開版が正本です。編集・プレビューは管理画面/APIを通します。同期や公開版の詳細は[バックエンド仕様](BACKEND.md)を参照してください。
 
 ## 変更箇所の地図
