@@ -733,6 +733,17 @@ dialog {
   margin: 0;
   font-size: 16px;
 }
+.character-name-stack {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+.character-demographics {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
 .character-heading span,
 .character-card p,
 .party-note {
@@ -1367,6 +1378,9 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   margin: 3px 0;
   color: var(--muted);
   font-size: 11px;
+}
+.tavern-adventurer-demographics {
+  font-size: 12px !important;
 }
 .tavern-adventurer-card dl {
   display: grid;

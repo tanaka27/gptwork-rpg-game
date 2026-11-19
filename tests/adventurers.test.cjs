@@ -5,11 +5,16 @@ const content = require('../content/game.json');
 
 const roster = AdventurerRules.list();
 assert.equal(roster.length, 100);
+assert.deepEqual(AdventurerRules.validateRoster(), []);
 assert.equal(new Set(roster.map(adventurer => adventurer.id)).size, 100);
 assert.equal(new Set(roster.map(adventurer => adventurer.name)).size, 100);
+assert.deepEqual([roster[0].age, roster[0].gender], [24, '男性']);
+assert.deepEqual([roster[27].age, roster[27].gender], [66, '男性']);
 for (const adventurer of roster) {
   assert.match(adventurer.id, /^adventurer_\d{3}$/);
   assert.ok(adventurer.name && adventurer.job);
+  assert.ok(Number.isSafeInteger(adventurer.age) && adventurer.age >= 0 && adventurer.age <= 120);
+  assert.ok(['男性', '女性', 'その他', '未設定'].includes(adventurer.gender));
   for (const field of ['level', 'hp', 'mp', 'attack', 'defense', 'wisdom', 'luck', 'speed']) {
     assert.ok(Number.isSafeInteger(adventurer[field]) && adventurer[field] > 0, `${adventurer.id}.${field}`);
   }
@@ -87,4 +92,4 @@ const corrupt = { ...firstTick, locations: { ...firstTick.locations, adventurer_
 assert.deepEqual(repaired, initial, 'a broken NPC state recovers independently to deterministic defaults');
 assert.ok(SaveRules.validate({ ...saved, adventurerState: corrupt }, content).some(error => error.includes('冒険者の位置')));
 
-console.log('PASS: fixed 100-person roster, independent stats, town distribution, deterministic adjacent ticks, exploration threshold, v:2 save validation and repair');
+console.log('PASS: fixed 100-person roster and demographics, independent stats, town distribution, deterministic adjacent ticks, exploration threshold, v:2 save validation and repair');

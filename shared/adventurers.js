@@ -9,7 +9,25 @@
     EXPLORE_THRESHOLD = 3,
     MOVE_RATE = 0.25,
     INITIAL_SEED = 0x74617631,
-    firstNames = ['アレン', 'セリア', 'ラルフ', 'ミーナ', 'カイル', 'エリス', 'ノエラ', 'ガイ', 'フィーナ', 'ルーク'],
+    firstNames = [
+      { name: 'アレン', gender: '男性' },
+      { name: 'セリア', gender: '女性' },
+      { name: 'ラルフ', gender: '男性' },
+      { name: 'ミーナ', gender: '女性' },
+      { name: 'カイル', gender: '男性' },
+      { name: 'エリス', gender: '女性' },
+      { name: 'ノエラ', gender: '女性' },
+      { name: 'ガイ', gender: '男性' },
+      { name: 'フィーナ', gender: '女性' },
+      { name: 'ルーク', gender: '男性' },
+    ],
+    // 既存の generated illustration をID順に見た目から推定した年齢。新しい画像を追加するときは対応する値も追加する。
+    portraitAges = [
+      24, 23, 31, 22, 42, 25, 34, 28, 25, 30, 44, 27, 23, 30, 22, 32, 21, 36, 24, 48, 29, 22, 38, 33, 46, 30, 31, 66,
+      28, 29, 29, 24, 32, 31, 43, 21, 67, 36, 38, 32, 35, 42, 28, 30, 42, 29, 34, 25, 38, 54, 45, 25, 27, 35, 62, 30,
+      34, 37, 25, 39, 64, 49, 27, 34, 40, 52, 34, 39, 26, 33, 31, 19, 53, 33, 64, 41, 36, 35, 27, 50, 23, 52, 22, 34,
+      68, 30, 40, 34, 32, 25, 28, 33, 26, 36, 30, 29, 47, 39, 51, 42,
+    ],
     familyNames = [
       'アルヴァ',
       'ベルン',
@@ -29,7 +47,9 @@
       level = 1 + ((index * 7 + 3) % 30);
     return Object.freeze({
       id: 'adventurer_' + String(index + 1).padStart(3, '0'),
-      name: firstNames[index % firstNames.length] + '・' + familyNames[Math.floor(index / firstNames.length)],
+      name: firstNames[index % firstNames.length].name + '・' + familyNames[Math.floor(index / firstNames.length)],
+      age: portraitAges[index],
+      gender: firstNames[index % firstNames.length].gender,
       job: jobs[jobIndex],
       level,
       hp: 48 + jobIndex * 5 + level * 3 + (index % 7),
@@ -47,6 +67,19 @@
 
   function list() {
     return [...roster];
+  }
+
+  function validateRoster() {
+    const errors = [],
+      genders = new Set(['男性', '女性', 'その他', '未設定']);
+    if (roster.length !== COUNT || portraitAges.length !== COUNT)
+      errors.push('冒険者名簿と画像年齢の件数が一致しません');
+    for (const adventurer of roster) {
+      if (!Number.isSafeInteger(adventurer.age) || adventurer.age < 0 || adventurer.age > 120)
+        errors.push(adventurer.id + ': 年齢が不正です');
+      if (!genders.has(adventurer.gender)) errors.push(adventurer.id + ': 性別が不正です');
+    }
+    return errors;
   }
 
   function initialState(nodes) {
@@ -125,6 +158,7 @@
     EXPLORE_THRESHOLD,
     MOVE_RATE,
     list,
+    validateRoster,
     initialState,
     validate,
     recover,

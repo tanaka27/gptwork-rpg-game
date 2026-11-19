@@ -17,6 +17,13 @@
   ];
   const debuffEffectTypes = ['attackDown', 'defenseDown'];
   const equipmentRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+  const characterGenders = ['男性', '女性', 'その他', '未設定'];
+  const legacyCharacterDemographics = new Map([
+    ['astel', { age: 21, gender: '男性' }],
+    ['rina', { age: 20, gender: '女性' }],
+    ['gald', { age: 35, gender: '男性' }],
+    ['noel', { age: 21, gender: '男性' }],
+  ]);
   // レアリティごとの追加効果の個数。レジェンダリーの定義は、固有装備と旧定義のために3つも認める。
   const gearEffectCounts = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
   const rolledRarities = equipmentRarities.filter(id => id !== 'common');
@@ -152,6 +159,9 @@
       if (!Number.isFinite(e.speed) || e.speed < 0) add('characters.' + e.id + '.speed', '素早さが必要です');
       if (e.job !== undefined && (typeof e.job !== 'string' || !e.job.trim() || e.job.length > 40))
         add('characters.' + e.id + '.job', '1〜40文字のジョブ名が必要です');
+      if (!Number.isSafeInteger(e.age) || e.age < 0 || e.age > 120)
+        add('characters.' + e.id + '.age', '0〜120の整数年齢が必要です');
+      if (!characterGenders.includes(e.gender)) add('characters.' + e.id + '.gender', '有効な性別の値が必要です');
     }
     for (const e of data.characters || [])
       if (e.stats !== undefined) {
@@ -426,6 +436,32 @@
     }
     return result;
   }
+  function normalizeCharacterDemographics(data, defaults = data) {
+    const defaultById = new Map(
+        (Array.isArray(defaults?.characters) ? defaults.characters : [])
+          .filter(
+            character =>
+              character &&
+              Number.isSafeInteger(character.age) &&
+              character.age >= 0 &&
+              character.age <= 120 &&
+              characterGenders.includes(character.gender)
+          )
+          .map(character => [character.id, character])
+      ),
+      characters = Array.isArray(data?.characters) ? data.characters : [];
+    for (const character of characters) {
+      if (!character || typeof character !== 'object' || Array.isArray(character)) continue;
+      const fallback = defaultById.get(character.id) ||
+        legacyCharacterDemographics.get(character.id) || {
+          age: 18,
+          gender: '未設定',
+        };
+      if (!Object.hasOwn(character, 'age')) character.age = fallback.age;
+      if (!Object.hasOwn(character, 'gender')) character.gender = fallback.gender;
+    }
+    return data;
+  }
   function withJobs(data, defaults = data) {
     const legacyGearIds = new Set(
       (Array.isArray(data?.items) ? data.items : [])
@@ -440,16 +476,12 @@
       Array.isArray(data?.zones) &&
       data.items.filter(item => item.category === 'gear').every(item => legacyGearIds.has(item.id)) &&
       data.zones.every(zone => zone.equipmentDropIds === undefined);
-    const result = normalizeEquipmentRarities(data),
+    const normalizedDefaults = normalizeCharacterDemographics(normalizeEquipmentRarities(defaults), defaults),
+      defaultErrors = validate(normalizedDefaults);
+    if (defaultErrors.length) throw new Error(defaultErrors.join('\n'));
+    const result = normalizeCharacterDemographics(normalizeEquipmentRarities(data), normalizedDefaults),
       errors = validate(result);
     if (errors.length) throw new Error(errors.join('\n'));
-    let normalizedDefaults = defaults,
-      defaultErrors = validate(normalizedDefaults);
-    if (defaultErrors.length) {
-      normalizedDefaults = normalizeEquipmentRarities(defaults);
-      defaultErrors = validate(normalizedDefaults);
-    }
-    if (defaultErrors.length) throw new Error(defaultErrors.join('\n'));
     const defaultCharacters = new Map(normalizedDefaults.characters.map(character => [character.id, character])),
       party = new Set(result.rules.party);
     const builtinIds = new Set(['moonsteel_blade', 'starward_armor', 'eclipse_robe', 'starlight_blade']),

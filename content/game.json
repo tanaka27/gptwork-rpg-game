@@ -5,12 +5,16 @@
       "id": "astel",
       "name": "アステル",
       "job": "星剣士",
+      "age": 21,
+      "gender": "男性",
       "speed": 12
     },
     {
       "id": "rina",
       "name": "リナ",
       "job": "弓使い",
+      "age": 20,
+      "gender": "女性",
       "speed": 18,
       "stats": {
         "baseHP": 64,
@@ -31,6 +35,8 @@
       "id": "gald",
       "name": "ガルド",
       "job": "戦士",
+      "age": 35,
+      "gender": "男性",
       "speed": 7,
       "stats": {
         "baseHP": 100,
@@ -51,6 +57,8 @@
       "id": "noel",
       "name": "ノエル",
       "job": "僧侶",
+      "age": 21,
+      "gender": "男性",
       "speed": 14,
       "stats": {
         "baseHP": 68,

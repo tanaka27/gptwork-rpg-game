@@ -600,7 +600,7 @@ function characterStatusCard(a, i, headingId = 'characterName') {
         `<div class="character-panel" role="tabpanel" id="${prefix}-panel-${key}" data-character-panel="${key}" aria-labelledby="${prefix}-tab-${key}"${characterTab === key ? '' : ' hidden'}>${panels[key]}</div>`
     )
     .join('');
-  return `<article class="character-card" aria-label="${a.name}のステータス" data-character-card="${i}"><div class="character-heading">${characterPortrait(a.characterId)}<h2 tabindex="-1" id="${headingId}">${a.name}</h2><span>Lv. ${state.lv} · ${allyHP(i) <= 0 ? '戦闘不能' : '行動可能'}</span></div><p>${i ? '仲間' : '主人公'} · ${initialParty[i].job || '冒険者'} · コマンド操作（レベル・経験値は旅団共通）</p><div class="character-tabs" role="tablist" aria-label="${a.name}の表示内容">${tabs}</div>${panelMarkup}</article>`;
+  return `<article class="character-card" aria-label="${a.name}のステータス" data-character-card="${i}"><div class="character-heading">${characterPortrait(a.characterId)}<div class="character-name-stack"><h2 tabindex="-1" id="${headingId}">${a.name}</h2><small class="character-demographics">${initialParty[i].age}歳 · ${initialParty[i].gender}</small></div><span>Lv. ${state.lv} · ${allyHP(i) <= 0 ? '戦闘不能' : '行動可能'}</span></div><p>${i ? '仲間' : '主人公'} · ${initialParty[i].job || '冒険者'} · コマンド操作（レベル・経験値は旅団共通）</p><div class="character-tabs" role="tablist" aria-label="${a.name}の表示内容">${tabs}</div>${panelMarkup}</article>`;
 }
 function selectCharacterTab(card, key, focus = false) {
   if (!characterTabs.some(([tab]) => tab === key)) return;

@@ -144,6 +144,11 @@ test('酒場で街のNPC冒険者詳細を確認し、探索・道中行動tick�
     Math.min(detailControls.detailBottom, detailControls.menuBottom, detailControls.viewportHeight)
   );
   await expect(page.locator('#tavernAdventurerDetailContent h3')).toHaveText(firstName);
+  const expectedDemographics = await page.evaluate(id => {
+    const adventurer = AdventurerRules.list().find(member => member.id === id);
+    return `${adventurer.age}歳 · ${adventurer.gender}`;
+  }, firstId);
+  await expect(page.locator('.tavern-adventurer-demographics')).toHaveText(expectedDemographics);
   const detailImage = page.locator('.tavern-adventurer-detail-portrait');
   await expect(detailImage).toHaveAttribute('src', `assets/characters/${firstId}.webp`);
   await expect.poll(() => detailImage.evaluate(image => image.complete && image.naturalWidth === 512 && image.naturalHeight === 768)).toBe(true);

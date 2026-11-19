@@ -9,6 +9,7 @@ test('仲間の詳細をタブで切り替え、装備を押して装備詳細�
  await page.evaluate(()=>{state.lv=12;state.owned.push('moonsteel_blade','eclipse_robe');state.companions[0].weapon='moonsteel_blade';state.companions[0].armor='eclipse_robe';render();});
  await page.locator('[data-screen="party"]').click();await page.locator('[data-character="1"]').click();
  const detail=page.locator('#partyDetails');
+ await expect(detail.locator('.character-demographics')).toHaveText('20歳 · 女性');
  const tabs=detail.locator('[role="tab"]');
  await expect(tabs).toHaveText(['能力','装備','特技','状態']);
  await expect(detail.locator('[data-character-tab="stats"]')).toHaveAttribute('aria-selected','true');
@@ -70,6 +71,7 @@ test('冒険画面のステータス表示でもタブと装備詳細を使え�
  await page.locator('[data-battle-character="0"]').click();
  const modal=page.locator('#modal');
  await expect(modal).toBeVisible();
+ await expect(modal.locator('.character-demographics')).toHaveText('21歳 · 男性');
  await modal.locator('[data-character-tab="gear"]').click();
  await modal.locator('[data-character-gear]').nth(0).click();
  await expect(modal.locator('[data-gear-detail]:visible h3')).toHaveText('旅人の剣');

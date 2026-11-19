@@ -20,6 +20,15 @@ for(const id of monsterArtIds){
 assert.ok(monsterArtTotal<=Math.round(1.2*1024*1024),'monster art stays within the collection budget');
 console.log(`PASS: ${monsterArtIds.length} unique transparent monster illustrations, ${monsterArtTotal} bytes`);
 assert.deepEqual(content.characters.map(c=>c.job),['星剣士','弓使い','戦士','僧侶']);
+assert.deepEqual(content.characters.map(({age,gender})=>[age,gender]),[[21,'男性'],[20,'女性'],[35,'男性'],[21,'男性']]);
+for(const mutate of [d=>delete d.characters[0].age,d=>d.characters[0].age=-1,d=>d.characters[0].age=120.5,d=>d.characters[0].age=121,d=>delete d.characters[0].gender,d=>d.characters[0].gender='未知']){const changed=structuredClone(content);mutate(changed);assert.ok(validate(changed).length,'character demographics are required and range-checked');}
+const legacyDemographics=structuredClone(content);legacyDemographics.characters.forEach(character=>{delete character.age;delete character.gender;});
+const demographicsRuntime=withJobs(legacyDemographics,content);
+assert.deepEqual(demographicsRuntime.characters.map(({age,gender})=>[age,gender]),[[21,'男性'],[20,'女性'],[35,'男性'],[21,'男性']],'legacy character metadata is supplemented from bundled defaults');
+assert.equal(Object.hasOwn(legacyDemographics.characters[0],'age'),false,'compatibility does not mutate the stored definition');
+const explicitDemographics=structuredClone(legacyDemographics);explicitDemographics.characters[0].age=17;explicitDemographics.characters[0].gender='その他';
+const explicitDemographicsRuntime=withJobs(explicitDemographics,content);assert.deepEqual([explicitDemographicsRuntime.characters[0].age,explicitDemographicsRuntime.characters[0].gender],[17,'その他'],'valid explicit metadata is preserved');
+for(const mutate of [d=>d.characters[0].age=-1,d=>d.characters[0].gender='invalid']){const changed=structuredClone(explicitDemographics);mutate(changed);assert.throws(()=>withJobs(changed,content),/(age|gender)/,'explicit invalid demographics are rejected');}
 assert.deepEqual(content.rules.party.map(id=>rules.skillsForCharacter(content,id).length),[7,4,4,4]);
 assert.equal(content.skills.filter(s=>s.characterId===undefined).length,0,'all bundled skills state their owner');
 for(const mutate of [d=>d.skills[0].characterId='unknown',d=>d.skills[0].target='self',d=>d.skills.find(s=>s.id==='gald_kiai').target='enemy',d=>d.skills.find(s=>s.id==='heal').target='allEnemies',d=>d.skills.find(s=>s.id==='inspire').target='allEnemies',d=>d.skills.find(s=>s.id==='flame').target='ally']){const changed=structuredClone(content);mutate(changed);assert.ok(validate(changed).length,'owner and target fields are checked');}
@@ -39,6 +48,7 @@ const custom=structuredClone(oldDefinition);custom.characters.find(c=>c.id==='ri
 assert.equal(customResult.characters.find(c=>c.id==='rina').job,'野伏');assert.equal(rules.skillsForCharacter(customResult,'rina').length,0,'explicit custom job preserves deliberate skill removal');
 const unknown=structuredClone(oldDefinition);unknown.characters[1]={id:'traveler',name:'旅人',speed:9};unknown.rules.party[1]='traveler';const unknownResult=withJobs(unknown,content);
 assert.equal(unknownResult.characters[1].job,'冒険者');assert.equal(rules.skillsForCharacter(unknownResult,'traveler').length,0);
+assert.deepEqual([unknownResult.characters[1].age,unknownResult.characters[1].gender],[18,'未設定'],'legacy custom characters receive visible fallback metadata');
 const colliding=structuredClone(oldDefinition);colliding.skills.push({...structuredClone(content.skills.find(s=>s.id==='rina_aimed_shot')),characterId:'astel'});
 const collisionResult=withJobs(colliding,content),fallbackCollision=collisionResult.skills.find(s=>s.characterId==='rina'&&s.name==='ねらい撃ち');
 assert.ok(fallbackCollision&&fallbackCollision.id!=='rina_aimed_shot'&&fallbackCollision.id.length<=64&&/^[a-z][a-z0-9_-]*$/.test(fallbackCollision.id));

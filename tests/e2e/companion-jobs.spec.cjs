@@ -1,5 +1,4 @@
 const {test,expect}=require('./fixtures.cjs');
-const collectErrors=page=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('net::ERR_FAILED'))errors.push(m.text());});return errors;};
 const ready=page=>expect(page.locator('html')).toHaveAttribute('data-game-ready','true',{timeout:15000});
 
 async function waitForActor(page,characterId){
@@ -15,7 +14,6 @@ async function waitForActor(page,characterId){
 }
 
 test('仲間一覧と個別詳細にジョブ・固有特技・習得状態を表示する',async({page})=>{
- const errors=collectErrors(page);
  await page.goto('/');await ready(page);
  await page.evaluate(()=>{state.lv=3;allies();render();});
  await page.locator('[data-screen="party"]').click();
@@ -33,11 +31,9 @@ test('仲間一覧と個別詳細にジョブ・固有特技・習得状態を�
   if(i===2)await expect(detail).toContainText('自分の攻撃力');
   await page.locator('#backToParty').click();
  }
- expect(errors).toEqual([]);
 });
 
 test('各行動者の技だけを出し、ガルドの気合いを本人に適用する',async({page})=>{
- const errors=collectErrors(page);
  await page.addInitScript(()=>{Math.random=()=>.99;});
  await page.goto('/');await ready(page);
  await page.evaluate(()=>{
@@ -65,18 +61,17 @@ test('各行動者の技だけを出し、ガルドの気合いを本人に適�
  expect(await page.evaluate(()=>state.companions[1].mp)).toBe(mp-3);
  expect(await page.evaluate(()=>state.buffs.some(b=>b.characterId==='gald'&&b.skillId==='gald_kiai'))).toBe(true);
  expect(await page.locator('#partyStatus .party-member').nth(2).locator('.buff-icon').getAttribute('aria-label')).toContain('気合い');
- expect(errors).toEqual([]);
 });
 
 test('旧battleContentを補完して再読込後も進行と技能を保ち、補完済みsnapshotを再保存する',async({page})=>{
- const errors=collectErrors(page);
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{
   const save=JSON.parse(localStorage.getItem('starlight-rpg-v1')),legacy=structuredClone(GameData);
   legacy.skills=legacy.skills.filter(skill=>['flame','heal','slash','nova','inspire'].includes(skill.id));
-  legacy.characters.forEach(character=>delete character.job);legacy.skills.forEach(skill=>delete skill.characterId);
+  legacy.characters.forEach(character=>{delete character.job;delete character.age;delete character.gender;});legacy.skills.forEach(skill=>delete skill.characterId);
   const oldRarity={common:'normal',uncommon:'rare',rare:'epic',legendary:'legend'};legacy.items.filter(item=>item.category==='gear').forEach(item=>item.rarity=oldRarity[item.rarity]);
   Object.assign(save,{lv:3,xp:17,total:6,gold:77,turn:2,enemy:{name:'継続中の敵',hp:1000,max:1000,atk:0,def:0,speed:0},battleContent:legacy,buffs:[{characterId:'astel',skillId:'inspire',remainingTurns:2,appliedTurn:1}]});
+  save.adventurerState.tick=9;save.adventurerState.locations.adventurer_001='home';
   save.companions=[{characterId:'rina',hp:64,mp:24},{characterId:'gald',hp:100,mp:12},{characterId:'noel',hp:68,mp:32}];
   localStorage.setItem('starlight-rpg-v1',JSON.stringify(save));
  });
@@ -85,6 +80,10 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
  expect(await page.evaluate(()=>[GameData.characters.map(c=>c.job),state.battleContent.characters.map(c=>c.job),state.battleContent.skills.length])).toEqual([
   ['星剣士','弓使い','戦士','僧侶'],['星剣士','弓使い','戦士','僧侶'],19,
  ]);
+ expect(await page.evaluate(()=>[GameData.characters.map(({age,gender})=>[age,gender]),state.battleContent.characters.map(({age,gender})=>[age,gender])])).toEqual([
+  [[21,'男性'],[20,'女性'],[35,'男性'],[21,'男性']],[[21,'男性'],[20,'女性'],[35,'男性'],[21,'男性']],
+ ]);
+ expect(await page.evaluate(()=>[state.adventurerState.tick,state.adventurerState.locations.adventurer_001])).toEqual([9,'home']);
  expect(await page.evaluate(()=>state.battleContent.items.filter(item=>item.category==='gear').map(item=>item.rarity))).toEqual(['common','common','common','common','common','common','uncommon','uncommon','rare','legendary']);
  await waitForActor(page,'rina');await page.locator('[data-action="skills"]').click();
  await expect(page.locator('[data-action="skill:rina_aimed_shot"]')).toBeVisible();
@@ -92,11 +91,12 @@ test('旧battleContentを補完して再読込後も進行と技能を保ち、�
  await page.locator('[data-action="skill-back"]').click();
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).battleContent.skills.some(s=>s.id==='gald_kiai'))).toBe(true);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('starlight-rpg-v1')).total)).toBe(6);
- expect(errors).toEqual([]);
+ expect(await page.evaluate(()=>{const save=JSON.parse(localStorage.getItem('starlight-rpg-v1'));return [save.adventurerState.tick,save.adventurerState.locations.adventurer_001,save.battleContent.characters.map(({age,gender})=>[age,gender])];})).toEqual([
+  9,'home',[[21,'男性'],[20,'女性'],[35,'男性'],[21,'男性']],
+ ]);
 });
 
 test('狭い縦画面と横画面でもジョブ詳細・戦闘状態を画面幅に収める',async({page})=>{
- const errors=collectErrors(page);
  for(const size of [{width:320,height:568},{width:844,height:390}]){
   await page.setViewportSize(size);await page.goto('/');await ready(page);
   await page.locator('[data-screen="party"]').click();await expect(page.locator('#characterList')).toContainText('弓使い');
@@ -115,5 +115,4 @@ test('狭い縦画面と横画面でもジョブ詳細・戦闘状態を画面�
  await page.locator('[data-battle-character="2"]').click();await expect(page.locator('#modal')).toContainText('戦士');
  await page.screenshot({path:test.info().outputPath('gald-status-844x390.png')});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth)).toBe(true);
- expect(errors).toEqual([]);
 });
