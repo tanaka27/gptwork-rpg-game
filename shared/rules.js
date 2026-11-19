@@ -457,7 +457,7 @@
   }
   // 装備の個体。セーブの gear が所持品の正本で、owned・weapon・armor は装備IDの写し。
   const gearSlots = ['weapon', 'armor'],
-    gearRarityIds = ['common', 'uncommon', 'rare', 'legendary'],
+    gearRarityIds = ['common', 'uncommon', 'rare', 'epic', 'legendary'],
     gearStorageLimit = 30;
   function gearBase(data, id) {
     return data.items.find(item => item.id === id && item.category === 'gear') || null;
@@ -490,7 +490,7 @@
     ];
   }
   // ドロップ時の抽選。固有装備と抽選ルールのない定義では、常に標準品になる。
-  const gearEffectCounts = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+  const gearEffectCounts = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
   function gearRollable(data, base) {
     return !!data.rules?.gearRoll && !!base && base.unique !== true;
   }
@@ -510,7 +510,8 @@
     let total = 0,
       rarity = 'common';
     for (const id of gearRarityIds) {
-      total += roll.rarityRates[id];
+      // 0.5+0.3+0.125+0.05 が 0.9750000000000001 になるような浮動小数点の誤差を、境界の判定から除く。
+      total = Math.round((total + roll.rarityRates[id]) * 1e9) / 1e9;
       if (pick < total) {
         rarity = id;
         break;
@@ -550,6 +551,34 @@
       seen.add(effect.stat);
       const [low, high] = gearAmountRange(data, base, instance.rarity, effect.stat);
       return Number.isSafeInteger(effect.amount) && effect.amount >= low && effect.amount <= high;
+    });
+  }
+  // 抽選ルールの変更に合わせて個体を直す（読み込み時）。旧4段階のレジェンダリー（追加効果3つ）はエピックにし、
+  // 形が正しい抽選品の数値は今の範囲へ収める。範囲外の値は標準品に戻さず、最も近い範囲内の値にする。
+  function migrateGearInstance(data, instance) {
+    const base = gearBase(data, instance.baseId);
+    if (!gearRollable(data, base) || !Array.isArray(instance.bonusEffects)) return;
+    const standard = standardGear(base);
+    if (
+      instance.rarity === standard.rarity &&
+      JSON.stringify(standard.bonusEffects) ===
+        JSON.stringify(instance.bonusEffects.map(effect => ({ stat: effect?.stat, amount: effect?.amount })))
+    )
+      return;
+    if (instance.rarity === 'legendary' && instance.bonusEffects.length === gearEffectCounts.epic)
+      instance.rarity = 'epic';
+    if (!gearRarityIds.includes(instance.rarity) || instance.bonusEffects.length !== gearEffectCounts[instance.rarity])
+      return;
+    const stats = instance.bonusEffects.map(effect => effect?.stat);
+    if (
+      new Set(stats).size !== stats.length ||
+      stats.some(stat => !Object.hasOwn(data.rules.gearRoll.statRates, stat)) ||
+      instance.bonusEffects.some(effect => !Number.isSafeInteger(effect.amount))
+    )
+      return;
+    instance.bonusEffects = instance.bonusEffects.map(effect => {
+      const [low, high] = gearAmountRange(data, base, instance.rarity, effect.stat);
+      return { stat: effect.stat, amount: Math.min(high, Math.max(low, effect.amount)) };
     });
   }
   function memberGear(state, data, index, slot) {
@@ -603,6 +632,7 @@
       seen.add(e.uid);
       return true;
     });
+    for (const instance of state.gear) migrateGearInstance(data, instance);
     for (const instance of state.gear)
       if (!gearInstanceValid(data, instance)) Object.assign(instance, standardGear(gearBase(data, instance.baseId)));
     const maxUid = state.gear.reduce((max, e) => Math.max(max, e.uid), 0);
@@ -672,7 +702,7 @@
     return errors;
   }
   // 売却額：基準額（ショップ価格の半分、非売品は装備Lv×10）にレアリティの倍率を掛ける。
-  const gearSellMultipliers = { common: 1, uncommon: 1.5, rare: 2.5, legendary: 5 };
+  const gearSellMultipliers = { common: 1, uncommon: 1.5, rare: 2.5, epic: 3.5, legendary: 5 };
   function gearSellPrice(item) {
     const base = item?.price > 0 ? Math.floor(item.price / 2) : gearLevel(item) * 10;
     return Math.floor(base * (gearSellMultipliers[item?.rarity] ?? 1));

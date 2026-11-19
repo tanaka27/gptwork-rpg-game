@@ -13,6 +13,7 @@ assert.equal(rules.gearSellPrice(item('iron')), 35);
 assert.equal(rules.gearSellPrice(item('iron', 'uncommon')), 52);
 assert.equal(rules.gearSellPrice(item('iron', 'rare')), 87);
 assert.equal(rules.gearSellPrice(item('iron', 'legendary')), 175);
+assert.equal(rules.gearSellPrice(item('iron', 'epic')), 122, 'epic multiplier 3.5 rounds down');
 assert.equal(rules.gearSellPrice(item('moonsteel_blade')), 315);
 assert.equal(rules.gearSellPrice(item('twig')), 10);
 assert.equal(rules.gearSellPrice(item('eclipse_robe')), 300);
@@ -20,7 +21,7 @@ assert.equal(rules.gearSellPrice(item('starlight_blade')), 800);
 
 const app = boot(null, true);
 app.run("allies();state.node='home';state.village=true;state.journey=null;state.gold=0");
-const ironUid = app.run("GameRules.addGear(state,GameData,'iron',(()=>{const r=[.995,.5,.5,.5,.5,.5,.5];return()=>r.shift();})()).uid");
+const ironUid = app.run("GameRules.addGear(state,GameData,'iron',(()=>{const r=[.995,.5,.5,.5,.5,.5,.5,.5,.5];return()=>r.shift();})()).uid");
 // 2段階：売却ボタンで確認を出し、確定で売る。やめると何も変わらない。
 app.run(`selectedGearId='${ironUid}';gearDetailOrigin='bag';tab='bag';action('sell-gear:${ironUid}')`);
 assert.equal(app.run('pendingSellUid'), ironUid);

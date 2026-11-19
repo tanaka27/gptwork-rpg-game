@@ -16,7 +16,10 @@
     'defenseDown',
   ];
   const debuffEffectTypes = ['attackDown', 'defenseDown'];
-  const equipmentRarities = ['common', 'uncommon', 'rare', 'legendary'];
+  const equipmentRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+  // レアリティごとの追加効果の個数。レジェンダリーの定義は、固有装備と旧定義のために3つも認める。
+  const gearEffectCounts = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4 };
+  const rolledRarities = equipmentRarities.filter(id => id !== 'common');
   const bonusEffectStats = ['maxHP', 'maxMP', 'attack', 'defense', 'wisdom', 'speed', 'luck'];
   const safeId = id => typeof id === 'string' && /^[a-z][a-z0-9_-]{0,63}$/.test(id);
   // ドロップ装備の抽選ルール。確率は合計1、係数は能力ごとの装備Lv1あたりの値、幅は倍率の[最小, 最大]。
@@ -31,7 +34,7 @@
       Object.keys(rates).length !== equipmentRarities.length ||
       equipmentRarities.some(id => !(rates[id] >= 0 && rates[id] <= 1))
     )
-      add(path + '.rarityRates', '4つのレアリティに0〜1の確率が必要です');
+      add(path + '.rarityRates', '5つのレアリティに0〜1の確率が必要です');
     else if (Math.abs(equipmentRarities.reduce((sum, id) => sum + rates[id], 0) - 1) > 1e-9)
       add(path + '.rarityRates', '確率の合計は1にしてください');
     const stats = roll.statRates;
@@ -39,25 +42,28 @@
       !stats ||
       typeof stats !== 'object' ||
       Array.isArray(stats) ||
-      Object.keys(stats).length < 3 ||
+      Object.keys(stats).length < gearEffectCounts.legendary ||
       Object.entries(stats).some(
         ([stat, rate]) => !bonusEffectStats.includes(stat) || !Number.isFinite(rate) || rate <= 0 || rate > 1000
       )
     )
-      add(path + '.statRates', '3種類以上の能力値に0より大きく1000以下の係数が必要です');
+      add(path + '.statRates', '4種類以上の能力値に0より大きく1000以下の係数が必要です');
     const ranges = roll.rarityRanges;
     if (
       !ranges ||
       typeof ranges !== 'object' ||
-      Object.keys(ranges).length !== 3 ||
-      ['uncommon', 'rare', 'legendary'].some(
+      Object.keys(ranges).length !== rolledRarities.length ||
+      rolledRarities.some(
         id =>
           !Array.isArray(ranges[id]) ||
           ranges[id].length !== 2 ||
           !(ranges[id][0] > 0 && ranges[id][0] <= ranges[id][1] && ranges[id][1] <= 10)
       )
     )
-      add(path + '.rarityRanges', 'アンコモン・レア・レジェンダリーに0より大きく10以下の[最小, 最大]が必要です');
+      add(
+        path + '.rarityRanges',
+        'アンコモン・レア・エピック・レジェンダリーに0より大きく10以下の[最小, 最大]が必要です'
+      );
   }
   function validate(data) {
     const errors = [];
@@ -253,7 +259,7 @@
         e.itemIds.forEach(id => {
           ref('items', id, 'shops.' + e.id + '.itemIds');
           const item = data.items.find(row => row.id === id);
-          if (item?.category === 'gear' && ['rare', 'legendary'].includes(item.rarity ?? 'common'))
+          if (item?.category === 'gear' && ['rare', 'epic', 'legendary'].includes(item.rarity ?? 'common'))
             add('shops.' + e.id + '.itemIds', 'ショップにはコモン/アンコモン装備だけを置けます: ' + id);
         });
     }
@@ -309,11 +315,15 @@
         if (hasRarity !== hasBonus) add(path, 'rarityとbonusEffectsを両方指定してください');
         if (hasRarity || hasBonus) {
           if (!equipmentRarities.includes(e.rarity))
-            add(path + '.rarity', 'common/uncommon/rare/legendaryのいずれかが必要です');
+            add(path + '.rarity', 'common/uncommon/rare/epic/legendaryのいずれかが必要です');
           if (!Array.isArray(e.bonusEffects)) add(path + '.bonusEffects', '追加効果の配列が必要です');
           else {
-            const required = { common: 0, uncommon: 1, rare: 2, legendary: 3 }[e.rarity];
-            if (required !== undefined && e.bonusEffects.length !== required)
+            const required = gearEffectCounts[e.rarity];
+            if (
+              required !== undefined &&
+              e.bonusEffects.length !== required &&
+              !(e.rarity === 'legendary' && e.bonusEffects.length === 3)
+            )
               add(path + '.bonusEffects', 'レアリティに合う個数の追加効果が必要です');
             const seen = new Set();
             e.bonusEffects.forEach((effect, i) => {
@@ -398,13 +408,18 @@
   function normalizeEquipmentRarities(data) {
     if (!data || typeof data !== 'object') return data;
     const result = JSON.parse(JSON.stringify(data));
+    // エピックのない4段階の旧抽選ルールは外し、withJobs で同梱定義の5段階ルールを補う。
+    const roll = result.rules?.gearRoll;
+    if (roll && typeof roll === 'object' && roll.rarityRates && !Object.hasOwn(roll.rarityRates, 'epic'))
+      delete result.rules.gearRoll;
     for (const item of Array.isArray(result.items) ? result.items : []) {
       if (item?.category !== 'gear') continue;
       if (!Object.hasOwn(item, 'rarity') && !Object.hasOwn(item, 'bonusEffects')) {
         item.rarity = 'common';
         item.bonusEffects = [];
       } else if (item.rarity === 'normal') item.rarity = 'common';
-      else if (item.rarity === 'epic') item.rarity = 'rare';
+      // 廃止した旧ID（normal/rare/epic/legend）の epic は、追加効果2つの今のレア。
+      else if (item.rarity === 'epic' && item.bonusEffects?.length !== gearEffectCounts.epic) item.rarity = 'rare';
       else if (item.rarity === 'legend') item.rarity = 'legendary';
       else if (item.rarity === 'rare' && Array.isArray(item.bonusEffects) && item.bonusEffects.length === 1)
         item.rarity = 'uncommon';

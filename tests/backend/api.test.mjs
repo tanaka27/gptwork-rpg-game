@@ -132,7 +132,7 @@ test('gear instances round-trip through cloud saves and forged or broken instanc
    assert.equal((await app.call('/api/save','PUT',{revision:saved.body.revision,state:invalid})).status,422);
   }
   // 抽選された個体（星銀のつるぎのレア）は範囲内なら保存でき、範囲外は拒否する。
-  const rolled={...state,gear:[...state.gear,{uid:4,baseId:'star',rarity:'rare',bonusEffects:[{stat:'attack',amount:3},{stat:'luck',amount:2}]}],nextGearUid:5,owned:['twig','cloth','iron','star']};
+  const rolled={...state,gear:[...state.gear,{uid:4,baseId:'star',rarity:'rare',bonusEffects:[{stat:'attack',amount:3},{stat:'luck',amount:4}]}],nextGearUid:5,owned:['twig','cloth','iron','star']};
   const accepted=await app.call('/api/save','PUT',{revision:saved.body.revision,state:rolled});assert.equal(accepted.status,200);
   const forged=structuredClone(rolled);forged.gear[3].bonusEffects[0].amount=9;
   assert.equal((await app.call('/api/save','PUT',{revision:accepted.body.revision,state:forged})).status,422);

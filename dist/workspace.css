@@ -2362,6 +2362,9 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 .gear-rarity-rare {
   --rarity-color: #a58ce6;
 }
+.gear-rarity-epic {
+  --rarity-color: #df74b4;
+}
 .gear-rarity-legendary {
   --rarity-color: #e8bf6c;
 }
@@ -2378,6 +2381,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   background-size: 500% 200%;
 }
 .gear-image.gear-rarity-rare,
+.gear-image.gear-rarity-epic,
 .gear-image.gear-rarity-legendary {
   box-shadow: 0 0 6px color-mix(in srgb, var(--rarity-color) 70%, transparent);
 }

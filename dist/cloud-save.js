@@ -65,6 +65,8 @@
   };
   async function restore(saved) {
     if (busy || roundActive) return;
+    // 抽選ルールの変更前に保存した装備も、読み込み時と同じ正規化を通してから検証する。
+    saved = SaveRules.prepareForLoad(saved, GameData);
     const errors = SaveRules.validate(saved, GameData);
     if (errors.length) throw new Error(errors.join('\n'));
     if (!confirm('このセーブを復元しますか？ 現在の進行は復元前バックアップとしてこのブラウザへ残します。')) return;

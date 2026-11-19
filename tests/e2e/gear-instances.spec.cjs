@@ -51,22 +51,30 @@ test('旧セーブの装備を1人1本の個体へ移行し、他の人の装備
 
 test('ドロップした装備は1本ずつ抽選されたレアリティと追加効果を一覧・詳細・キャラクター詳細に表示する',async({page})=>{
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
- // 火山で星銀のつるぎ（Lv10）をレジェンダリーとレアで1本ずつ拾う。
+ // 火山で星銀のつるぎ（Lv10）をレジェンダリー・レア・エピックで1本ずつ拾う。
  await page.evaluate(()=>{
   Object.assign(state,{lv:10,zone:2,node:'ash',village:false,journey:null,enemy:null,cleared:[true,true,false]});
-  const queue=[0,0,.995,0,.5,1/5,.5,1/4,.5, 0,0,.95,.2,.5,.6,.5];
-  rollEquipmentDrop({boss:false},()=>queue.shift());rollEquipmentDrop({boss:false},()=>queue.shift());render(false);
+  const queue=[0,0,.995,0,.5,1/5,.5,1/4,.5,1/3,.5, 0,0,.85,.2,.5,.6,.5, 0,0,.95,0,.5,0,.5,0,.5];
+  for(let i=0;i<3;i++)rollEquipmentDrop({boss:false},()=>queue.shift());render(false);
  });
  const drops=await page.evaluate(()=>state.gear.filter(e=>e.baseId==='star'));
- expect(drops.map(e=>e.rarity)).toEqual(['legendary','rare']);
- expect(await page.evaluate(()=>state.log.slice(0,2))).toEqual(['星銀のつるぎを発見！［レア］ もちものから装備できる。','星銀のつるぎを発見！［レジェンダリー］ もちものから装備できる。']);
+ expect(drops.map(e=>e.rarity)).toEqual(['legendary','rare','epic']);
+ expect(drops.map(e=>e.bonusEffects.length)).toEqual([4,2,3]);
+ expect(await page.evaluate(()=>state.log.slice(0,3))).toEqual(['星銀のつるぎを発見！［エピック］ もちものから装備できる。','星銀のつるぎを発見！［レア］ もちものから装備できる。','星銀のつるぎを発見！［レジェンダリー］ もちものから装備できる。']);
  await page.locator('[data-screen="bag"]').click();
  const rows=page.locator(bagRow('star'));
- await expect(rows).toHaveCount(2);
+ await expect(rows).toHaveCount(3);
  await expect(rows.nth(0).locator('small .rarity.legendary')).toHaveText('レジェンダリー');
  await expect(rows.nth(1).locator('small .rarity.rare')).toHaveText('レア');
+ await expect(rows.nth(2).locator('small .rarity.epic')).toHaveText('エピック');
  expect(await rows.nth(0).locator('.gear-image').evaluate(node=>getComputedStyle(node).borderTopColor)).toBe('rgb(232, 191, 108)');
  expect(await rows.nth(1).locator('.gear-image').evaluate(node=>getComputedStyle(node).borderTopColor)).toBe('rgb(165, 140, 230)');
+ expect(await rows.nth(2).locator('.gear-image').evaluate(node=>getComputedStyle(node).borderTopColor)).toBe('rgb(223, 116, 180)');
+ expect(await rows.nth(2).locator('small .rarity.epic').evaluate(node=>getComputedStyle(node).color)).toBe('rgb(238, 143, 198)');
+ // レアリティ順はレジェンダリー→エピック→レア。
+ await page.locator('#gearSort').selectOption('rarity');
+ await expect(page.locator(bagRow('star')+' small .rarity')).toHaveText(['レジェンダリー','エピック','レア']);
+ await page.locator('#gearSort').selectOption('acquired');
  await rows.nth(0).locator('[data-action^="gear-detail:"]').click();
  const detail=page.locator('#inventory .gear-detail');
  await expect(detail.locator('.gear-detail-heading .rarity')).toHaveText('レジェンダリー');
@@ -89,7 +97,7 @@ test('ドロップした装備は1本ずつ抽選されたレアリティと追�
  await page.locator('[data-screen="party"]').click();await page.locator('[data-character="0"]').click();
  await page.locator('#partyDetails [data-character-tab="gear"]').click();
  const weapon=page.locator('#partyDetails [data-character-gear]').first();
- await expect(weapon).toContainText('レジェンダリー');await expect(weapon).toContainText('追加効果3');
+ await expect(weapon).toContainText('レジェンダリー');await expect(weapon).toContainText('追加効果4');
  await weapon.click();
  await expect(page.locator('#partyDetails [data-gear-detail="star"] li')).toHaveText(drops[0].bonusEffects.map(e=>`${labels[e.stat]} +${e.amount}`));
  expect(await page.evaluate(()=>SaveRules.validate(state,GameData))).toEqual([]);
@@ -155,4 +163,22 @@ test('もちものの装備を並べ替え・絞り込み、装着中と比べ�
  await expect(detail.locator('.gear-sell-note')).toHaveText('売却額 800 G（街で売却できます）');
  await expect(detail.locator('[data-action^="sell-gear"]')).toHaveCount(0);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('旧4段階のレジェンダリー（追加効果3つ）はエピックになり、抽選値を今の範囲に直す',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.evaluate(()=>{
+  const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+  s.gear.push({uid:s.nextGearUid,baseId:'star',rarity:'legendary',bonusEffects:[{stat:'attack',amount:3},{stat:'speed',amount:2},{stat:'luck',amount:3}]});
+  s.nextGearUid++;s.owned=[...new Set(s.gear.map(e=>e.baseId))];
+  localStorage.setItem('starlight-rpg-v1',JSON.stringify(s));
+ });
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ expect(await page.evaluate(()=>state.gear.find(e=>e.baseId==='star'))).toMatchObject({rarity:'epic',bonusEffects:[{stat:'attack',amount:4},{stat:'speed',amount:3},{stat:'luck',amount:4}]});
+ await page.locator('[data-screen="bag"]').click();
+ await expect(page.locator(bagRow('star')+' small .rarity.epic')).toHaveText('エピック');
+ expect(await page.evaluate(()=>SaveRules.validate(JSON.parse(localStorage.getItem('starlight-rpg-v1')),GameData))).toEqual([]);
+ await page.screenshot({path:test.info().outputPath('legacy-legendary-epic.png')});
+ expect(errors).toEqual([]);
 });

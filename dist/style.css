@@ -827,6 +827,9 @@ dialog button {
 .rarity.rare {
   color: #b8a3ea;
 }
+.rarity.epic {
+  color: #ee8fc6;
+}
 .rarity.legendary {
   color: #e8bf6c;
 }

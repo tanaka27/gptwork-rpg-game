@@ -78,24 +78,25 @@ test('管理画面でドロップ装備の抽選ルールと固有装備を編�
  await expect(editor.locator('legend')).toHaveText('ドロップ装備の抽選');
  await expect(editor.locator('[name="rate-common"]')).toBeDisabled();
  await page.locator('#create').click();await expect(page.locator('#status')).toHaveText('下書きを作成しました。');
- await expect(editor.locator('[name="rate-common"]')).toHaveValue('70');
+ await expect(editor.locator('[name="rate-common"]')).toHaveValue('50');
+ await expect(editor.locator('[name="rate-epic"]')).toHaveValue('5');
  await expect(page.locator('#gearRateTotal')).toHaveText('合計 100％');
  const preview=page.locator('#gearRollPreview');
  await expect(preview.locator('caption')).toContainText('装備Lv10');
- await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+2〜3','+2〜3','+2〜4']);
+ await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+2〜3','+3〜4','+4〜5','+4〜6']);
  // 合計が100％でないと警告し、検証も通らない。
- await editor.locator('[name="rate-common"]').fill('60');await editor.locator('[name="rate-common"]').blur();
+ await editor.locator('[name="rate-common"]').fill('40');await editor.locator('[name="rate-common"]').blur();
  await expect(page.locator('#gearRateTotal')).toHaveText('合計 90％（100％にしてください）');
  await page.locator('#validate').click();await expect(page.locator('#status')).toContainText('確率の合計は1にしてください');
- await editor.locator('[name="rate-legendary"]').fill('11');await editor.locator('[name="rate-legendary"]').blur();
+ await editor.locator('[name="rate-legendary"]').fill('12.5');await editor.locator('[name="rate-legendary"]').blur();
  await expect(page.locator('#gearRateTotal')).toHaveText('合計 100％');
  // 候補の能力を外すとプレビューから消え、係数と倍率の変更が範囲に反映される。
  await editor.locator('[name="stat-maxHP"]').uncheck();
  await expect(preview.locator('th:text-is("最大HP")')).toHaveCount(0);
  await editor.locator('[name="coef-attack"]').fill('0.5');await editor.locator('[name="coef-attack"]').blur();
- await editor.locator('[name="range-legendary-1"]').fill('1.2');await editor.locator('[name="range-legendary-1"]').blur();
+ await editor.locator('[name="range-legendary-1"]').fill('2');await editor.locator('[name="range-legendary-1"]').blur();
  await page.locator('#gearPreviewLevel').fill('20');
- await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+5〜8','+6〜9','+7〜12']);
+ await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+6〜9','+8〜11','+10〜13','+12〜20']);
  // 固有装備のチェックは全装備に表示する。
  await page.locator('#category').selectOption('items');
  await page.locator('#entries button').filter({hasText:'鉄のつるぎ'}).click();
@@ -108,10 +109,28 @@ test('管理画面でドロップ装備の抽選ルールと固有装備を編�
  await page.locator('#save').click();await expect(page.locator('#status')).toHaveText('下書きを保存しました。');
  const id=await page.locator('#versions').inputValue();
  const saved=(await (await page.request.get('/api/admin/versions/'+encodeURIComponent(id))).json()).data;
- expect(saved.rules.gearRoll.rarityRates).toEqual({common:0.6,uncommon:0.22,rare:0.07,legendary:0.11});
+ expect(saved.rules.gearRoll.rarityRates).toEqual({common:0.4,uncommon:0.3,rare:0.125,epic:0.05,legendary:0.125});
  expect(Object.keys(saved.rules.gearRoll.statRates)).not.toContain('maxHP');
- expect(saved.rules.gearRoll.statRates.attack).toBe(0.5);expect(saved.rules.gearRoll.rarityRanges.legendary).toEqual([0.7,1.2]);
+ expect(saved.rules.gearRoll.statRates.attack).toBe(0.5);expect(saved.rules.gearRoll.rarityRanges.legendary).toEqual([1.2,2]);
  expect(saved.items.find(item=>item.id==='iron').unique).toBe(true);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  expect(errors).toEqual([]);
+});
+test('抽選ルールの変更前にクラウドへ保存した装備も、移行してから復元する',async({page})=>{
+ await page.goto('/');await ready(page);
+ const legacy=await page.evaluate(()=>{
+  const s=JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+  s.gear.push({uid:s.nextGearUid,baseId:'star',rarity:'legendary',bonusEffects:[{stat:'attack',amount:3},{stat:'speed',amount:2},{stat:'luck',amount:3}]});
+  s.nextGearUid++;s.owned=[...new Set(s.gear.map(e=>e.baseId))];s.gold=4321;
+  return s;
+ });
+ expect(await page.evaluate(s=>SaveRules.validate(s,GameData).length,legacy)).toBeGreaterThan(0);
+ // 旧ルールのときに保存されたクラウドセーブを返す。
+ await page.route('**/api/save',route=>route.request().method()==='GET'?route.fulfill({json:{state:legacy,revision:1,updatedAt:new Date().toISOString()}}):route.continue());
+ await page.locator('.utility-menu summary').click();await page.locator('#cloudSave').click();await expect(page.locator('#restoreCloud')).toBeEnabled();
+ await page.locator('#restoreCloud').click();await ready(page);
+ const restored=JSON.parse(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1')));
+ expect(restored.gold).toBe(4321);
+ expect(restored.gear.find(e=>e.baseId==='star')).toMatchObject({rarity:'epic',bonusEffects:[{stat:'attack',amount:4},{stat:'speed',amount:3},{stat:'luck',amount:4}]});
+ expect(await page.evaluate(()=>SaveRules.validate(state,GameData))).toEqual([]);
 });

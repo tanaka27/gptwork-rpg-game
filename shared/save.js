@@ -110,5 +110,12 @@
     errors.push(...gameRules.validateDebuffs(state, buffContent));
     return errors;
   }
-  return { validate };
+  // 読み込み時と同じ装備の正規化（旧4段階のレジェンダリーの移行、抽選値の範囲補正）を複製へ適用する。
+  function prepareForLoad(state, content) {
+    if (state?.v !== 2 || !Array.isArray(state.gear)) return state;
+    const copy = JSON.parse(JSON.stringify(state));
+    gameRules.normalizeGear(copy, content);
+    return copy;
+  }
+  return { validate, prepareForLoad };
 });
