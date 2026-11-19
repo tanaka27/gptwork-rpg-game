@@ -11,10 +11,10 @@
 
 ## 2026-11-19 — キャラクターの年齢・性別
 
-- 初期仲間4人と酒場のNPC冒険者100人に、既存画像に基づく架空の年齢と性別を設定。仲間詳細・戦闘ステータス詳細・酒場NPC詳細では名前の下に表示（[設計書](docs/plans/2026-11-19-character-demographics.md)）。
+- 初期仲間4人と酒場のNPC冒険者100人に、既存画像に基づく架空の年齢と性別を設定。仲間詳細・戦闘ステータス詳細・酒場NPC詳細では名前の下に表示（[設計書](docs/history/plans/2026-11-19-character-demographics.md)）。
 - 旧定義・戦闘snapshotの不足属性を読み込み時に補い、有効な明示値とセーブ済みの進行を保持。セーブ形式・DB schemaは変更なし。
 - `npm test` とPC / mobileの対象E2E 14件に成功。スクリーンショットを目視し、表示とmobile幅を確認。iOS / Android実機は未確認。
-- GitHubへのpush・Sites反映は親レビュー待ち。
+- GitHub `59ed303` を反映。Sitesソース `d156c47`、version 70、deployment `appgdep_6afeaa2cb60c81918a8ac6c5b4169d4a` 成功。
 
 ## 2026-11-19 — 静的素材のキャッシュ（ETagと304）
 
