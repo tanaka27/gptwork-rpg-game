@@ -57,6 +57,8 @@ npm run test:e2e -- --project=admin-mobile tests/e2e/backend.spec.cjs
 
 共通fixture（`tests/e2e/fixtures.cjs`）は、送り回数を数えるspecのため戦闘メッセージを手動送りにします（`messageMode` option、既定 `manual`）。戦闘メッセージを送ったかどうかは、文の変化ではなく、メッセージ欄 `#fieldMessage` の通し番号 `data-message-seq` で判定します（同じ文が続くことがあるため）。`tests/e2e/party-helpers.cjs` の `messageSeq` と `expectMessageAdvanced` を使ってください。自動送りを確認するspecは `test.use({messageMode:null})` で外します（例：`message-auto.spec.cjs`）。ロジックテストの `tests/game/boot.cjs` も同じく手動送りが既定です。
 
+装備のドロップ（`rollEquipmentDrop`・`GameRules.rollGear`・`addGear` に乱数関数を渡す場合）は、乱数が0以上1未満の数値でないと `RangeError`（「抽選の乱数は0以上1未満の数値が必要です」）を投げ、所持品を変えません。テストで用意する乱数の列は、13%判定・候補・レアリティ・追加効果ごとの能力と倍率（レジェンダリーなら4組）の分だけ必要です。足りないと、どこで尽きたかがエラーで分かります。
+
 ### Playwright MCPによる探索
 
 探索やaccessibility snapshotの確認に `npm run qa:mcp` を使う場合だけ、[Playwright MCPの手順](PLAYWRIGHT_MCP.md)を読みます。

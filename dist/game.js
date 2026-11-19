@@ -228,9 +228,9 @@ function rollMaterials(e, rng = Math.random) {
   return drops;
 }
 function rollEquipmentDrop(e, rng = Math.random) {
-  if (e?.boss || rng() >= 0.13) return null;
+  if (e?.boss || GameRules.drawRandom(rng) >= 0.13) return null;
   const candidates = zones[state.zone].equipmentDropIds || [zones[state.zone].bonusItemId].filter(Boolean),
-    id = candidates.length ? candidates[Math.floor(rng() * candidates.length)] : null;
+    id = candidates.length ? candidates[Math.floor(GameRules.drawRandom(rng) * candidates.length)] : null;
   // 同じ装備も新しい1本として加える。固有装備以外はレアリティと追加効果を抽選する。
   if (id && gear[id] && !gearStorageFull()) {
     const instance = GameRules.addGear(state, GameData, id, rng);

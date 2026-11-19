@@ -34,6 +34,11 @@ let consumed = 0;
 assert.deepEqual(rules.rollGear(data, 'eclipse_robe', () => { consumed++; return 0.999; }), {rarity: 'rare', bonusEffects: [{stat: 'maxHP', amount: 20}, {stat: 'wisdom', amount: 4}]});
 assert.equal(consumed, 0);
 
+// 不正な乱数（用意した乱数が尽きた undefined、NaN、範囲外、文字列）は、不正な個体を作らずにエラーにする。
+for (const bad of [undefined, NaN, 1, -0.1, Infinity, '0.5'])
+  assert.throws(() => rules.rollGear(data, 'star', sequence([0.995, bad])), /抽選の乱数は0以上1未満の数値が必要です/, String(bad));
+assert.throws(() => rules.rollGear(data, 'star', (() => { const r = [0.995, 0, 0.5, 0, 0.5, 0, 0.5, 0]; return () => r.shift(); })()), /: undefined/, 'running out before the fourth amount');
+assert.doesNotThrow(() => rules.rollGear(data, 'star', sequence([0.999999, 0, 0, 0, 0, 0, 0, 0, 0])));
 // 分布と範囲：多数の抽選がすべて検証を通り、確率がおおむね定義どおり。
 const counts = {common: 0, uncommon: 0, rare: 0, epic: 0, legendary: 0}, rng = seeded(42), maxima = {};
 for (let i = 0; i < 40000; i++) {
@@ -148,6 +153,11 @@ assert.deepEqual(saves.validate(savedState, data), []);
 const reloaded = boot(JSON.stringify(savedState), true);
 reloaded.run('allies()');
 assert.deepEqual(JSON.parse(reloaded.run(`JSON.stringify(state.gear.find(e=>e.uid===${dropped.uid}))`)), dropped, 'rolled values survive reload and normalization');
+// ドロップでも、乱数が尽きたら所持品・ログ・通し番号を変えずにエラーにする。
+const beforeDrop = app.run('JSON.stringify([state.gear,state.nextGearUid,state.log[0],state.items.ether])');
+assert.throws(() => app.run('dropRolls=[0,0,.995,0,.5];rollEquipmentDrop({boss:false},()=>dropRolls.shift())'), /抽選の乱数は0以上1未満の数値が必要です/);
+assert.throws(() => app.run('rollEquipmentDrop({boss:false},()=>undefined)'), /: undefined/, 'the 13% check also rejects a missing value');
+assert.equal(app.run('JSON.stringify([state.gear,state.nextGearUid,state.log[0],state.items.ether])'), beforeDrop);
 // 同じ装備を2本目として持ち、固有装備は標準品のまま。
 app.run('dropRolls=[0,.99]');
 assert.equal(app.run('rollEquipmentDrop({boss:false},()=>dropRolls.shift())'), 'starlight_blade');

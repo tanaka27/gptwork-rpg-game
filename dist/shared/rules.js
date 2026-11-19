@@ -501,12 +501,20 @@
       level = gearLevel(base);
     return [Math.max(1, Math.round(rate * level * low)), Math.max(1, Math.round(rate * level * high))];
   }
+  // 抽選に使う乱数。0以上1未満の数値以外（テストで用意した乱数が尽きた undefined など）は、
+  // 不正な数値の個体を作って読み込み時に黙って標準品へ戻すのではなく、その場でエラーにする。
+  function drawRandom(rng) {
+    const value = rng();
+    if (typeof value !== 'number' || !(value >= 0 && value < 1))
+      throw new RangeError('抽選の乱数は0以上1未満の数値が必要です: ' + String(value));
+    return value;
+  }
   function rollGear(data, baseId, rng = Math.random) {
     const base = gearBase(data, baseId);
     if (!base) return null;
     if (!gearRollable(data, base)) return standardGear(base);
     const roll = data.rules.gearRoll,
-      pick = rng();
+      pick = drawRandom(rng);
     let total = 0,
       rarity = 'common';
     for (const id of gearRarityIds) {
@@ -520,12 +528,12 @@
     const pool = Object.keys(roll.statRates),
       bonusEffects = [];
     for (let i = 0; i < gearEffectCounts[rarity] && pool.length; i++) {
-      const stat = pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1)[0],
+      const stat = pool.splice(Math.min(pool.length - 1, Math.floor(drawRandom(rng) * pool.length)), 1)[0],
         [low, high] = roll.rarityRanges[rarity],
         rate = roll.statRates[stat];
       bonusEffects.push({
         stat,
-        amount: Math.max(1, Math.round(rate * gearLevel(base) * (low + (high - low) * rng()))),
+        amount: Math.max(1, Math.round(rate * gearLevel(base) * (low + (high - low) * drawRandom(rng)))),
       });
     }
     return { rarity, bonusEffects };
@@ -776,6 +784,7 @@
     storedGearCount,
     addGear,
     rollGear,
+    drawRandom,
     gearAmountRange,
     normalizeGear,
     validateGear,
