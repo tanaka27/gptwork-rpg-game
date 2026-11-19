@@ -55,9 +55,10 @@ let selectedGearId = null,
 const equipmentRarity = item => item?.rarity || 'common';
 function gearIconMarkup(item, size = 'list') {
   const sprite = Object.hasOwn(gearSpriteClasses, item?.id) ? gearSpriteClasses[item.id] : null;
+  const rarity = `gear-rarity-${equipmentRarity(item)}`;
   return sprite
-    ? `<span class="gear-image gear-image-${size} ${sprite}" data-gear-id="${item.id}" aria-hidden="true"></span>`
-    : `<span class="gear-image gear-image-${size} gear-image-fallback" aria-hidden="true">${item?.icon || ''}</span>`;
+    ? `<span class="gear-image gear-image-${size} ${rarity} ${sprite}" data-gear-id="${item.id}" aria-hidden="true"></span>`
+    : `<span class="gear-image gear-image-${size} ${rarity} gear-image-fallback" aria-hidden="true">${item?.icon || ''}</span>`;
 }
 const gearLevel = item => GameRules.gearLevel(item);
 const canEquipGear = item => GameRules.canEquip(state.lv, item);

@@ -19,6 +19,17 @@ test('all standard equipment uses its generated atlas cell and unknown equipment
   expect(await icon.evaluate(node=>getComputedStyle(node).backgroundImage)).toContain('equipment-atlas.webp');
   expect(await icon.getAttribute('aria-hidden')).toBe('true');
  }
+ // アイコンの枠色でレアリティを示す。
+ const frameColors={common:'rgb(138, 154, 145)',uncommon:'rgb(95, 184, 157)',rare:'rgb(165, 140, 230)',legendary:'rgb(232, 191, 108)'};
+ for(const id of ids){
+  const rarity=await page.evaluate(id=>gear[id].rarity,id);
+  const icon=page.locator(`#inventory .item [data-gear-id="${id}"]`);
+  await expect(icon).toHaveClass(new RegExp(`gear-rarity-${rarity}`));
+  expect(await icon.evaluate(node=>{const style=getComputedStyle(node);return [style.borderTopWidth,style.borderTopColor];})).toEqual(['2px',frameColors[rarity]]);
+  expect(await icon.evaluate(node=>node.getBoundingClientRect().width)).toBe(40);
+ }
+ expect(await page.locator('#inventory [data-gear-id="starlight_blade"]').evaluate(node=>getComputedStyle(node).boxShadow)).not.toBe('none');
+ expect(await page.locator('#inventory [data-gear-id="twig"]').evaluate(node=>getComputedStyle(node).boxShadow)).toBe('none');
  await page.screenshot({path:test.info().outputPath('equipment-atlas-inventory.png')});
  const asset=await page.request.get('/assets/equipment-atlas.webp');expect(asset.ok()).toBe(true);
  const decoded=await page.evaluate(async()=>{const image=new Image();image.src=new URL('assets/equipment-atlas.webp',document.baseURI).href;await image.decode();return {width:image.naturalWidth,height:image.naturalHeight};});
@@ -27,7 +38,7 @@ test('all standard equipment uses its generated atlas cell and unknown equipment
   const host=document.createElement('div');host.innerHTML=gearIconMarkup({id:'toString',icon:'♢',type:'weapon'});document.body.append(host);
   const node=host.firstElementChild,result={className:node.className,text:node.textContent,ariaHidden:node.getAttribute('aria-hidden'),backgroundImage:getComputedStyle(node).backgroundImage};host.remove();return result;
  });
- expect(fallback.className).toContain('gear-image-fallback');expect(fallback.text).toBe('♢');expect(fallback.ariaHidden).toBe('true');expect(fallback.backgroundImage).toBe('none');
+ expect(fallback.className).toContain('gear-rarity-common'); expect(fallback.className).toContain('gear-image-fallback');expect(fallback.text).toBe('♢');expect(fallback.ariaHidden).toBe('true');expect(fallback.backgroundImage).toBe('none');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
@@ -113,4 +124,22 @@ test('rare and legendary gear drop through victory, duplicate gear converts to e
  const legendaryGearColor=await legend.locator('.rarity.legendary').evaluate(node=>getComputedStyle(node).color);await page.locator('#inventory [data-action="gear-detail-back"]').click();await page.locator('[data-tab="materials"]').click();const legendaryMaterialColor=await page.locator('#inventory .rarity-guide .rarity.legendary').evaluate(node=>getComputedStyle(node).color);expect(legendaryGearColor).toBe(legendaryMaterialColor);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);expect(errors).toEqual([]);
  await page.reload();await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');expect(await page.evaluate(()=>state.owned.includes('starlight_blade'))).toBe(true);
+});
+
+test('material icons show rarity with a colored frame and tinted background',async({page})=>{
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ await page.evaluate(()=>{state.materials={sap:1,fang:1,seed:1,starcore:1};state.enemy=null;state.journey=null;render(false);});
+ await page.locator('[data-screen="bag"]').click();
+ await page.locator('[data-tab="materials"]').click();
+ const expected={sap:'rgb(184, 200, 190)',fang:'rgb(139, 196, 179)',seed:'rgb(184, 163, 234)',starcore:'rgb(232, 191, 108)'};
+ const icons=page.locator('#inventory .item .itemicon.rarity');
+ await expect(icons).toHaveCount(11);
+ for(const [id,color] of Object.entries(expected)){
+  const name=await page.evaluate(id=>GameData.materials.find(m=>m.id===id).name,id);
+  const icon=page.locator('#inventory .item',{hasText:name}).locator('.itemicon');
+  const style=await icon.evaluate(node=>{const s=getComputedStyle(node);return {border:s.borderTopColor,width:s.borderTopWidth,background:s.backgroundColor};});
+  expect(style.border).toBe(color);expect(style.width).toBe('2px');expect(style.background).not.toBe('rgba(0, 0, 0, 0)');
+ }
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:test.info().outputPath('material-rarity-frames.png')});
 });

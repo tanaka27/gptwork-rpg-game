@@ -2353,15 +2353,49 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 
 /* Equipment rarity and inspectable stat details. */
+.gear-rarity-common {
+  --rarity-color: #8a9a91;
+}
+.gear-rarity-uncommon {
+  --rarity-color: #5fb89d;
+}
+.gear-rarity-rare {
+  --rarity-color: #a58ce6;
+}
+.gear-rarity-legendary {
+  --rarity-color: #e8bf6c;
+}
 .gear-image {
   display: block;
   flex: 0 0 auto;
   width: 40px;
   height: 40px;
-  border-radius: 4px;
+  border: 2px solid var(--rarity-color, #56656b);
+  border-radius: 5px;
+  background-color: #17232d;
   background-image: url('assets/equipment-atlas.webp');
   background-repeat: no-repeat;
   background-size: 500% 200%;
+}
+.gear-image.gear-rarity-rare,
+.gear-image.gear-rarity-legendary {
+  box-shadow: 0 0 6px color-mix(in srgb, var(--rarity-color) 70%, transparent);
+}
+.gear-image.gear-rarity-legendary {
+  box-shadow:
+    0 0 4px var(--rarity-color),
+    0 0 10px color-mix(in srgb, var(--rarity-color) 60%, transparent);
+}
+.item .itemicon.rarity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 15px;
 }
 .gear-image-detail,
 .gear-image-character {
@@ -2372,8 +2406,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid #56656b;
-  background: #17232d;
+  background: color-mix(in srgb, var(--rarity-color, #56656b) 22%, #17232d);
   background-image: none;
   color: var(--text);
   font-size: 22px;

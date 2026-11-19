@@ -29,6 +29,8 @@ test('仲間の詳細をタブで切り替え、装備を押して装備詳細�
  await expect(rows.locator('.gear-image')).toHaveCount(2);
  expect(await rows.nth(0).locator('.gear-image').evaluate(node=>node.getBoundingClientRect().width)).toBe(48);
  await expect(rows.nth(0)).toContainText('アンコモン');await expect(rows.nth(1)).toContainText('追加効果2');
+ // アイコン枠はレアリティ色（アンコモン・レア）。
+ expect(await rows.locator('.gear-image').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).borderTopColor))).toEqual(['rgb(95, 184, 157)','rgb(165, 140, 230)']);
  await page.screenshot({path:test.info().outputPath('tab-gear.png')});
  await rows.nth(1).click();
  const robe=detail.locator('[data-gear-detail="eclipse_robe"]');
