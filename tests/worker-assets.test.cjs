@@ -7,6 +7,7 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 fs.mkdirSync(path.join(root, 'work'), { recursive: true });
 const tempDir = fs.mkdtempSync(path.join(root, 'work', 'worker-assets-'));
+const deliveryRules = require('../scripts/image-delivery.cjs');
 const monsterPngSources = require('../content/game.json').monsters.map(monster => `dist/assets/monsters/${monster.id}.png`);
 assert.equal(monsterPngSources.length, 15, 'all bundled monster images are checked in the Worker');
 const pngSources = [
@@ -43,6 +44,26 @@ const pngSources = [
       bytes = Buffer.from(await response.arrayBuffer()),
       tempFile = path.join(tempDir, crypto.createHash('sha1').update(source).digest('hex') + '.webp');
     fs.writeFileSync(tempFile, bytes);
+    const rule = deliveryRules[assetPath];
+    if (rule) {
+      // 配信用に縮小・非可逆圧縮した画像：大きさ、元画像との近さ（PSNR）、容量の削減を確かめる。
+      const size = spawnSync('identify', ['-format', '%w %h', tempFile], { encoding: 'utf8' }),
+        original = spawnSync('identify', ['-format', '%w %h', path.join(root, source)], { encoding: 'utf8' });
+      const [width, height] = size.stdout.split(' ').map(Number),
+        [originalWidth, originalHeight] = original.stdout.split(' ').map(Number),
+        limit = rule.maxSize || Infinity;
+      assert.ok(width <= limit && height <= limit, `${source} must fit in ${limit}px: ${width}x${height}`);
+      if (!rule.maxSize) assert.deepEqual([width, height], [originalWidth, originalHeight], `${source} keeps its size`);
+      const reference = path.join(tempDir, 'reference-' + path.basename(source));
+      const resized = spawnSync('convert', [path.join(root, source), '-resize', `${width}x${height}!`, reference]);
+      assert.equal(resized.status, 0, `ImageMagick convert must resize ${source}`);
+      const psnr = spawnSync('compare', ['-metric', 'PSNR', reference, tempFile, 'null:'], { encoding: 'utf8' }),
+        value = parseFloat(String(psnr.stderr || psnr.stdout));
+      assert.ok(value >= 30, `${source} differs too much from the original: PSNR ${value}`);
+      const sourceBytes = fs.statSync(path.join(root, source)).size;
+      assert.ok(bytes.length <= sourceBytes / 4, `${source} must be at most a quarter of the PNG: ${bytes.length} bytes`);
+      continue;
+    }
     const compare = spawnSync('compare', ['-metric', 'AE', path.join(root, source), tempFile, 'null:'], { encoding: 'utf8' });
     assert.equal(compare.error, undefined, `ImageMagick compare must run for ${source}`);
     assert.equal(compare.status, 0, `${source} changed pixels: ${String(compare.stderr || compare.stdout).trim()}`);
@@ -55,7 +76,7 @@ const pngSources = [
   assert.equal(head.status, 200);
   assert.equal(head.headers.get('content-type'), 'image/webp');
   assert.equal((await head.arrayBuffer()).byteLength, 0);
-  console.log(`PASS: ${imagePaths.length} Worker image URLs, cache/MIME, PNG pixel identity, HEAD and missing asset handling`);
+  console.log(`PASS: ${imagePaths.length} Worker image URLs, cache/MIME, PNG pixel identity, ${Object.keys(deliveryRules).length} reduced delivery images, HEAD and missing asset handling`);
 })()
   .catch(error => {
     console.error(error);

@@ -19,6 +19,7 @@ const workerLimitBytes = 10 * 1024 * 1024;
 const npcPortraitLimitBytes = 50 * 1024;
 const npcPortraitTotalLimitBytes = Math.round(3.5 * 1024 * 1024);
 const charactersDir = path.join('dist', 'assets', 'characters');
+const deliveryRules = require('./image-delivery.cjs');
 
 function runImageMagick(args, options = {}) {
   const result = spawnSync('convert', args, { encoding: 'utf8', ...options });
@@ -39,8 +40,23 @@ function assertImageMagickWebP() {
     throw new Error('ImageMagick must be built with its WebP delegate enabled');
 }
 
-function transcodePngToWebp(data, file) {
-  const result = runImageMagick(['-', '-define', 'webp:lossless=true', 'webp:-'], {
+function deliveryArgs(rule) {
+  if (!rule) return ['-define', 'webp:lossless=true'];
+  return [
+    ...(rule.maxSize ? ['-resize', `${rule.maxSize}x${rule.maxSize}>`] : []),
+    '-define',
+    'webp:lossless=false',
+    '-define',
+    'webp:method=6',
+    '-define',
+    'webp:alpha-quality=100',
+    '-quality',
+    String(rule.quality),
+  ];
+}
+
+function transcodePngToWebp(data, file, rule) {
+  const result = runImageMagick(['-', ...deliveryArgs(rule), 'webp:-'], {
     input: data,
     encoding: 'buffer',
     maxBuffer: 32 * 1024 * 1024,
@@ -108,6 +124,19 @@ function validateNpcPortraits() {
   return { count: expected.length, totalBytes };
 }
 
+// 規則の対象が消えたり名前が変わったりしたら、黙って lossless に戻さずに止める。
+function validateDeliveryRules() {
+  for (const [name, rule] of Object.entries(deliveryRules)) {
+    if (!/\.png$/.test(name) || !fs.existsSync(path.join('dist', name)))
+      throw new Error(`Image delivery rule targets a missing PNG: ${name}`);
+    if (!Number.isInteger(rule.quality) || rule.quality < 1 || rule.quality > 100)
+      throw new Error(`Image delivery rule for ${name} needs an integer quality from 1 to 100`);
+    if (rule.maxSize !== undefined && (!Number.isInteger(rule.maxSize) || rule.maxSize < 1))
+      throw new Error(`Image delivery rule for ${name} needs a positive integer maxSize`);
+  }
+}
+
+validateDeliveryRules();
 assertImageMagickWebP();
 const npcPortraits = validateNpcPortraits();
 const assets = {};
@@ -123,7 +152,7 @@ function walk(dir) {
     const ext = path.extname(file),
       source = fs.readFileSync(file);
     if (ext === '.png') {
-      const body = transcodePngToWebp(source, file);
+      const body = transcodePngToWebp(source, file, deliveryRules[name]);
       assets[name] = { type: 'image/webp', base64: true, body: body.toString('base64') };
     } else if (ext === '.webp') {
       assets[name] = { type: mime[ext], base64: true, body: source.toString('base64') };

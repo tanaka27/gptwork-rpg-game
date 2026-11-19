@@ -13,9 +13,9 @@ npm run dev
 
 `npm run dev` は `server/dev.mjs` を起動し、`127.0.0.1:4173` でフロントとNode/SQLite APIを配信します。通常のSQLiteファイルは `.local/rpg.sqlite` です。必要な場合は `PORT` と `RPG_DB_PATH` でローカル値を指定できます。ゲーム定義や共通ロジックを変更したときは `npm run content:sync` で `dist/data.generated.js`、`dist/data/game.json`、`dist/shared/` を更新します。これらのファイルは生成物です。
 
-WorkerのビルドにはImageMagick 7とWebP delegateが必要です。`convert` と `identify` がPATH上にあることを確認してください。`npm ci` ではインストールされないOS依存ツールです。`npm run build` と `npm run package:site` は不足時に失敗します。開発サーバーはPNG原本をimage/png、WebP素材をimage/webpで配信します。WorkerビルドではPNG原本を変更せず、配信用バイトだけをlossless WebPへ変換し、元と同じURLでimage/webpとして配信します。冒険者のWebP画像は512×768、1枚50 KiB以下、100枚合計3.5 MiB以下が必要です。ビルド後のWorker gzipは10 MiB未満でなければ失敗します。
+WorkerのビルドにはImageMagick 7とWebP delegateが必要です。`convert` と `identify` がPATH上にあることを確認してください。`npm ci` ではインストールされないOS依存ツールです。`npm run build` と `npm run package:site` は不足時に失敗します。開発サーバーはPNG原本をimage/png、WebP素材をimage/webpで配信します。WorkerビルドではPNG原本を変更せず、配信用バイトだけをWebPへ変換し、元と同じURLでimage/webpとして配信します。変換は原則lossless（画素は原本と同じ）です。表示に対して大きすぎる画像だけは、`scripts/image-delivery.cjs` の規則で配信用に縮小・非可逆圧縮します（背景2枚は品質80、初期4人の顔は320pxに縮小して品質85）。規則の対象のPNGがない場合、ビルドは失敗します。冒険者のWebP画像は512×768、1枚50 KiB以下、100枚合計3.5 MiB以下が必要です。ビルド後のWorker gzipは10 MiB未満でなければ失敗します。
 
-ビルド後は `npm run qa:worker-assets` でWorker画像URL、WebP MIMEと画素同一性を確認できます。この検査にはImageMagickの `compare` も必要です。
+ビルド後は `npm run qa:worker-assets` でWorker画像URL、WebP MIMEと画素同一性（規則の対象は、大きさ・原本とのPSNR 30dB以上・PNGの4分の1以下の容量）を確認できます。この検査にはImageMagickの `compare` も必要です。
 
 手書きのクライアントJS・CSS（`dist/*.js`、`dist/*.css`）と `shared/*.js` はPrettier（設定は `.prettierrc.json`、生成物は `.prettierignore` で除外）で整形します。変更後は `npm run format` を実行し、`shared/` を変えた場合はその後に `npm run content:sync` します。`npm test` は最初に `npm run format:check` で整形済みかを確認します。HTMLテンプレートやSVGを含む文字列は整形されないため、一部は長い行のまま残ります。
 

@@ -13,7 +13,7 @@
 
 現在の初期4人は512×512 PNGの既存画像を使用します。「仲間」画面の味方一覧・個別ステータス詳細と、冒険中の味方欄で再利用します。隣に名前を表示するためaltは空です。未知の固定IDへ初期4人の画像を割り当てません。
 
-ローカル開発では元PNGをimage/pngで配信します。WorkerビルドではPNG原本を保持したままlossless WebPへ変換し、元と同じPNG URLをimage/webp MIMEで配信します。変換後の画素は原本と一致します。
+ローカル開発では元PNGをimage/pngで配信します。WorkerビルドではPNG原本を保持したままWebPへ変換し、元と同じPNG URLをimage/webp MIMEで配信します。モンスターなどは lossless で画素が原本と一致します。初期4人の顔は表示が最大104pxのため、配信用だけ320pxに縮小した品質85のWebPにします（規則と例外の正本は[DEVELOPMENT.md](DEVELOPMENT.md)）。
 
 ## 現行の画像生成規約
 
