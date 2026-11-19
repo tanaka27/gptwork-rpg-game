@@ -67,3 +67,51 @@ test('公開定義をキャッシュし、API切断時もローカルの進行�
  expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(before);
  await expect(page.locator('[data-action="explore"]')).toBeVisible();
 });
+
+test('管理画面でドロップ装備の抽選ルールと固有装備を編集・検証・保存する',async({page},testInfo)=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/admin/');await expect(page.locator('#status')).toHaveText('定義を読み込みました。');
+ await page.locator('#versions').selectOption('bundled');await expect(page.locator('#status')).toHaveText('定義を読み込みました。');
+ // 公開済みの版では編集できない。
+ await page.locator('#rulesEditor').locator('xpath=..').locator('summary').click();
+ const editor=page.locator('#gearRollEditor');
+ await expect(editor.locator('legend')).toHaveText('ドロップ装備の抽選');
+ await expect(editor.locator('[name="rate-common"]')).toBeDisabled();
+ await page.locator('#create').click();await expect(page.locator('#status')).toHaveText('下書きを作成しました。');
+ await expect(editor.locator('[name="rate-common"]')).toHaveValue('70');
+ await expect(page.locator('#gearRateTotal')).toHaveText('合計 100％');
+ const preview=page.locator('#gearRollPreview');
+ await expect(preview.locator('caption')).toContainText('装備Lv10');
+ await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+2〜3','+2〜3','+2〜4']);
+ // 合計が100％でないと警告し、検証も通らない。
+ await editor.locator('[name="rate-common"]').fill('60');await editor.locator('[name="rate-common"]').blur();
+ await expect(page.locator('#gearRateTotal')).toHaveText('合計 90％（100％にしてください）');
+ await page.locator('#validate').click();await expect(page.locator('#status')).toContainText('確率の合計は1にしてください');
+ await editor.locator('[name="rate-legendary"]').fill('11');await editor.locator('[name="rate-legendary"]').blur();
+ await expect(page.locator('#gearRateTotal')).toHaveText('合計 100％');
+ // 候補の能力を外すとプレビューから消え、係数と倍率の変更が範囲に反映される。
+ await editor.locator('[name="stat-maxHP"]').uncheck();
+ await expect(preview.locator('th:text-is("最大HP")')).toHaveCount(0);
+ await editor.locator('[name="coef-attack"]').fill('0.5');await editor.locator('[name="coef-attack"]').blur();
+ await editor.locator('[name="range-legendary-1"]').fill('1.2');await editor.locator('[name="range-legendary-1"]').blur();
+ await page.locator('#gearPreviewLevel').fill('20');
+ await expect(preview.locator('tr:has(th:text-is("攻撃力")) td')).toHaveText(['+5〜8','+6〜9','+7〜12']);
+ // 固有装備のチェックは全装備に表示する。
+ await page.locator('#category').selectOption('items');
+ await page.locator('#entries button').filter({hasText:'鉄のつるぎ'}).click();
+ await expect(page.locator('#editor [data-field="unique"]')).not.toBeChecked();
+ await page.locator('#editor [data-field="unique"]').check();
+ await page.locator('#entries button').filter({hasText:'星灯りの剣'}).click();
+ await expect(page.locator('#editor [data-field="unique"]')).toBeChecked();
+ await page.locator('#validate').click();await expect(page.locator('#status')).toContainText('検証に合格');
+ await page.screenshot({path:testInfo.outputPath('admin-gear-roll.png'),fullPage:true});
+ await page.locator('#save').click();await expect(page.locator('#status')).toHaveText('下書きを保存しました。');
+ const id=await page.locator('#versions').inputValue();
+ const saved=(await (await page.request.get('/api/admin/versions/'+encodeURIComponent(id))).json()).data;
+ expect(saved.rules.gearRoll.rarityRates).toEqual({common:0.6,uncommon:0.22,rare:0.07,legendary:0.11});
+ expect(Object.keys(saved.rules.gearRoll.statRates)).not.toContain('maxHP');
+ expect(saved.rules.gearRoll.statRates.attack).toBe(0.5);expect(saved.rules.gearRoll.rarityRanges.legendary).toEqual([0.7,1.2]);
+ expect(saved.items.find(item=>item.id==='iron').unique).toBe(true);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(errors).toEqual([]);
+});

@@ -16,6 +16,7 @@
 | 世界、人物、敵、装備レアリティ・追加効果、道具、習得条件などの初期定義 | `content/game.json`、[GAME_SPEC.md](GAME_SPEC.md) |
 | 画面、状態遷移、操作 | `dist/game.js`、`dist/party.js`、`dist/bootstrap.js` |
 | 戦闘計算 | `shared/rules.js`、`dist/combat.js` |
+| データ管理画面（定義の編集UI、装備の抽選ルールの専用フォーム） | `dist/admin/admin.js`、`dist/admin/style.css` |
 | レイアウトと画面装飾 | `dist/workspace.css`、`dist/style.css`、[DESIGN.md](DESIGN.md) |
 | 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js`、`shared/quests.js`、`shared/adventurers.js` |
 | API、DB、Worker | `server/`、`db/`、`drizzle/`、[BACKEND.md](BACKEND.md) |
