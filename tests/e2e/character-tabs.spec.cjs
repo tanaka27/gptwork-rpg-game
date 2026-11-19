@@ -26,11 +26,15 @@ test('仲間の詳細をタブで切り替え、装備を押して装備詳細�
  await expect(detail.locator('[data-character-panel="stats"]')).toBeHidden();
  const rows=detail.locator('[data-character-gear]');
  await expect(rows.locator('strong')).toHaveText(['月鋼の剣','月蝕のローブ']);
+ await expect(rows.locator('.gear-image')).toHaveCount(2);
+ expect(await rows.nth(0).locator('.gear-image').evaluate(node=>node.getBoundingClientRect().width)).toBe(48);
  await expect(rows.nth(0)).toContainText('アンコモン');await expect(rows.nth(1)).toContainText('追加効果2');
  await page.screenshot({path:test.info().outputPath('tab-gear.png')});
  await rows.nth(1).click();
  const robe=detail.locator('[data-gear-detail="eclipse_robe"]');
  await expect(robe).toBeVisible();
+ await expect(robe.locator('.gear-detail-heading [data-gear-id="eclipse_robe"]')).toBeVisible();
+ expect(await robe.locator('.gear-detail-heading .gear-image').evaluate(node=>node.getBoundingClientRect().width)).toBe(48);
  await expect(detail.locator('.character-gear-list')).toBeHidden();
  await expect(robe.locator('h3')).toHaveText('月蝕のローブ');await expect(robe.locator('h3')).toBeFocused();
  await expect(robe).toContainText('レア');await expect(robe).toContainText('防具');
@@ -67,6 +71,8 @@ test('冒険画面のステータス表示でもタブと装備詳細を使え�
  await modal.locator('[data-character-tab="gear"]').click();
  await modal.locator('[data-character-gear]').nth(0).click();
  await expect(modal.locator('[data-gear-detail]:visible h3')).toHaveText('旅人の剣');
+ await expect(modal.locator('[data-gear-detail]:visible .gear-image')).toHaveCount(1);
+ expect(await modal.locator('[data-gear-detail]:visible .gear-image').evaluate(node=>node.getBoundingClientRect().width)).toBe(48);
  await expect(modal.locator('[data-gear-detail]:visible')).toContainText('基礎補正攻撃力 +0');
  expect(await noHorizontalScroll(page)).toBe(true);
  await page.screenshot({path:test.info().outputPath('modal-gear-detail.png')});

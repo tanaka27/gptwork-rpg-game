@@ -1,9 +1,35 @@
 const {test,expect}=require('./fixtures.cjs');
 const {heroInput}=require('./party-helpers.cjs');
 const rewardRandoms=()=>[...Array(4).fill(0),...Array(4).fill([0,0,0,0,0,0,.999]).flat()];
+const equipmentSprites={twig:'0% 0%',iron:'25% 0%',star:'50% 0%',cloth:'75% 0%',leather:'100% 0%',moon:'0% 100%',moonsteel_blade:'25% 100%',starward_armor:'50% 100%',eclipse_robe:'75% 100%',starlight_blade:'100% 100%'};
 
 test.beforeEach(async({page})=>{
  });
+
+test('all standard equipment uses its generated atlas cell and unknown equipment falls back safely',async({page})=>{
+ await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
+ const ids=Object.keys(equipmentSprites);
+ await page.evaluate(ids=>{state.owned=ids;state.enemy=null;state.journey=null;render(false);},ids);
+ await page.locator('[data-screen="bag"]').click();
+ await expect(page.locator('#inventory .item .gear-image')).toHaveCount(10);
+ for(const [id,position] of Object.entries(equipmentSprites)){
+  const icon=page.locator(`#inventory .item [data-gear-id="${id}"]`);
+  await expect(icon).toBeVisible();
+  expect(await icon.evaluate(node=>getComputedStyle(node).backgroundPosition)).toBe(position);
+  expect(await icon.evaluate(node=>getComputedStyle(node).backgroundImage)).toContain('equipment-atlas.webp');
+  expect(await icon.getAttribute('aria-hidden')).toBe('true');
+ }
+ await page.screenshot({path:test.info().outputPath('equipment-atlas-inventory.png')});
+ const asset=await page.request.get('/assets/equipment-atlas.webp');expect(asset.ok()).toBe(true);
+ const decoded=await page.evaluate(async()=>{const image=new Image();image.src=new URL('assets/equipment-atlas.webp',document.baseURI).href;await image.decode();return {width:image.naturalWidth,height:image.naturalHeight};});
+ expect(decoded).toEqual({width:800,height:320});
+ const fallback=await page.evaluate(()=>{
+  const host=document.createElement('div');host.innerHTML=gearIconMarkup({id:'toString',icon:'♢',type:'weapon'});document.body.append(host);
+  const node=host.firstElementChild,result={className:node.className,text:node.textContent,ariaHidden:node.getAttribute('aria-hidden'),backgroundImage:getComputedStyle(node).backgroundImage};host.remove();return result;
+ });
+ expect(fallback.className).toContain('gear-image-fallback');expect(fallback.text).toBe('♢');expect(fallback.ariaHidden).toBe('true');expect(fallback.backgroundImage).toBe('none');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
 
 test('uncommon shop gear detail, purchase, inventory detail and bonus stats work',async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -14,6 +40,8 @@ test('uncommon shop gear detail, purchase, inventory detail and bonus stats work
  const before=await page.evaluate(()=>({gold:state.gold,stats:GameRules.stats(state,GameData,0)}));
  await page.locator('[data-action="shop"]').click();
  await expect(page.locator('#shopItems [data-action^="buy:"]')).toHaveCount(5);
+ await expect(page.locator('#shopItems [data-gear-id="moonsteel_blade"]')).toBeVisible();
+ expect(await page.locator('#shopItems [data-gear-id="moonsteel_blade"]').evaluate(node=>node.getBoundingClientRect().width)).toBe(40);
  await expect(page.locator('#shopItems')).not.toContainText('レア');await expect(page.locator('#shopItems')).not.toContainText('レジェンダリー');
  await expect(page.locator('#shopItems .item small .rarity.uncommon')).toHaveCount(1);
  await page.locator('#shopItems [data-action="gear-detail:moonsteel_blade"]').click();

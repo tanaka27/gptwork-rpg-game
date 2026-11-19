@@ -531,7 +531,7 @@ function characterGearMarkup(i, prefix) {
       if (!item)
         return `<li class="character-gear-row empty"><span class="character-gear-slot">${label}</span><strong>なし</strong></li>`;
       const primary = item.type === 'weapon' ? '攻撃力' : '守備力';
-      return `<li><button type="button" class="character-gear-row" data-character-gear="${id}" aria-label="${label}：${item.name}の詳細を見る" aria-expanded="${characterGearDetail === id}" aria-controls="${prefix}-gear-${slot}"><span class="character-gear-slot">${label}</span><strong>${item.name}</strong><small><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${primary} +${item.value || 0}${item.bonusEffects?.length ? ` · 追加効果${item.bonusEffects.length}` : ''}</small><span aria-hidden="true">›</span></button></li>`;
+      return `<li><button type="button" class="character-gear-row" data-character-gear="${id}" aria-label="${label}：${item.name}の詳細を見る" aria-expanded="${characterGearDetail === id}" aria-controls="${prefix}-gear-${slot}">${gearIconMarkup(item, 'character')}<span class="character-gear-slot">${label}</span><strong>${item.name}</strong><small><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${primary} +${item.value || 0}${item.bonusEffects?.length ? ` · 追加効果${item.bonusEffects.length}` : ''}</small><span class="character-gear-arrow" aria-hidden="true">›</span></button></li>`;
     })
     .join('');
   const details = ['weapon', 'armor']

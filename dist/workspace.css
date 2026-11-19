@@ -2353,6 +2353,62 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 
 /* Equipment rarity and inspectable stat details. */
+.gear-image {
+  display: block;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background-image: url('assets/equipment-atlas.webp');
+  background-repeat: no-repeat;
+  background-size: 500% 200%;
+}
+.gear-image-detail,
+.gear-image-character {
+  width: 48px;
+  height: 48px;
+}
+.gear-image-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #56656b;
+  background: #17232d;
+  background-image: none;
+  color: var(--text);
+  font-size: 22px;
+  text-align: center;
+}
+.gear-sprite-twig {
+  background-position: 0% 0%;
+}
+.gear-sprite-iron {
+  background-position: 25% 0%;
+}
+.gear-sprite-star {
+  background-position: 50% 0%;
+}
+.gear-sprite-cloth {
+  background-position: 75% 0%;
+}
+.gear-sprite-leather {
+  background-position: 100% 0%;
+}
+.gear-sprite-moon {
+  background-position: 0% 100%;
+}
+.gear-sprite-moonsteel-blade {
+  background-position: 25% 100%;
+}
+.gear-sprite-starward-armor {
+  background-position: 50% 100%;
+}
+.gear-sprite-eclipse-robe {
+  background-position: 75% 100%;
+}
+.gear-sprite-starlight-blade {
+  background-position: 100% 100%;
+}
 .item-actions {
   display: flex;
   flex-shrink: 0;
@@ -2369,21 +2425,23 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   padding: 12px 0;
 }
 .gear-detail-heading {
-  display: flex;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  column-gap: 12px;
   padding-bottom: 9px;
   border-bottom: 1px solid var(--line);
 }
 .gear-detail-heading h3 {
+  grid-column: 2;
   margin: 0;
   font:
     500 17px 'Noto Serif JP',
     serif;
   overflow-wrap: anywhere;
 }
-.gear-detail-heading span {
+.gear-detail-heading .rarity {
+  grid-column: 3;
   flex-shrink: 0;
   font-size: 12px;
 }
@@ -2573,21 +2631,26 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 .character-card .character-gear-row {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-columns: 48px 36px minmax(0, 1fr) auto;
   grid-template-areas:
-    'slot name arrow'
-    'slot meta arrow';
+    'icon slot name arrow'
+    'icon slot meta arrow';
   align-items: center;
   column-gap: 10px;
   width: 100%;
-  min-height: 56px;
+  min-height: 64px;
   margin: 0;
   padding: 8px 12px;
   text-align: left;
   line-height: 1.5;
 }
 .character-gear-row.empty {
+  display: flex;
+  gap: 12px;
   color: var(--muted);
+}
+.character-gear-row .gear-image {
+  grid-area: icon;
 }
 .character-gear-slot {
   grid-area: slot;
@@ -2604,7 +2667,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   color: var(--muted);
   font-size: 12px;
 }
-.character-gear-row > span[aria-hidden] {
+.character-gear-arrow {
   grid-area: arrow;
   color: var(--muted);
 }

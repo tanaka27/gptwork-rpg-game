@@ -38,9 +38,27 @@ const gearRarityLabels = { common: 'コモン', uncommon: 'アンコモン', rar
     speed: '素早さ',
     luck: 'うんのよさ',
   };
+const gearSpriteClasses = {
+  twig: 'gear-sprite-twig',
+  iron: 'gear-sprite-iron',
+  star: 'gear-sprite-star',
+  cloth: 'gear-sprite-cloth',
+  leather: 'gear-sprite-leather',
+  moon: 'gear-sprite-moon',
+  moonsteel_blade: 'gear-sprite-moonsteel-blade',
+  starward_armor: 'gear-sprite-starward-armor',
+  eclipse_robe: 'gear-sprite-eclipse-robe',
+  starlight_blade: 'gear-sprite-starlight-blade',
+};
 let selectedGearId = null,
   gearDetailOrigin = 'bag';
 const equipmentRarity = item => item?.rarity || 'common';
+function gearIconMarkup(item, size = 'list') {
+  const sprite = Object.hasOwn(gearSpriteClasses, item?.id) ? gearSpriteClasses[item.id] : null;
+  return sprite
+    ? `<span class="gear-image gear-image-${size} ${sprite}" data-gear-id="${item.id}" aria-hidden="true"></span>`
+    : `<span class="gear-image gear-image-${size} gear-image-fallback" aria-hidden="true">${item?.icon || ''}</span>`;
+}
 const gearLevel = item => GameRules.gearLevel(item);
 const canEquipGear = item => GameRules.canEquip(state.lv, item);
 const gearLevelLabel = (item, prefix = '装備') =>
@@ -758,10 +776,11 @@ function gearDetailMarkup(id, origin) {
 // 装備詳細の本文。もちもの・ショップとキャラクター詳細で共通に使う。
 function gearInfoMarkup(item, note = '') {
   const primary = item.type === 'weapon' ? '攻撃力' : '守備力';
-  return `<div class="gear-detail-heading"><h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${item.value || 0}</dd></div></dl>${note}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}`;
+  return `<div class="gear-detail-heading">${gearIconMarkup(item, 'detail')}<h3 tabindex="-1">${item.name}</h3><span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span></div><p class="gear-slot">${item.type === 'weapon' ? '武器' : '防具'}</p><dl><div><dt>装備レベル</dt><dd>${gearLevelLabel(item, '')}以上</dd></div><div><dt>基礎補正</dt><dd>${primary} +${item.value || 0}</dd></div></dl>${note}<h4>追加効果</h4>${item.bonusEffects?.length ? `<ul>${item.bonusEffects.map(effect => `<li>${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}</li>`).join('')}</ul>` : '<p class="muted">追加効果なし</p>'}`;
 }
 function itemRow(a, desc, button, secondary = '') {
-  return `<div class="item"><span class="itemicon">${a.icon}</span><div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;
+  const icon = a.category === 'gear' ? gearIconMarkup(a) : `<span class="itemicon">${a.icon}</span>`;
+  return `<div class="item">${icon}<div><strong>${a.name}</strong><small>${desc}</small></div>${secondary ? `<div class="item-actions">${button}${secondary}</div>` : button}</div>`;
 }
 function startBattle(boss = false, travelEncounter = false, exploration = false) {
   if (state.enemy || state.village || busy || (state.journey && (!travelEncounter || boss))) return false;
