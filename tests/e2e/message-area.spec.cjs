@@ -15,14 +15,14 @@ test('背景と無効コマンドの座標でメッセージを一件ずつ送�
   await page.screenshot({path:test.info().outputPath(`battle-message-${viewport.width}.png`)});
  }
  const clickAt=async(selector)=>{const b=await page.locator(selector).boundingBox();await page.mouse.click(b.x+b.width/2,b.y+b.height/2);};
- const first=await page.locator('#latestLog').textContent();
+ const {messageSeq,expectMessageAdvanced}=require('./party-helpers.cjs'),first=await messageSeq(page);
  await page.screenshot({path:test.info().outputPath('before.png')});
  const arena=await page.locator('.arena').boundingBox();await page.mouse.click(arena.x+8,arena.y+8);
- await expect(page.locator('#latestLog')).not.toHaveText(first);
- const result=await page.locator('#latestLog').textContent();
+ await expectMessageAdvanced(page,first);
+ const result=await messageSeq(page);
  await expect(page.locator('[data-action="attack"]')).toBeDisabled();
- await clickAt('[data-action="attack"]');await expect(page.locator('#latestLog')).not.toHaveText(result);
- await require('./party-helpers.cjs').heroInput(page);await page.locator('[data-action="attack"]').click();const next=await page.locator('#latestLog').textContent();await clickAt('[data-action="items"]');await expect(page.locator('#latestLog')).not.toHaveText(next);
+ await clickAt('[data-action="attack"]');await expectMessageAdvanced(page,result);
+ await require('./party-helpers.cjs').heroInput(page);await page.locator('[data-action="attack"]').click();const next=await messageSeq(page);await clickAt('[data-action="items"]');await expectMessageAdvanced(page,next);
  await page.screenshot({path:test.info().outputPath('after.png')});
  for(let i=0;i<80&&await page.locator('#messageNext').isVisible();i++)await page.locator('#fieldMessage').click();
  await expect(page.locator('[data-action="attack"]')).toBeEnabled();

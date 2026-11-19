@@ -1,6 +1,6 @@
 const { test, expect } = require('./fixtures.cjs');
 
-const {heroInput:readBattleRound}=require('./party-helpers.cjs');
+const {heroInput:readBattleRound,messageSeq,expectMessageAdvanced}=require('./party-helpers.cjs');
 
 test('探索から攻撃で敵ターンへ進み、再読込で進行を保持する', async ({ page }) => {
   await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
@@ -94,17 +94,19 @@ test('戦闘メッセージはクリックするまで進まず、キーボー�
   const save=await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'));
   await page.locator('[data-action="attack"]').click();
   await expect(page.locator('#messageNext')).toBeVisible();
-  const first=await page.locator('#latestLog').textContent();
+  const first=await page.locator('#latestLog').textContent(),firstSeq=await messageSeq(page);
+  expect(firstSeq).toBeGreaterThan(0);
   await page.waitForTimeout(600);
-  await expect(page.locator('#latestLog')).toHaveText(first);
+  await expect(page.locator('#latestLog')).toHaveText(first);expect(await messageSeq(page)).toBe(firstSeq);
   await expect(page.locator('[data-action="attack"]')).toBeDisabled();
   expect(await page.evaluate(()=>localStorage.getItem('starlight-rpg-v1'))).toBe(save);
+  // 同じ名前・同じ結果の文が続くこともあるため、文ではなく通し番号で送ったことを確かめる。
   await page.locator('#fieldMessage').click();
-  await expect(page.locator('#latestLog')).not.toHaveText(first);
+  await expectMessageAdvanced(page,firstSeq);
   await expect(page.locator('#turn')).toContainText('1');
-  const second=await page.locator('#latestLog').textContent();
+  const secondSeq=await messageSeq(page);
   await page.locator('#fieldMessage').focus();await page.keyboard.press('Enter');
-  await expect(page.locator('#latestLog')).not.toHaveText(second);
+  await expectMessageAdvanced(page,secondSeq);
   await readBattleRound(page);
   await expect(page.locator('[data-action="attack"]')).toBeEnabled();
   await expect(page.locator('#messageNext')).toBeHidden();

@@ -73,9 +73,9 @@ test('敵が消えた後の勝利報酬待ちでは味方クリックで送り�
  expect(await page.evaluate(()=>!!state.enemy)).toBe(false);
  await expect(page.locator('#messageNext')).toBeVisible();
  await expect(page.locator('[data-battle-character]')).toHaveCount(0);
- const message=await page.locator('#latestLog').textContent();
+ const seq=await require('./party-helpers.cjs').messageSeq(page);
  await page.locator('#partyStatus img').first().click();
- await expect(page.locator('#latestLog')).not.toHaveText(message);
+ await require('./party-helpers.cjs').expectMessageAdvanced(page,seq);
  await expect(page.locator('#modal')).not.toBeVisible();
  for(let i=0;i<40&&await page.locator('#messageNext').isVisible();i++)await page.locator('#partyStatus img').first().click();
  await expect(page.locator('[data-battle-character]')).toHaveCount(4);

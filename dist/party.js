@@ -73,6 +73,21 @@ function skillTargetsAlly(skill) {
 function speedOf(i) {
   return allyStats(i).speed;
 }
+// 同じ名前の敵には A・B… を付けて区別する。元の名前は baseName に残し、何度呼んでも同じ結果になる。
+function labelDuplicateEnemies(enemies) {
+  const groups = new Map();
+  for (const e of enemies) {
+    const base = e.baseName ?? e.name;
+    groups.set(base, [...(groups.get(base) || []), e]);
+  }
+  for (const [base, list] of groups) {
+    if (list.length < 2 || list.every(e => e.baseName === base)) continue;
+    list.forEach((e, i) => {
+      e.baseName = base;
+      e.name = base + String.fromCharCode(65 + i);
+    });
+  }
+}
 function battleEnemies() {
   if (!state.enemy) {
     state.enemies = [];
@@ -82,6 +97,7 @@ function battleEnemies() {
   state.enemies.forEach((e, i) => {
     e.speed ??= 8 + state.zone * 4 + i * 3;
   });
+  labelDuplicateEnemies(state.enemies);
   state.enemy = state.enemies.find(e => e.hp > 0) || state.enemy;
   return state.enemies;
 }
@@ -167,6 +183,7 @@ function submitCommand(kind, skillId, itemId, skillTargetIndex = selectedEnemy) 
 }
 // ラウンド中のログをメッセージ窓で1件ずつ送る。自動送りでは一定時間で、手動送りではクリック等で進む。
 let battleMessageResolve = null,
+  battleMessageSeq = 0,
   battleMessageText = null,
   battleMessageTimer = null,
   pendingAnnouncement = null;
@@ -216,8 +233,11 @@ function advanceBattleMessage() {
   battleMessageText = null;
   resolve();
 }
+// メッセージを1件出すたびに通し番号を増やし、メッセージ欄の data-message-seq に出す（同じ文が続いても進んだと分かる）。
 function waitForBattleMessage(message) {
   battleMessageText = message;
+  battleMessageSeq += 1;
+  if ($('fieldMessage').dataset) $('fieldMessage').dataset.messageSeq = String(battleMessageSeq);
   return new Promise(resolve => {
     battleMessageResolve = resolve;
     render(false);
@@ -711,6 +731,10 @@ startBattle = function (boss = false, travelEncounter = false) {
           (GameData.rules.battle.baseEnemySpeed ?? 8) + state.zone * (GameData.rules.battle.enemySpeedPerZone ?? 4)) +
         i * (GameData.rules.battle.slotSpeedStep ?? 3))
   );
+  labelDuplicateEnemies(state.enemies);
+  // 出現のログも区別した名前にそろえる。
+  if (first.baseName && state.log[0] === `${first.baseName}が あらわれた！`)
+    state.log[0] = `${first.name}が あらわれた！`;
   selectedEnemy = 0;
   render();
   scheduleRound();

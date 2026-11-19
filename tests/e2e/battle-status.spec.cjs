@@ -9,9 +9,9 @@ test('コマンド中だけ味方のステータスを開き、自動行動中�
  await page.locator('[data-action="explore"]').click();
  await page.locator('[data-action="attack"]').click();
  await expect(page.locator('#messageNext')).toBeVisible();
- const message=await page.locator('#latestLog').textContent();
+ const seq=await require('./party-helpers.cjs').messageSeq(page);
  await page.locator('#partyStatus img').nth(1).click();
- await expect(page.locator('#latestLog')).not.toHaveText(message);await expect(page.locator('#modal')).not.toBeVisible();
+ await require('./party-helpers.cjs').expectMessageAdvanced(page,seq);await expect(page.locator('#modal')).not.toBeVisible();
  for(let i=0;i<100&&await page.locator('#messageNext').isVisible();i++)await page.locator('#partyStatus img').nth(2).click();
  await expect(page.locator('[data-action="attack"]')).toBeEnabled();
  await page.evaluate(()=>{state.companions[1].hp=0;render(false);});

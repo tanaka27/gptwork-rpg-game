@@ -129,13 +129,17 @@ test('画像ロード失敗時も敵名と対象操作を維持する', async ({
   const expectedEncounter = [normalMonsters[0], ...normalMonsters.filter(monster => monster.zoneId === 'grassland').slice(0, 3)];
   const failedImageCount = expectedEncounter.filter(monster => monster.id === 'leaf_jelly').length;
   const successfulImageCount = expectedEncounter.length - failedImageCount;
-  await expect(page.locator('#enemy .enemy-unit strong')).toHaveText(expectedEncounter.map(monster => monster.name));
+  // 同じ名前の敵は隊列順にA・Bを付けて表示する。
+  const nameCount = name => expectedEncounter.filter(monster => monster.name === name).length;
+  const expectedNames = expectedEncounter.map((monster, i) => nameCount(monster.name) > 1 ? monster.name + String.fromCharCode(65 + expectedEncounter.slice(0, i).filter(other => other.name === monster.name).length) : monster.name);
+  expect(expectedNames.slice(0, 2)).toEqual(['リーフジェリーA', 'リーフジェリーB']);
+  await expect(page.locator('#enemy .enemy-unit strong')).toHaveText(expectedNames);
   await expect(page.locator('#enemy .monster-art-fallback')).toHaveCount(failedImageCount);
   await expect(page.locator('#enemy .enemy-unit img.monster-art')).toHaveCount(successfulImageCount);
   await expect.poll(() => page.locator('#enemy .enemy-unit img.monster-art').evaluateAll((images, count) =>
     images.length === count && images.every(image => image.complete && image.naturalWidth === 512), successfulImageCount
   )).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('monster-art-fallback.png') });
-  await attackTarget(page, 0, 'リーフジェリー');
+  await attackTarget(page, 0, 'リーフジェリーA');
   await expect(fallback).toBeVisible();
 });

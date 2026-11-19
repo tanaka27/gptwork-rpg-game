@@ -105,9 +105,9 @@ test('参考配置で戦闘コマンド・2列の特技・敵対象選択を操�
  await expect(page.locator('#latestLog')).toHaveText(/^アステルの火花の魔法！ .+に\d+。$/);
  expect(await page.evaluate(()=>state.mp)).toBe(before[0]-4);
  expect(await page.evaluate(()=>state.enemies[2].hp)).toBeLessThan(1000);
- const message=await page.locator('#latestLog').textContent();
+ const seq=await require('./party-helpers.cjs').messageSeq(page);
  await page.locator('.party-member').first().click();
- await expect(page.locator('#latestLog')).not.toHaveText(message);
+ await require('./party-helpers.cjs').expectMessageAdvanced(page,seq);
  await expect(page.locator('#modal')).not.toBeVisible();
  await toInput(page);
  await page.locator('[data-action="skills"]').click();await page.locator('[data-action="skill:heal"]').click();

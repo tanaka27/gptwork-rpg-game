@@ -25,9 +25,10 @@ test('既定では戦闘メッセージを自動で送り、設定で手動に�
  await expect.poll(()=>page.evaluate(first=>!!commandResolve&&actingAlly!==first,first),{timeout:20000}).toBe(true);
  // 自動送り中でもクリックで即座に次へ進める。
  await page.locator('[data-action="attack"]').click();
- const shown=await page.locator('#latestLog').textContent();
+ const shown=await require('./party-helpers.cjs').messageSeq(page);
  await page.locator('#fieldMessage').click();
- await expect(page.locator('#latestLog')).not.toHaveText(shown);
+ // 自動送りは最短0.9秒なので、それより短い時間で進めばクリックによるもの。
+ await require('./party-helpers.cjs').expectMessageAdvanced(page,shown,{timeout:600,intervals:[50]});
  await waitForInput(page);
  // 設定メニューで手動送りへ切り替えると、クリックまで進まない。
  await page.locator('.utility-menu summary').click();
