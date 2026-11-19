@@ -70,7 +70,7 @@
   for (const src of ['storage.js', 'combat.js', 'game.js', 'party.js', 'cloud-save.js'])
     await new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = src + '?v=backend-33';
+      script.src = src + '?v=backend-34';
       script.onload = resolve;
       script.onerror = reject;
       document.body.append(script);

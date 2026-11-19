@@ -27,6 +27,7 @@
     for (const key of ['weapon', 'armor'])
       if (!content.items.some(e => e.id === state[key] && e.type === key)) errors.push(key + 'が不正です');
     if (!Array.isArray(state.owned) || state.owned.some(id => !items.has(id))) errors.push('装備リストが不正です');
+    if (Array.isArray(state.owned)) errors.push(...gameRules.validateGear(state, content));
     for (const [key, ids] of [
       ['items', items],
       ['materials', materials],

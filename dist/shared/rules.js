@@ -61,8 +61,8 @@
     const g = { ...data.rules.growth, ...characterDefaults[character?.id], ...character?.stats },
       level = state.lv - 1,
       member = memberState(state, data, index);
-    const weapon = data.items.find(e => e.id === (member.weapon ?? state.weapon)),
-      armor = data.items.find(e => e.id === (member.armor ?? state.armor));
+    const weapon = memberGear(state, data, index, 'weapon'),
+      armor = memberGear(state, data, index, 'armor');
     const result = {
       maxHP: g.baseHP + level * g.hpPerLevel,
       maxMP: g.baseMP + level * g.mpPerLevel,
@@ -455,6 +455,189 @@
   function canEquip(level, item) {
     return !!item && Number(level) >= gearLevel(item);
   }
+  // 装備の個体。セーブの gear が所持品の正本で、owned・weapon・armor は装備IDの写し。
+  const gearSlots = ['weapon', 'armor'],
+    gearRarityIds = ['common', 'uncommon', 'rare', 'legendary'],
+    gearStorageLimit = 30;
+  function gearBase(data, id) {
+    return data.items.find(item => item.id === id && item.category === 'gear') || null;
+  }
+  function standardGear(base) {
+    return {
+      rarity: gearRarityIds.includes(base.rarity) ? base.rarity : 'common',
+      bonusEffects: (base.bonusEffects || []).map(effect => ({ stat: effect.stat, amount: effect.amount })),
+    };
+  }
+  function gearItem(data, instance) {
+    const base = gearBase(data, instance?.baseId);
+    if (!base) return null;
+    return {
+      ...base,
+      uid: instance.uid,
+      rarity: instance.rarity,
+      bonusEffects: instance.bonusEffects.map(effect => ({ ...effect })),
+    };
+  }
+  // 仲間の記録がまだない間（読み込み直後など）は主人公だけを扱う。
+  function partyMembers(state, data) {
+    const companions = Array.isArray(state.companions) ? state.companions : [];
+    return [
+      state,
+      ...data.rules.party
+        .slice(1)
+        .map((_, i) => memberState(state, data, i + 1))
+        .filter(member => companions.includes(member)),
+    ];
+  }
+  // 段階2では全個体が標準品。抽選の導入時にここで範囲を検証する。
+  function gearInstanceValid(data, instance) {
+    if (!instance || typeof instance !== 'object' || !Number.isSafeInteger(instance.uid) || instance.uid < 1)
+      return false;
+    const base = gearBase(data, instance.baseId);
+    if (!base || !Array.isArray(instance.bonusEffects)) return false;
+    return JSON.stringify(standardGear(base)) === JSON.stringify(standardGear(instance));
+  }
+  function memberGear(state, data, index, slot) {
+    const member = memberState(state, data, index),
+      mirror = member[slot] ?? state[slot];
+    if (Array.isArray(state.gear)) {
+      // 写しが書き換えられていれば写しを優先する（normalizeGear と同じ結果）。
+      const instance = state.gear.find(e => e?.uid === member[slot + 'Uid']);
+      if (instance && (instance.baseId === mirror || gearBase(data, mirror)?.type !== slot))
+        return gearItem(data, instance);
+    }
+    const base = gearBase(data, mirror);
+    return base ? { ...base, ...standardGear(base) } : null;
+  }
+  function equippedGearUids(state, data) {
+    const uids = new Set();
+    for (const member of partyMembers(state, data))
+      for (const slot of gearSlots) if (member[slot + 'Uid'] !== undefined) uids.add(member[slot + 'Uid']);
+    return uids;
+  }
+  function storedGearCount(state, data) {
+    const equipped = equippedGearUids(state, data);
+    return (state.gear || []).filter(e => !equipped.has(e.uid)).length;
+  }
+  function addGear(state, data, baseId) {
+    const base = gearBase(data, baseId);
+    if (!base) return null;
+    const instance = { uid: state.nextGearUid, baseId, ...standardGear(base) };
+    state.nextGearUid += 1;
+    state.gear.push(instance);
+    return instance;
+  }
+  function syncGearMirrors(state, data) {
+    const byUid = new Map(state.gear.map(e => [e.uid, e]));
+    for (const member of partyMembers(state, data))
+      for (const slot of gearSlots) {
+        const instance = byUid.get(member[slot + 'Uid']);
+        if (instance) member[slot] = instance.baseId;
+      }
+    state.owned = [...new Set(state.gear.map(e => e.baseId))];
+  }
+  // 旧セーブの移行と壊れた個体の修復。何度呼んでも同じ結果になる。
+  // 写し（owned・weapon・armor）が以前の版などで書き換えられていたら、その内容を個体へ取り込む。
+  function normalizeGear(state, data) {
+    const members = partyMembers(state, data),
+      seen = new Set();
+    if (!Array.isArray(state.gear)) state.gear = [];
+    state.gear = state.gear.filter(e => {
+      if (!e || !Number.isSafeInteger(e.uid) || e.uid < 1 || seen.has(e.uid) || !gearBase(data, e.baseId)) return false;
+      seen.add(e.uid);
+      return true;
+    });
+    for (const instance of state.gear)
+      if (!gearInstanceValid(data, instance)) Object.assign(instance, standardGear(gearBase(data, instance.baseId)));
+    const maxUid = state.gear.reduce((max, e) => Math.max(max, e.uid), 0);
+    if (!Number.isSafeInteger(state.nextGearUid) || state.nextGearUid <= maxUid) state.nextGearUid = maxUid + 1;
+    const byUid = new Map(state.gear.map(e => [e.uid, e])),
+      slots = members.flatMap(member =>
+        gearSlots.map(slot => {
+          const current = byUid.get(member[slot + 'Uid']),
+            mirror = member === state || member[slot] !== undefined ? member[slot] : state[slot],
+            desired =
+              gearBase(data, mirror)?.type === slot
+                ? mirror
+                : current && gearBase(data, current.baseId).type === slot
+                  ? current.baseId
+                  : [state[slot], 'twig', 'cloth', ...data.items.map(e => e.id)].find(
+                      id => gearBase(data, id)?.type === slot
+                    );
+          return { member, slot, current, desired };
+        })
+      ),
+      used = new Set();
+    for (const entry of slots)
+      if (entry.current?.baseId === entry.desired && !used.has(entry.current.uid)) {
+        used.add(entry.current.uid);
+        entry.done = true;
+      }
+    for (const entry of slots) {
+      if (entry.done) continue;
+      const instance =
+        state.gear.find(e => e.baseId === entry.desired && !used.has(e.uid)) || addGear(state, data, entry.desired);
+      if (!instance) continue;
+      used.add(instance.uid);
+      entry.member[entry.slot + 'Uid'] = instance.uid;
+    }
+    const represented = new Set(state.gear.map(e => e.baseId));
+    for (const id of Array.isArray(state.owned) ? state.owned : [])
+      if (!represented.has(id) && gearBase(data, id)) {
+        represented.add(id);
+        addGear(state, data, id);
+      }
+    syncGearMirrors(state, data);
+    return state;
+  }
+  function validateGear(state, data) {
+    if (state.gear === undefined) return [];
+    if (!Array.isArray(state.gear)) return ['装備の個体が不正です'];
+    const errors = [],
+      byUid = new Map();
+    for (const instance of state.gear) {
+      if (!gearInstanceValid(data, instance) || byUid.has(instance.uid)) errors.push('装備の個体が不正です');
+      else byUid.set(instance.uid, instance);
+    }
+    if (errors.length) return errors;
+    const maxUid = Math.max(0, ...byUid.keys());
+    if (!Number.isSafeInteger(state.nextGearUid) || state.nextGearUid <= maxUid)
+      errors.push('装備の通し番号が不正です');
+    const worn = new Set();
+    const members = [state, ...(Array.isArray(state.companions) ? state.companions : [])];
+    for (const member of members)
+      for (const slot of gearSlots) {
+        const instance = byUid.get(member?.[slot + 'Uid']);
+        if (!instance || gearBase(data, instance.baseId).type !== slot || worn.has(instance.uid))
+          errors.push('装着中の装備が不正です');
+        else worn.add(instance.uid);
+      }
+    if (state.gear.length - worn.size > gearStorageLimit) errors.push('装備の所持数が上限を超えています');
+    return errors;
+  }
+  // 装備の付け替え。他の人物が着けている個体なら、互いの装備を交換する。
+  function equipGear(state, data, index, uid) {
+    const instance = Array.isArray(state.gear) ? state.gear.find(e => e.uid === uid) : null,
+      base = gearBase(data, instance?.baseId);
+    if (!base) return { ok: false, reason: 'missing' };
+    const slot = base.type,
+      key = slot + 'Uid',
+      members = partyMembers(state, data),
+      member = members[index];
+    if (!member) return { ok: false, reason: 'missing' };
+    if (member[key] === uid) return { ok: false, reason: 'equipped' };
+    if (!canEquip(state.lv, base)) return { ok: false, reason: 'level', item: base };
+    const otherIndex = members.findIndex(e => e[key] === uid);
+    if (otherIndex >= 0) {
+      const swapped = state.gear.find(e => e.uid === member[key]),
+        swappedBase = gearBase(data, swapped?.baseId);
+      if (!canEquip(state.lv, swappedBase)) return { ok: false, reason: 'swap-level', item: swappedBase, otherIndex };
+      members[otherIndex][key] = member[key];
+    }
+    member[key] = uid;
+    syncGearMirrors(state, data);
+    return { ok: true, item: base, otherIndex };
+  }
   function travelEvent(rules, fought, roll) {
     if (!fought && roll < rules.battleRate) return 'battle';
     if (roll < (fought ? rules.materialRate : rules.battleRate + rules.materialRate)) return 'material';
@@ -475,6 +658,14 @@
     travelEvent,
     gearLevel,
     canEquip,
+    gearStorageLimit,
+    gearItem,
+    memberGear,
+    storedGearCount,
+    addGear,
+    normalizeGear,
+    validateGear,
+    equipGear,
     activeBuffs,
     allyAttack,
     applyAttackBuff,

@@ -86,7 +86,7 @@ test('もちものの人物を切り替え個別装備・能力・セーブを�
  await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-game-ready','true');
  await page.evaluate(()=>{state.lv=3;state.owned.push('iron','leather');render();});
  await page.locator('[data-screen="bag"]').click();await page.locator('#inventoryCharacter').selectOption('1');
- await page.locator('[data-action="equip:iron"]').click();await page.locator('[data-action="equip:leather"]').click();
+ await page.locator('#inventory .item:has([data-gear-id="iron"]) [data-action^="equip:"]').click();await page.locator('#inventory .item:has([data-gear-id="leather"]) [data-action^="equip:"]').click();
  await page.locator('#inventoryCharacter').scrollIntoViewIfNeeded();
  await expect(page.locator('#inventoryCharacter')).toHaveCSS('color','rgb(36, 61, 63)');
  await page.screenshot({path:test.info().outputPath('inventory-member-selector.png')});

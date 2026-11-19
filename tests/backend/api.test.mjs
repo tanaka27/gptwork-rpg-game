@@ -121,3 +121,15 @@ test('published old rarity IDs stay raw while runtime, preview, draft copies, an
   const invalid=structuredClone(seed);invalid.items.find(item=>item.id==='eclipse_robe').bonusEffects.pop();assert.equal((await app.call('/api/admin/drafts','POST',{data:invalid,label:'strict new rarity'})).status,422,'new rarity definitions remain strictly validated');
  }finally{app.DB.close();}
 });
+test('gear instances round-trip through cloud saves and forged or broken instances are rejected',async()=>{
+ const app=setup();try{
+  const std=(uid,baseId)=>({uid,baseId,rarity:'common',bonusEffects:[]});
+  const state={...fixture(),gear:[std(1,'twig'),std(2,'cloth'),std(3,'iron')],nextGearUid:4,weaponUid:1,armorUid:2,owned:['twig','cloth','iron']};
+  const saved=await app.call('/api/save','PUT',{revision:0,state});assert.equal(saved.status,200);
+  assert.deepEqual((await app.call('/api/save')).body.state.gear,state.gear,'instances are stored as sent');
+  for(const mutate of [s=>s.gear[2].rarity='legendary',s=>s.gear[1].uid=1,s=>s.weaponUid=3+100,s=>s.armorUid=1,s=>s.nextGearUid=2]){
+   const invalid=structuredClone(state);mutate(invalid);
+   assert.equal((await app.call('/api/save','PUT',{revision:saved.body.revision,state:invalid})).status,422);
+  }
+ }finally{app.DB.close();}
+});

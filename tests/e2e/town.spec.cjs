@@ -37,9 +37,12 @@ test('街のお店をその場で開き、品揃え・購入・戻るを操作�
     const after=await page.evaluate(() => JSON.parse(localStorage.getItem('starlight-rpg-v1')));
     expect(after.items.herb).toBe(before.items.herb+1);expect(after.gold).toBe(before.gold-12);
     await expect(page.locator('#shopGold')).toHaveText(after.gold+' G');
+    // 装備は何本でも買え、行に所持数を表示する。
+    const owned=await page.evaluate(id=>state.gear.filter(e=>e.baseId===id).length,equipment);
     await page.locator(`#shopItems [data-action="buy:${equipment}"]`).click();
-    await expect(page.locator(`#shopItems [data-action="buy:${equipment}"]`)).toBeDisabled();
-    await expect(page.locator(`#shopItems [data-action="buy:${equipment}"]`)).toHaveText('購入済');
+    await expect(page.locator(`#shopItems .item:has([data-action="buy:${equipment}"])`)).toContainText('所持'+(owned+1));
+    await expect(page.locator(`#shopItems [data-action="buy:${equipment}"]`)).toBeEnabled();
+    expect(await page.evaluate(id=>state.gear.filter(e=>e.baseId===id).length,equipment)).toBe(owned+1);
     await page.screenshot({path:test.info().outputPath('shop-'+node+'.png')});
     const back=page.locator('[data-action="shop-close"]');
     const box=await back.boundingBox(),viewport=page.viewportSize();

@@ -18,6 +18,7 @@ function allies() {
       speed: character.speed,
     };
   });
+  GameRules.normalizeGear(state, GameData);
   return [
     { characterId: initialParty[0].id, name: partyNames[0], hp: state.hp, mp: state.mp, speed: initialParty[0].speed },
     ...state.companions,
@@ -522,11 +523,10 @@ const characterTabs = [
 let characterTab = 'stats',
   characterGearDetail = null;
 function characterGearMarkup(i, prefix) {
-  const member = GameRules.memberState(state, GameData, i);
   const rows = ['weapon', 'armor']
     .map(slot => {
-      const id = member[slot],
-        item = gear[id],
+      const item = GameRules.memberGear(state, GameData, i, slot),
+        id = item?.id,
         label = slot === 'weapon' ? '武器' : '防具';
       if (!item)
         return `<li class="character-gear-row empty"><span class="character-gear-slot">${label}</span><strong>なし</strong></li>`;
@@ -536,15 +536,15 @@ function characterGearMarkup(i, prefix) {
     .join('');
   const details = ['weapon', 'armor']
     .map(slot => {
-      const id = member[slot],
-        item = gear[id];
+      const item = GameRules.memberGear(state, GameData, i, slot),
+        id = item?.id;
       return item
         ? `<section class="gear-detail character-gear-detail" id="${prefix}-gear-${slot}" data-gear-detail="${id}" aria-label="${item.name}の詳細"${characterGearDetail === id ? '' : ' hidden'}>${gearInfoMarkup(item)}<div class="gear-detail-actions"><button type="button" data-character-gear-back="${id}">装備一覧へ戻る</button></div></section>`
         : '';
     })
     .join('');
   const showingDetail = ['weapon', 'armor'].some(
-    slot => member[slot] === characterGearDetail && gear[characterGearDetail]
+    slot => GameRules.memberGear(state, GameData, i, slot)?.id === characterGearDetail
   );
   return `<ul class="character-gear-list"${showingDetail ? ' hidden' : ''}>${rows}</ul>${details}<p class="character-gear-note">装備の付け替えは「もちもの」で行います。</p>`;
 }
@@ -1141,8 +1141,7 @@ renderInventory = function () {
         )
         .join('') || '<p>この人物の特技はありません。</p>';
   } else if (tab === 'bag') {
-    const member = GameRules.memberState(state, GameData, actingAlly);
-    if (selectedGearId && gearDetailOrigin === 'bag' && gear[selectedGearId])
+    if (selectedGearId && gearDetailOrigin === 'bag' && ownedGearItem(selectedGearId))
       $('inventory').innerHTML = gearDetailMarkup(selectedGearId, 'bag');
     else
       $('inventory').innerHTML =
@@ -1155,14 +1154,8 @@ renderInventory = function () {
             )
           )
           .join('') +
-        '<p>装備品（購入済み装備は、装備Lvが旅団Lv以下なら全員が装着可能）</p>' +
-        state.owned
-          .map(id => {
-            const a = gear[id],
-              equipped = member[a.type] === id;
-            return itemRow(a, gearSummary(a), equipButton(id, equipped), btn('詳細', 'gear-detail:' + id));
-          })
-          .join('');
+        `<p>装備品（${GameRules.storedGearCount(state, GameData)} / ${GameRules.gearStorageLimit}本。装備中の品は数えません。1本を装着できるのは1人だけで、ほかの人の装備を選ぶと互いに交換します）</p>` +
+        gearInventoryRows(actingAlly);
   }
   if (tab !== 'materials') $('inventory').innerHTML = selector + $('inventory').innerHTML;
 };
@@ -1206,16 +1199,7 @@ action = function (a) {
     skillMenuMode = 'commands';
   }
   if (key === 'equip') {
-    if (state.enemy || !state.owned.includes(id) || !gear[id]) return;
-    if (!canEquipGear(gear[id])) {
-      log(`${gear[id].name}は旅団Lv.${gearLevel(gear[id])}から装備できます。`);
-      render();
-      return;
-    }
-    const member = GameRules.memberState(state, GameData, actingAlly);
-    member[gear[id].type] = id;
-    log(`${partyNames[actingAlly]}が${gear[id].name}を装備した。`);
-    render();
+    equipOwnedGear(actingAlly, id);
     return;
   }
   if (a === 'rest' && state.village && !state.journey && !state.enemy) {
@@ -1285,7 +1269,7 @@ resetAdventure = function () {
 };
 $('help').addEventListener('click', () => {
   $('modalContent').innerHTML +=
-    '<p>旅団は最大4人、敵は最大4体。全員をコマンド操作できます。戦闘開始後は素早さ順に進み、各人の番で行動を選択します。能力・装備・HP・MPは個別、レベルと経験値は旅団共通です。もちものの操作する人物で、非戦闘の回復スキル使用者と装備対象を選べます。購入済み装備は、旅団のレベルが装備レベル以上なら全員が装着できます。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の各人のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵の行動・味方の結果表示中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次の味方の番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。攻撃力は補正後の値を表示し、上昇中は青、下降中は赤になります。戦闘終了・戦闘不能で解除されます。状態異常の「攻撃力ダウン」「守備力ダウン」は、リナ・ノエル（Lv.3）、ガルド・アステル（Lv.6）の弱体特技で敵にかけられます。月影の遺跡より先の一部の魔物とボスも、通常攻撃の代わりに味方へかけてくることがあります（3ターン目ごとの強攻撃のターンを除く）。同じ種類は重ならず、かけ直すと残りターンを更新します。赤い剣↓・盾↓と残数が目印で、敵の絵の上と味方の状態欄に表示されます。強化と同じくターン終了時に減り、戦闘終了・戦闘不能・撃破で解除されます。守備力が下がっている間はステータス詳細で赤く表示します。宿屋で全員回復します。</p>';
+    '<p>旅団は最大4人、敵は最大4体。全員をコマンド操作できます。戦闘開始後は素早さ順に進み、各人の番で行動を選択します。能力・装備・HP・MPは個別、レベルと経験値は旅団共通です。もちものの操作する人物で、非戦闘の回復スキル使用者と装備対象を選べます。装備は1本ずつ所持し、旅団のレベルが装備レベル以上なら誰でも装着できます。1本を装着できるのは1人だけで、ほかの人が着けている装備を選ぶと互いの装備を交換します。装着していない装備は30本まで持てます。防御は選択後からラウンド終了まで有効です。素早さが高い順に行動し、戦闘不能者は行動しません。戦闘メッセージ待ちでは、背景・暗いコマンド部分・メッセージ窓をクリック（タップ）して先へ進めます。行動の開始メッセージを送ると、その行動のダメージ・回復を反映します。結果のメッセージを送るまで次の行動には進みません。報酬もクリックして確認します。フォーカスしてEnter・スペースでも操作できます。非戦闘時の通常操作中と、戦闘中の各人のコマンド入力待ちでは、味方の状態欄をクリックするとステータスを確認できます。閉じる・Escで戻ります。敵の行動・味方の結果表示中は味方欄のクリックでも戦闘メッセージが進みます。スキル・道具の選択中には開きません。道具を選んだら味方の状態欄をクリックして使います。使用後も対象選択にとどまり、同じ道具を続けて使えます。戦闘中は次の味方の番まで再使用できません。満タン・戦闘不能の味方は対象外です。戻る・Escでは道具もターンも消費しません。「スキル」でコマンドを一覧へ切り替え、スキルの詳細を確認したらフィールドの敵または上部の味方をクリックして発動します。「戻る」でコマンドへ戻れます。選択のキャンセルではMP・ターンを消費しません。Lv.2で習得する特技「鼓舞」は戦闘中に味方1人の攻撃力を1.5倍にし、3ターン継続します。同じ効果は重ならず再使用で残数を更新。付与したターンは減らず、次のターン終了から減少します。画像上の剣↑と残数が目印で、ステータス詳細から効果を確認できます。攻撃力は補正後の値を表示し、上昇中は青、下降中は赤になります。戦闘終了・戦闘不能で解除されます。状態異常の「攻撃力ダウン」「守備力ダウン」は、リナ・ノエル（Lv.3）、ガルド・アステル（Lv.6）の弱体特技で敵にかけられます。月影の遺跡より先の一部の魔物とボスも、通常攻撃の代わりに味方へかけてくることがあります（3ターン目ごとの強攻撃のターンを除く）。同じ種類は重ならず、かけ直すと残りターンを更新します。赤い剣↓・盾↓と残数が目印で、敵の絵の上と味方の状態欄に表示されます。強化と同じくターン終了時に減り、戦闘終了・戦闘不能・撃破で解除されます。守備力が下がっている間はステータス詳細で赤く表示します。宿屋で全員回復します。</p>';
 });
 allies();
 render();

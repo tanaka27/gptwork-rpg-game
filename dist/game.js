@@ -66,13 +66,64 @@ const gearLevelLabel = (item, prefix = '装備') =>
   `<span class="gear-level${canEquipGear(item) ? '' : ' insufficient'}">${prefix}Lv.${gearLevel(item)}</span>`;
 const gearSummary = item =>
   `<span class="rarity ${equipmentRarity(item)}">${gearRarityLabels[equipmentRarity(item)]}</span> · ${gearLevelLabel(item)} · ${item.type === 'weapon' ? '攻撃' : '守備'} +${item.value}`;
-const equipButton = (id, equipped) =>
-  btn(
-    equipped ? '装備中' : canEquipGear(gear[id]) ? '装備' : 'Lv不足',
-    'equip:' + id,
-    '',
-    equipped || !canEquipGear(gear[id]) || !!state.enemy || busy
+const partyMemberName = index =>
+  GameData.characters.find(character => character.id === GameData.rules.party[index])?.name || '';
+// 所持している装備の個体。uid は data-action から文字列で渡ることがある。
+const ownedGearItem = uid => {
+  const instance = (state.gear || []).find(e => String(e.uid) === String(uid));
+  return instance ? GameRules.gearItem(GameData, instance) : null;
+};
+const gearWearer = uid =>
+  GameData.rules.party.findIndex(
+    (_, index) => GameRules.memberState(state, GameData, index)[(ownedGearItem(uid)?.type || 'weapon') + 'Uid'] === uid
   );
+const equipButton = (item, index = 0) => {
+  const wearer = gearWearer(item.uid),
+    equipped = wearer === index;
+  return btn(
+    equipped ? '装備中' : !canEquipGear(item) ? 'Lv不足' : wearer >= 0 ? '交換' : '装備',
+    'equip:' + item.uid,
+    '',
+    equipped || !canEquipGear(item) || !!state.enemy || busy
+  );
+};
+const ownedGearSummary = item => {
+  const wearer = gearWearer(item.uid);
+  return gearSummary(item) + (wearer >= 0 ? ` · ${partyMemberName(wearer)}が装備中` : '');
+};
+function gearInventoryRows(index = 0) {
+  return (state.gear || [])
+    .map(instance => GameRules.gearItem(GameData, instance))
+    .filter(Boolean)
+    .map(item =>
+      itemRow(item, ownedGearSummary(item), equipButton(item, index), btn('詳細', 'gear-detail:' + item.uid))
+    )
+    .join('');
+}
+// uid のほか装備IDも受け付ける（その装備のうち、誰も着けていない1本を優先）。
+function resolveGearUid(key) {
+  if (ownedGearItem(key)) return Number(key);
+  const candidates = (state.gear || []).filter(e => e.baseId === key);
+  return (candidates.find(e => gearWearer(e.uid) < 0) || candidates[0])?.uid;
+}
+function equipOwnedGear(index, key) {
+  if (state.enemy || busy) return;
+  GameRules.normalizeGear(state, GameData);
+  const result = GameRules.equipGear(state, GameData, index, resolveGearUid(key));
+  if (result.reason === 'level') log(`${result.item.name}は旅団Lv.${gearLevel(result.item)}から装備できます。`);
+  else if (result.reason === 'swap-level')
+    log(`${partyMemberName(result.otherIndex)}は${result.item.name}を装備できないため、交換できません。`);
+  else if (result.ok)
+    log(
+      `${partyMemberName(index)}が${result.item.name}を装備した。` +
+        (result.otherIndex >= 0 ? `（${partyMemberName(result.otherIndex)}と交換）` : '')
+    );
+  else return;
+  render();
+}
+const gearStorageFull = () =>
+  GameRules.storedGearCount(GameRules.normalizeGear(state, GameData), GameData) >= GameRules.gearStorageLimit;
+const ownedGearCount = id => (state.gear || []).filter(e => e.baseId === id).length;
 const equipmentEligible = id => !!gear[id] && ['common', 'uncommon'].includes(equipmentRarity(gear[id]));
 function currentShopStock() {
   return state.village && !state.journey && !state.enemy
@@ -101,8 +152,9 @@ function rollEquipmentDrop(e, rng = Math.random) {
   if (e?.boss || rng() >= 0.13) return null;
   const candidates = zones[state.zone].equipmentDropIds || [zones[state.zone].bonusItemId].filter(Boolean),
     id = candidates.length ? candidates[Math.floor(rng() * candidates.length)] : null;
-  if (id && gear[id] && !state.owned.includes(id)) {
-    state.owned.push(id);
+  if (id && gear[id] && !state.owned.includes(id) && !gearStorageFull()) {
+    GameRules.addGear(state, GameData, id);
+    state.owned = [...new Set(state.gear.map(e => e.baseId))];
     log(`${gear[id].name}を発見！ もちものから装備できる。`);
     return id;
   }
@@ -434,6 +486,7 @@ function btn(text, action, sub = '', disabled = false) {
   return `<button data-action="${action}" ${disabled ? 'disabled' : ''}>${text}${sub ? `<small>${sub === '10 G / FULL HEAL' ? '10 G · 全回復' : sub}</small>` : ''}</button>`;
 }
 function render(persist = true) {
+  GameRules.normalizeGear(state, GameData);
   finishTravel();
   $('reset').disabled = busy;
   const e = state.enemy,
@@ -545,13 +598,7 @@ function renderInventory() {
       )
       .join('') +
     '<p style="border-top:1px solid #344148;padding-top:14px">装備品</p>' +
-    state.owned
-      .map(id => {
-        const a = gear[id],
-          equipped = state[a.type] === id;
-        return itemRow(a, gearSummary(a), equipButton(id, equipped));
-      })
-      .join('');
+    gearInventoryRows(0);
 }
 function renderShop() {
   const stock = currentShopStock();
@@ -570,12 +617,12 @@ function renderShop() {
   $('shopItems').innerHTML = stock
     .map(id => {
       const item = consumables[id] || gear[id],
-        owned = !!gear[id] && state.owned.includes(id);
-      const description = consumables[id] ? item.desc : gearSummary(item);
+        full = !!gear[id] && gearStorageFull();
+      const description = consumables[id] ? item.desc : `${gearSummary(item)} · 所持${ownedGearCount(id)}`;
       return itemRow(
         item,
         description,
-        btn(owned ? '購入済' : item.price + ' G', 'buy:' + id, '', owned || state.gold < item.price),
+        btn(full ? '満杯' : item.price + ' G', 'buy:' + id, '', full || state.gold < item.price),
         gear[id] ? btn('詳細', 'gear-detail:' + id) : ''
       );
     })
@@ -750,25 +797,19 @@ function reportQuest() {
   render();
   return true;
 }
+// shop では装備ID、bag では所持個体の uid を受け取る。
 function gearDetailMarkup(id, origin) {
-  const item = gear[id],
-    owned = state.owned.includes(id),
-    member =
-      typeof GameRules !== 'undefined' && typeof actingAlly !== 'undefined'
-        ? GameRules.memberState(state, GameData, actingAlly)
-        : state,
-    equipped = member?.[item.type] === id,
+  const item = origin === 'shop' ? gear[id] : ownedGearItem(id),
+    full = gearStorageFull(),
     action =
       origin === 'shop'
         ? btn(
-            owned ? '購入済' : item.price + ' G',
+            full ? '満杯' : item.price + ' G',
             'buy:' + id,
             '',
-            owned || !currentShopStock().includes(id) || state.gold < item.price
+            full || !currentShopStock().includes(id) || state.gold < item.price
           )
-        : owned
-          ? equipButton(id, equipped)
-          : '',
+        : equipButton(item, typeof actingAlly !== 'undefined' ? actingAlly : 0),
     levelNote = canEquipGear(item)
       ? ''
       : `<p class="gear-level-note">旅団がLv.${gearLevel(item)}になると装備できます（現在Lv.${state.lv}）。</p>`;
@@ -1119,8 +1160,7 @@ function action(a) {
       reportQuest();
       break;
     case 'gear-detail':
-      if (!gear[id] || (!shopOpen && !state.owned.includes(id)) || (shopOpen && !currentShopStock().includes(id)))
-        return;
+      if (shopOpen ? !gear[id] || !currentShopStock().includes(id) : !ownedGearItem(id)) return;
       selectedGearId = id;
       gearDetailOrigin = shopOpen ? 'shop' : 'bag';
       render(false);
@@ -1144,24 +1184,24 @@ function action(a) {
     case 'buy': {
       if (!currentShopStock().includes(id) || (gear[id] && !equipmentEligible(id))) return;
       const item = consumables[id] || gear[id];
-      if (!item || state.gold < item.price || (gear[id] && state.owned.includes(id))) return;
+      if (!item || state.gold < item.price) return;
+      if (gear[id] && gearStorageFull()) {
+        log(`装備品は${GameRules.gearStorageLimit}本までしか持てません。`);
+        render();
+        return;
+      }
       state.gold -= item.price;
       if (consumables[id]) state.items[id]++;
-      else state.owned.push(id);
+      else {
+        GameRules.addGear(state, GameData, id);
+        state.owned = [...new Set(state.gear.map(e => e.baseId))];
+      }
       log(`${item.name}を購入した。`);
       render();
       break;
     }
     case 'equip':
-      if (state.enemy || !state.owned.includes(id) || !gear[id]) return;
-      if (!canEquipGear(gear[id])) {
-        log(`${gear[id].name}は旅団Lv.${gearLevel(gear[id])}から装備できます。`);
-        render();
-        return;
-      }
-      state[gear[id].type] = id;
-      log(`${gear[id].name}を装備した。`);
-      render();
+      equipOwnedGear(0, id);
       break;
   }
 }
