@@ -1130,10 +1130,12 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 
 /* Town shops replace the commands in place, without opening the bag screen. */
 #shopMenu[hidden],
+#smithyMenu[hidden],
 #tavernMenu[hidden] {
   display: none;
 }
-#shopMenu {
+#shopMenu,
+#smithyMenu {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1141,11 +1143,13 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   max-height: min(340px, 46dvh);
 }
 .command:has(#shopMenu:not([hidden])),
+.command:has(#smithyMenu:not([hidden])),
 .command:has(#tavernMenu:not([hidden])) {
   max-height: none;
   overflow: visible;
 }
 .command:has(#shopMenu:not([hidden])) :is(#actions, #subactions, #battleOrder, #skillMenu),
+.command:has(#smithyMenu:not([hidden])) :is(#actions, #subactions, #battleOrder, #skillMenu),
 .command:has(#tavernMenu:not([hidden])) :is(#actions, #subactions, #battleOrder, #skillMenu) {
   display: none;
 }
@@ -1176,7 +1180,8 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   white-space: nowrap;
   color: var(--muted);
 }
-#shopGold {
+#shopGold,
+#smithyGold {
   color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
@@ -1212,10 +1217,48 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   min-height: 44px;
   min-width: 68px;
 }
-#shopMenu > [data-action='shop-close'] {
+#shopMenu > [data-action='shop-close'],
+#smithyMenu > [data-action='smithy-close'] {
   flex: none;
   min-height: 40px;
   padding: 6px 12px;
+}
+/* Smithy recipes list the required materials as owned / needed counts. */
+.smithy-note {
+  flex: none;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.smithy-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.smithy-needs .short {
+  color: #e5a46b;
+}
+.smithy-result {
+  margin: 0 0 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.smithy-result .item {
+  border-bottom: 0;
+  padding: 0;
+}
+.smithy-result small {
+  display: block;
+}
+.smithy-result > p {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--gold);
 }
 .tavern-quests {
   display: grid;
@@ -1474,6 +1517,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 @media (max-height: 540px) and (min-width: 600px) {
   #shopMenu,
+  #smithyMenu,
   #tavernMenu {
     max-height: 100%;
     height: 100%;
@@ -1506,7 +1550,7 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
     right: 10px;
     font-size: 17px;
   }
-  .adventure-screen:has(.location-title:not([hidden])) :is(#shopMenu, #tavernMenu) {
+  .adventure-screen:has(.location-title:not([hidden])) :is(#shopMenu, #smithyMenu, #tavernMenu) {
     max-height: min(340px, 40dvh);
   }
 }
@@ -1978,19 +2022,21 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
 }
 @media (max-height: 450px) and (min-width: 600px) {
   .adventure-layout .command:has(#shopMenu:not([hidden])),
+  .adventure-layout .command:has(#smithyMenu:not([hidden])),
   .adventure-layout .command:has(#tavernMenu:not([hidden])) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
   }
-  .adventure-layout :is(#shopMenu, #tavernMenu) {
+  .adventure-layout :is(#shopMenu, #smithyMenu, #tavernMenu) {
     flex: 1;
     min-height: 0;
     max-height: none;
     height: auto;
   }
   .adventure-layout .command:has(#shopMenu:not([hidden])) .field-message,
+  .adventure-layout .command:has(#smithyMenu:not([hidden])) .field-message,
   .adventure-layout .command:has(#tavernMenu:not([hidden])) .field-message {
     flex: none;
   }

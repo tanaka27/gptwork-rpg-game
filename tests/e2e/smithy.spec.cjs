@@ -1,0 +1,70 @@
+const { test, expect } = require('./fixtures.cjs');
+
+async function placeAt(page, patch) {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-game-ready', 'true');
+  await page.evaluate(patch => {
+    const save = JSON.parse(localStorage.getItem('starlight-rpg-v1'));
+    Object.assign(save, { village: true, enemy: null, journey: null, cleared: [true, true, false] }, patch);
+    localStorage.setItem('starlight-rpg-v1', JSON.stringify(save));
+  }, patch);
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-game-ready', 'true');
+}
+
+test('ヴァルの鍛冶屋で素材とゴールドを使ってレア以上の装備を作製する', async ({ page }) => {
+  await placeAt(page, { node: 'forge', zone: 2, gold: 1000, materials: { fur: 3, fang: 2, ore: 1 } });
+  await page.locator('#actions [data-action="smithy"]').click();
+  await expect(page.locator('#smithyMenu')).toBeVisible();
+  await expect(page.locator('#actions')).toBeHidden();
+  await expect(page.locator('#smithyTitle')).toBeFocused();
+  await expect(page.locator('#smithyTitle')).toHaveText('鍛冶の街ヴァルの鍛冶屋');
+  await expect(page.locator('#smithyItems [data-recipe]')).toHaveCount(6);
+  // 素材がそろったレシピだけ選べる。
+  const iron = page.locator('#smithyItems [data-recipe="craft_iron"]');
+  await expect(iron.getByRole('button', { name: '120 G' })).toBeEnabled();
+  for (const id of ['craft_leather', 'craft_moon', 'craft_moonsteel_blade', 'craft_starward_armor', 'craft_star'])
+    await expect(page.locator(`#smithyItems [data-recipe="${id}"] button`)).toHaveText('素材不足');
+  for (const id of ['craft_leather', 'craft_moon', 'craft_moonsteel_blade', 'craft_starward_armor', 'craft_star'])
+    await expect(page.locator(`#smithyItems [data-recipe="${id}"] button`)).toBeDisabled();
+  await expect(page.locator('#smithyItems [data-recipe="craft_star"] .smithy-needs')).toContainText('火山鉱 1/4');
+  await page.screenshot({ path: test.info().outputPath('smithy-list.png') });
+
+  const before = await page.evaluate(() => state.gear.length);
+  await iron.getByRole('button', { name: '120 G' }).click();
+  await expect(page.locator('#smithyGold')).toHaveText('880 G');
+  const crafted = await page.evaluate(() => ({ gear: state.gear.at(-1), count: state.gear.length, materials: state.materials }));
+  expect(crafted.count).toBe(before + 1);
+  expect(crafted.gear.baseId).toBe('iron');
+  expect(['rare', 'epic', 'legendary']).toContain(crafted.gear.rarity);
+  expect(crafted.materials.fur).toBe(0);
+  expect(crafted.materials.fang).toBe(0);
+  await expect(page.locator('#smithyItems .smithy-result')).toContainText('鉄のつるぎ');
+  await expect(page.locator('#latestLog')).toContainText('鉄のつるぎを作製した！');
+  // 素材を使い切ったので、もう一度は作れない。
+  await expect(iron.locator('button')).toBeDisabled();
+  await expect(iron.locator('button')).toHaveText('素材不足');
+  expect(await page.evaluate(() => SaveRules.validate(JSON.parse(localStorage.getItem('starlight-rpg-v1')), GameData))).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath('smithy-crafted.png') });
+
+  // 再読み込み後も作製品が残る。
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-game-ready', 'true');
+  expect(await page.evaluate(uid => state.gear.some(e => e.uid === uid), crafted.gear.uid)).toBe(true);
+  await page.locator('#actions [data-action="smithy"]').click();
+  await page.locator('[data-action="smithy-close"]').click();
+  await expect(page.locator('#smithyMenu')).toBeHidden();
+  await expect(page.locator('#actions [data-action="smithy"]')).toBeFocused();
+});
+
+test('所持金が足りないと作製できず、ほかの街には鍛冶屋がない', async ({ page }) => {
+  await placeAt(page, { node: 'forge', zone: 2, gold: 50, materials: { fur: 4, sap: 2 } });
+  await page.locator('#actions [data-action="smithy"]').click();
+  await expect(page.locator('#smithyItems [data-recipe="craft_leather"] button')).toHaveText('100 G');
+  await expect(page.locator('#smithyItems [data-recipe="craft_leather"] button')).toBeDisabled();
+  for (const node of ['home', 'luna']) {
+    await placeAt(page, { node, zone: node === 'home' ? 0 : 1 });
+    await expect(page.locator('#actions [data-action="shop"]')).toBeVisible();
+    await expect(page.locator('#actions [data-action="smithy"]')).toHaveCount(0);
+  }
+});

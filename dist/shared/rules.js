@@ -509,17 +509,19 @@
       throw new RangeError('抽選の乱数は0以上1未満の数値が必要です: ' + String(value));
     return value;
   }
-  function rollGear(data, baseId, rng = Math.random) {
+  // rarityRates を渡すと、そのレアリティ確率で抽選する（鍛冶屋の作製など）。省略時は rules.gearRoll の確率。
+  function rollGear(data, baseId, rng = Math.random, rarityRates = null) {
     const base = gearBase(data, baseId);
     if (!base) return null;
     if (!gearRollable(data, base)) return standardGear(base);
     const roll = data.rules.gearRoll,
+      rates = rarityRates || roll.rarityRates,
       pick = drawRandom(rng);
     let total = 0,
       rarity = 'common';
     for (const id of gearRarityIds) {
       // 0.5+0.3+0.125+0.05 が 0.9750000000000001 になるような浮動小数点の誤差を、境界の判定から除く。
-      total = Math.round((total + roll.rarityRates[id]) * 1e9) / 1e9;
+      total = Math.round((total + (rates[id] || 0)) * 1e9) / 1e9;
       if (pick < total) {
         rarity = id;
         break;
@@ -612,10 +614,15 @@
     return (state.gear || []).filter(e => !equipped.has(e.uid)).length;
   }
   // rng を渡すとドロップとして抽選し、省略すると標準品（ショップ品など）を加える。
-  function addGear(state, data, baseId, rng = null) {
+  // rarityRates は抽選時のレアリティ確率の上書き（鍛冶屋の作製）。
+  function addGear(state, data, baseId, rng = null, rarityRates = null) {
     const base = gearBase(data, baseId);
     if (!base) return null;
-    const instance = { uid: state.nextGearUid, baseId, ...(rng ? rollGear(data, baseId, rng) : standardGear(base)) };
+    const instance = {
+      uid: state.nextGearUid,
+      baseId,
+      ...(rng ? rollGear(data, baseId, rng, rarityRates) : standardGear(base)),
+    };
     state.nextGearUid += 1;
     state.gear.push(instance);
     return instance;
@@ -784,6 +791,7 @@
     storedGearCount,
     addGear,
     rollGear,
+    gearRollable,
     drawRandom,
     gearAmountRange,
     normalizeGear,

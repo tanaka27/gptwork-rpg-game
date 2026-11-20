@@ -18,7 +18,7 @@
 | 戦闘計算 | `shared/rules.js`、`dist/combat.js` |
 | データ管理画面（定義の編集UI、装備の抽選ルールの専用フォーム） | `dist/admin/admin.js`、`dist/admin/style.css` |
 | レイアウトと画面装飾 | `dist/workspace.css`、`dist/style.css`、[DESIGN.md](DESIGN.md) |
-| 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js`、`shared/quests.js`、`shared/adventurers.js` |
+| 定義・セーブの検証とゲーム計算 | `shared/content.js`、`shared/save.js`、`shared/rules.js`、`shared/quests.js`、`shared/crafting.js`（鍛冶屋のレシピ）、`shared/adventurers.js` |
 | API、DB、Worker | `server/`、`db/`、`drizzle/`、[BACKEND.md](BACKEND.md) |
 | 定義同期と公開用ビルド | `scripts/`、[RELEASE.md](RELEASE.md#ビルドとパッケージ) |
 | ロジック/API/ブラウザ検証 | `tests/` |
