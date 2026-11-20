@@ -1,6 +1,6 @@
 # 鍛冶屋での装備作製
 
-- 状態：反映完了（GitHubのみ、Sites未反映）
+- 状態：反映完了（GitHub・Sites）
 - 設計版：v1
 - 要求・背景：鍛冶屋でドロップ素材とゴールドを消費して装備を作製する。作製可能な装備を一覧表示し、必要素材を持つものだけ選べる。作製品のレアリティはレア以上が確定。
 - 設計作成者：Claude Code
@@ -37,7 +37,7 @@
 ## 検証計画
 - ロジック：`tests/game/crafting.test.cjs`（確率境界、消費、各拒否理由、場所、無効レシピ、保存検証の通過）。`npm test` 全体。
 - Playwright：`tests/e2e/smithy.spec.cjs` を game-desktop / game-mobile で実行（表示・無効化・作製後の状態・console）、スクリーンショット目視。統合前に全E2E。
-- 対象外：iOS/Android実機、Sitesでの動作（Codexが公開）。
+- 対象外：iOS/Android実機、Sites本番でのゲーム操作。
 - 復旧：該当commitをrevertする（セーブ形式不変のため作製済み装備はそのまま残る）。
 
 ## 親エージェントのレビュー・承認記録
@@ -52,5 +52,5 @@
 - `tests/e2e/smithy.spec.cjs`・`town.spec.cjs`（game-desktop / game-mobile）：成功。一覧・作製後のスクリーンショットを両幅で目視。
 - `npm run test:e2e` 全体：148件成功。
 - 設計との差異：作製結果は装備詳細全体ではなく1行の要約（レアリティ・装備Lv・基礎補正・追加効果）で表示（スマホ幅で一覧が隠れるため）。遊び方とREADMEに鍛冶屋の説明を追加。
-- 未検証：iOS/Android実機、Sites上の動作。`npm run build` は配信画像に関わらないため未実行。
-- push：GitHubの `main` へpush。Sitesは未反映（公開はCodexで行う）。
+- Sites反映時に `npm test`、`npm run package:site`、`npm run qa:worker-assets` が成功。iOS/Android実機とSites本番でのゲーム操作は未検証。
+- 反映：GitHub `f9ed489` を反映。Sitesソース `9486bfa`、version 71、deployment `appgdep_6b0066ee9d78819183af4f4010c0b0f9` 成功。

@@ -14,7 +14,7 @@
 - 鍛冶の街ヴァルに鍛冶屋を追加。ドロップ素材とゴールドで既存の抽選対象6装備を作製でき、必要素材がそろったレシピだけ選べる。作製品はレア70%・エピック25%・レジェンダリー5%（[設計書](docs/history/plans/2026-11-20-smithy-crafting.md)）。
 - レシピは固定ルール `shared/crafting.js`。セーブ形式・公開定義・DB schemaは変更なし。
 - `npm test`（作製のロジックテスト追加）と全E2E（PC/スマホ相当幅、鍛冶屋のspec追加）に成功。スクリーンショットを目視。iOS/Android実機は未確認。
-- GitHubの `main` へpush済み。Sitesは未反映（公開はCodexで行う）。
+- GitHub `f9ed489` を反映。Sitesソース `9486bfa`、version 71、deployment `appgdep_6b0066ee9d78819183af4f4010c0b0f9` 成功。
 
 ## 2026-11-19 — キャラクターの年齢・性別
 
