@@ -1223,6 +1223,23 @@ button.party-member:is(:hover, :focus-visible) .ally-target-marker {
   min-height: 40px;
   padding: 6px 12px;
 }
+/* Smithy switches between crafting and buying standard gear. */
+.smithy-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex: none;
+}
+.smithy-tabs button {
+  min-height: 44px;
+  padding: 5px 8px;
+  color: var(--muted);
+}
+.smithy-tabs button[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--accent);
+  background: #25382f;
+}
 /* Smithy recipes list the required materials as owned / needed counts. */
 .smithy-note {
   flex: none;

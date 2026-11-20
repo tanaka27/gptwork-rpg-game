@@ -416,6 +416,7 @@ let state = initial(),
   shopOpen = false,
   smithyOpen = false,
   smithyResultUid = null,
+  smithyView = 'craft',
   tavernOpen = false,
   tavernView = 'adventurers',
   selectedAdventurerId = null,
@@ -718,6 +719,21 @@ function currentSmithy() {
   return state.village && !state.journey && !state.enemy && !busy && CraftRules.hasSmithy(state.node);
 }
 const craftButtonLabels = { materials: '素材不足', full: '満杯' };
+const smithyNotes = {
+  craft: '素材とゴールドで装備を作製します。作製品はレア以上が確定します。',
+  buy: 'コモン・アンコモンの装備を定価で購入できます。レア以上は作製で手に入ります。',
+};
+function smithyPurchaseRows() {
+  const ids = CraftRules.purchaseList(GameData);
+  if (!ids.length) return '<p class="muted">今は購入できる装備がありません。</p>';
+  return ids
+    .map(id => {
+      const item = gear[id],
+        check = CraftRules.checkPurchase(state, GameData, id);
+      return `<div class="item" data-smithy-buy="${id}">${gearIconMarkup(item)}<div><strong>${item.name}</strong><small>${gearSummary(item)} · 所持${ownedGearCount(id)}</small></div>${btn(check.reason === 'full' ? '満杯' : item.price + ' G', 'smithy-buy:' + id, '', !check.ok)}</div>`;
+    })
+    .join('');
+}
 function renderSmithy() {
   if (!currentSmithy()) smithyOpen = false;
   $('smithyMenu').hidden = !smithyOpen;
@@ -728,6 +744,15 @@ function renderSmithy() {
   }
   $('smithyTitle').textContent = currentNode().name + 'の鍛冶屋';
   $('smithyGold').textContent = state.gold + ' G';
+  if (!['craft', 'buy'].includes(smithyView)) smithyView = 'craft';
+  document
+    .querySelectorAll('[data-smithy-view]')
+    .forEach(button => button.setAttribute('aria-pressed', String(button.dataset.smithyView === smithyView)));
+  $('smithyNote').textContent = smithyNotes[smithyView];
+  if (smithyView === 'buy') {
+    $('smithyItems').innerHTML = smithyPurchaseRows();
+    return;
+  }
   const crafted = smithyResultUid === null ? null : ownedGearItem(smithyResultUid),
     result = crafted
       ? `<section class="smithy-result" aria-label="作製した装備"><p>作製した装備</p><div class="item">${gearIconMarkup(crafted)}<div><strong tabindex="-1">${crafted.name}</strong><small>${gearSummary(crafted)}</small><small>${crafted.bonusEffects.map(effect => `${gearStatLabels[effect.stat] || effect.stat} +${effect.amount}`).join('、')}</small></div></div></section>`
@@ -757,6 +782,7 @@ function openSmithy() {
   tavernOpen = false;
   smithyOpen = true;
   smithyResultUid = null;
+  smithyView = 'craft';
   $('subactions').innerHTML = '';
   render(false);
   showScreen('adventure');
@@ -783,6 +809,24 @@ function craftGear(id) {
   log(`${result.item.name}を作製した！［${gearRarityLabels[result.item.rarity]}］`);
   render();
   document.querySelector?.('#smithyItems .smithy-result strong')?.focus();
+  return true;
+}
+function buySmithyGear(id) {
+  if (!smithyOpen || !currentSmithy()) return false;
+  const result = CraftRules.buy(state, GameData, id);
+  if (!result.ok) {
+    const name = gear[id]?.name || '装備';
+    const reasons = {
+      gold: `${name}を買うお金が足りない。`,
+      full: `装備品は${GameRules.gearStorageLimit}本までしか持てません。`,
+      unavailable: '今はその装備を購入できません。',
+    };
+    log(reasons[result.reason] || reasons.unavailable);
+    render();
+    return false;
+  }
+  log(`${result.item.name}を購入した。`);
+  render();
   return true;
 }
 function questRewardText(quest) {
@@ -1181,7 +1225,7 @@ function action(a) {
       gearDetailOrigin = 'bag';
     }
   }
-  if (smithyOpen && !['smithy', 'craft', 'smithy-close'].includes(key)) {
+  if (smithyOpen && !['smithy', 'craft', 'smithy-view', 'smithy-buy', 'smithy-close'].includes(key)) {
     smithyOpen = false;
     renderSmithy();
   }
@@ -1295,6 +1339,16 @@ function action(a) {
       break;
     case 'craft':
       craftGear(id);
+      break;
+    case 'smithy-view':
+      if (!smithyOpen || !currentSmithy() || !['craft', 'buy'].includes(id)) return;
+      smithyView = id;
+      smithyResultUid = null;
+      render(false);
+      document.querySelector?.(`[data-smithy-view="${id}"]`)?.focus();
+      break;
+    case 'smithy-buy':
+      buySmithyGear(id);
       break;
     case 'smithy-close':
       smithyOpen = false;
@@ -1428,7 +1482,7 @@ $('closeModal').onclick = () => $('modal').close();
 $('help').onclick = () =>
   modal(
     '冒険の手引き',
-    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。「酒場」の「冒険者」タブではこの街にいる冒険者を一覧し、名前を選ぶと年齢・性別、能力、現在地を確認できます。「依頼」タブでは依頼を受注し、条件を満たして報告すると報酬を受け取れます。探索を3回始める、または道中で「先へ進む」を1回選ぶごとに、冒険者が隣の地点へ移動することがあります。受注と報告はどの街の酒場でも行え、同時に受けられる依頼は1件です。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・エピック・レジェンダリーの5段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・エピック・レジェンダリーは通常魔物のドロップか鍛冶屋の作製で手に入ります。鍛冶の街ヴァルの「鍛冶屋」では、素材とゴールドを使ってレア以上が確定した装備を作製できます（必要な素材がそろったものだけ選べます）。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却するか鍛冶屋で装備の作製に使えます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。「にげる」でボス以外の戦闘から逃走できます（失敗するとその人の行動を消費）。<br><br>戦闘のメッセージは自動で進み、クリック・タップですぐ次へ送れます。設定の「メッセージ送り」で手動に切り替えられます。<br><br>経験値でレベルアップし、Lv.2〜7でスキルを習得。「・全体」の付いた攻撃スキルは、生きている敵全員にダメージを与えます（物理は敵ごとに会心を判定）。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。村長の依頼は累計5体討伐で100 Gと霊薬2個、ほかの依頼は受注後の討伐数で条件を満たします。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
+    '世界地図で線でつながった目的地を選ぶと道中へ出発します。「先へ進む」3回で到着。各工程で戦闘・何もなし・素材入手のいずれかが起きます。道中の戦闘は最大1回。勝利・逃走後は移動を続けられます。戦闘中以外は出発地へ引き返せます。道中も自動保存されます。旗は現在地（移動中は出発地）です。3つの街で宿泊・買い物ができます。街の「お店」でその場に商品一覧を開き、「街のコマンドへ戻る」で閉じます。「酒場」の「冒険者」タブではこの街にいる冒険者を一覧し、名前を選ぶと年齢・性別、能力、現在地を確認できます。「依頼」タブでは依頼を受注し、条件を満たして報告すると報酬を受け取れます。探索を3回始める、または道中で「先へ進む」を1回選ぶごとに、冒険者が隣の地点へ移動することがあります。受注と報告はどの街の酒場でも行え、同時に受けられる依頼は1件です。品揃えは街ごとに異なり、先の街ほど上位の道具・装備を購入できます。装備はコモン・アンコモン・レア・エピック・レジェンダリーの5段階で、アンコモン以上の追加効果は装備中の能力へ加算します。装備の詳細から基礎補正と追加効果を確認できます。ショップにはコモン・アンコモンのみ、レア・エピック・レジェンダリーは通常魔物のドロップか鍛冶屋の作製で手に入ります。鍛冶の街ヴァルの「鍛冶屋」では、素材とゴールドを使ってレア以上が確定した装備を作製できます（必要な素材がそろったものだけ選べます）。「購入」に切り替えると、コモン・アンコモンの装備をゴールドだけで定価で買えます。ボスは関門・祭壇・竜の巣で待っています。<br><br>魔物は12種類＋ボス3種類。素材はコモン55%・アンコモン25%・レア8%・レジェンダリー2%の独立抽選です。「素材」タブで確認し、街で売却するか鍛冶屋で装備の作製に使えます。<br><br>「探索する」で魔物とバトル。戦闘開始後、仲間と敵が素早さ順に行動し、味方それぞれの番でコマンドを選びます。防御は行動後からラウンド終了まで有効です。通常攻撃と物理スキルは攻撃力を参照し、相手の守備力で軽減されます。物理スキルは、うんのよさが高いほど「会心の一撃」が出やすくなります。会心は守備力を無視し、攻撃力×スキル威力を基準にダメージを与えます。うんのよさはキャラクターごとに異なり、会心率はうんのよさ÷512（最大50%）です。通常攻撃と魔法に会心はありません。守備が高くても、かすり当たりで微小ダメージを与えられる場合があります。魔法は賢さを参照し、相手の能力の影響を受けません。賢さは各人の成長設定に従って上昇します。ダメージの最低値は0です。<br><br>3ターン目ごとの強攻撃には「ぼうぎょ」が有効です（MPも回復）。「にげる」でボス以外の戦闘から逃走できます（失敗するとその人の行動を消費）。<br><br>戦闘のメッセージは自動で進み、クリック・タップですぐ次へ送れます。設定の「メッセージ送り」で手動に切り替えられます。<br><br>経験値でレベルアップし、Lv.2〜7でスキルを習得。「・全体」の付いた攻撃スキルは、生きている敵全員にダメージを与えます（物理は敵ごとに会心を判定）。各地で4体倒すとボスに挑めます。ボスを倒すと次のエリアへ進めます。<br><br>村では10 Gで宿泊、装備や道具を購入できます。装備は購入後に「もちもの」から装着。村長の依頼は累計5体討伐で100 Gと霊薬2個、ほかの依頼は受注後の討伐数で条件を満たします。全滅しても村で復活します。<br><br>進行はこのブラウザへ自動保存。別の端末とは同期されません。'
   );
 $('reset').onclick = () => {
   if (busy) return;

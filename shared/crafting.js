@@ -68,5 +68,57 @@
     return { ok: true, recipe, instance, item: gameRules.gearItem(data, instance) };
   }
 
-  return Object.freeze({ catalog, townNodes, rarityRates, hasSmithy, get, available, list, check, craft });
+  // 鍛冶屋で購入できる標準品のレアリティ。レア以上は作製（またはドロップ）でしか手に入らない。
+  const purchaseRarities = Object.freeze(['common', 'uncommon']);
+  // 購入できる装備：レシピの装備のうち、定義にあり、固有装備でなく、標準品がコモンかアンコモンで価格があるもの。
+  function purchasable(data, gearId) {
+    const base = gearBase(data, gearId);
+    return (
+      !!base &&
+      catalog.some(recipe => recipe.gearId === gearId) &&
+      !base.unique &&
+      purchaseRarities.includes(base.rarity || 'common') &&
+      Number.isSafeInteger(base.price) &&
+      base.price > 0
+    );
+  }
+  function purchaseList(data) {
+    return [...new Set(catalog.map(recipe => recipe.gearId))].filter(id => purchasable(data, id));
+  }
+  // 購入できるかどうか。理由は表示の優先順（所持金 → 所持上限）。
+  function checkPurchase(state, data, gearId) {
+    if (!purchasable(data, gearId)) return { ok: false, reason: 'unavailable' };
+    const item = gearBase(data, gearId);
+    if (!Number.isSafeInteger(state.gold) || state.gold < item.price) return { ok: false, reason: 'gold', item };
+    if (gameRules.storedGearCount(state, data) >= gameRules.gearStorageLimit)
+      return { ok: false, reason: 'full', item };
+    return { ok: true, item };
+  }
+  // ゴールドを払って標準品1本を加える。街にいるかどうかは呼び出し側で確かめる。
+  function buy(state, data, gearId) {
+    gameRules.normalizeGear(state, data);
+    const result = checkPurchase(state, data, gearId);
+    if (!result.ok) return result;
+    const instance = gameRules.addGear(state, data, gearId);
+    state.gold -= result.item.price;
+    state.owned = [...new Set(state.gear.map(e => e.baseId))];
+    return { ok: true, item: result.item, instance };
+  }
+
+  return Object.freeze({
+    catalog,
+    townNodes,
+    rarityRates,
+    purchaseRarities,
+    hasSmithy,
+    get,
+    available,
+    list,
+    check,
+    craft,
+    purchasable,
+    purchaseList,
+    checkPurchase,
+    buy,
+  });
 });

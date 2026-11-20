@@ -130,4 +130,66 @@ assert.equal(rules.rollGear(data, 'star', seq([0])).rarity, 'common');
   app.run("state.node='forge';state.zone=2;action('smithy');state.village=false;state.materials={fur:3,fang:2};action('craft:craft_iron')");
   assert.equal(app.run('state.materials.fur'), 3);
 }
+// 購入：作製できる装備のうちコモン・アンコモンの標準品を定価で買える。
+assert.deepEqual(craft.purchaseList(data), ['iron', 'leather', 'moon', 'moonsteel_blade', 'starward_armor', 'star']);
+assert.deepEqual(craft.purchaseRarities, ['common', 'uncommon']);
+assert.equal(craft.purchasable(data, 'eclipse_robe'), false, '固有・レアの装備は買えない');
+assert.equal(craft.purchasable(data, 'twig'), false, 'レシピにない装備は買えない');
+assert.equal(craft.purchasable(without(d => (d.items.find(e => e.id === 'star').rarity = 'rare')), 'star'), false);
+assert.equal(craft.purchasable(without(d => (d.items.find(e => e.id === 'star').unique = true)), 'star'), false);
+assert.equal(craft.purchasable(without(d => (d.items.find(e => e.id === 'star').price = 0)), 'star'), false);
+assert.equal(craft.purchasable(without(d => (d.items = d.items.filter(e => e.id !== 'star'))), 'star'), false);
+assert.equal(craft.purchasable(without(d => delete d.rules.gearRoll), 'star'), true, '購入は抽選ルールに依存しない');
+{
+  const state = freshState();
+  state.gold = 419;
+  assert.equal(craft.checkPurchase(state, data, 'moonsteel_blade').reason, 'gold');
+  assert.equal(craft.checkPurchase(state, data, 'eclipse_robe').reason, 'unavailable');
+  state.gold = 420;
+  const materials = JSON.stringify(state.materials),
+    uid = state.nextGearUid;
+  const result = craft.buy(state, data, 'moonsteel_blade');
+  assert.equal(result.ok, true);
+  assert.equal(state.gold, 0);
+  assert.equal(JSON.stringify(state.materials), materials, '素材は使わない');
+  assert.equal(result.instance.uid, uid);
+  assert.equal(result.instance.rarity, 'uncommon');
+  assert.deepEqual(result.instance.bonusEffects, data.items.find(e => e.id === 'moonsteel_blade').bonusEffects);
+  assert.equal(state.owned.includes('moonsteel_blade'), true);
+  assert.deepEqual(saves.validate(state, data), []);
+  state.gold = 1000;
+  for (let i = rules.storedGearCount(state, data); i < rules.gearStorageLimit; i++) rules.addGear(state, data, 'twig');
+  assert.equal(craft.checkPurchase(state, data, 'iron').reason, 'full');
+  const before = JSON.stringify(state);
+  assert.equal(craft.buy(state, data, 'iron').ok, false);
+  assert.equal(JSON.stringify(state), before, '拒否時は何も変えない');
+}
+
+// 画面：鍛冶屋の「購入」に切り替えて標準品を買う。
+{
+  const app = boot(null, true);
+  app.run("allies();state.node='forge';state.zone=2;state.village=true;state.journey=null;state.enemy=null;state.gold=300;render(false);action('smithy')");
+  assert.equal(app.run('smithyView'), 'craft', '開いた直後は作製');
+  app.run("action('smithy-view:buy')");
+  assert.equal(app.run('smithyOpen'), true);
+  assert.equal(app.run('smithyView'), 'buy');
+  const html = app.nodes.smithyItems.innerHTML;
+  assert.match(html, /<button data-action="smithy-buy:star" >220 G<\/button>/);
+  assert.match(html, /<button data-action="smithy-buy:moonsteel_blade" disabled>420 G<\/button>/);
+  assert.doesNotMatch(html, /data-recipe=/);
+  assert.match(app.nodes.smithyNote.textContent, /コモン・アンコモン/);
+  app.run("action('smithy-buy:moonsteel_blade')");
+  assert.equal(app.run('state.gold'), 300, '所持金不足は処理側でも拒否');
+  app.run("action('smithy-buy:star')");
+  assert.equal(app.run('state.gold'), 80);
+  assert.equal(app.run('state.log[0]'), '星銀のつるぎを購入した。');
+  assert.equal(app.run("state.gear.at(-1).baseId+':'+state.gear.at(-1).rarity"), 'star:common');
+  assert.equal(app.run('smithyOpen'), true, '購入後も鍛冶屋を開いたまま');
+  assert.deepEqual(saves.validate(JSON.parse(app.run('JSON.stringify(state)')), data), []);
+  // 不正な表示切り替えは無視し、街の外では購入できない。
+  app.run("action('smithy-view:sell')");
+  assert.equal(app.run('smithyView'), 'buy');
+  app.run("state.gold=500;state.village=false;action('smithy-buy:star')");
+  assert.equal(app.run('state.gold'), 500);
+}
 console.log('crafting tests passed');

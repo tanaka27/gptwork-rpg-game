@@ -33,7 +33,11 @@ test('ヴァルの鍛冶屋で素材とゴールドを使ってレア以上の�
   const before = await page.evaluate(() => state.gear.length);
   await iron.getByRole('button', { name: '120 G' }).click();
   await expect(page.locator('#smithyGold')).toHaveText('880 G');
-  const crafted = await page.evaluate(() => ({ gear: state.gear.at(-1), count: state.gear.length, materials: state.materials }));
+  const crafted = await page.evaluate(() => ({
+    gear: state.gear.at(-1),
+    count: state.gear.length,
+    materials: state.materials,
+  }));
   expect(crafted.count).toBe(before + 1);
   expect(crafted.gear.baseId).toBe('iron');
   expect(['rare', 'epic', 'legendary']).toContain(crafted.gear.rarity);
@@ -44,7 +48,9 @@ test('ヴァルの鍛冶屋で素材とゴールドを使ってレア以上の�
   // 素材を使い切ったので、もう一度は作れない。
   await expect(iron.locator('button')).toBeDisabled();
   await expect(iron.locator('button')).toHaveText('素材不足');
-  expect(await page.evaluate(() => SaveRules.validate(JSON.parse(localStorage.getItem('starlight-rpg-v1')), GameData))).toEqual([]);
+  expect(
+    await page.evaluate(() => SaveRules.validate(JSON.parse(localStorage.getItem('starlight-rpg-v1')), GameData))
+  ).toEqual([]);
   await page.screenshot({ path: test.info().outputPath('smithy-crafted.png') });
 
   // 再読み込み後も作製品が残る。
@@ -67,4 +73,41 @@ test('所持金が足りないと作製できず、ほかの街には鍛冶屋�
     await expect(page.locator('#actions [data-action="shop"]')).toBeVisible();
     await expect(page.locator('#actions [data-action="smithy"]')).toHaveCount(0);
   }
+});
+
+test('鍛冶屋の「購入」でコモン・アンコモンの装備を定価で買う', async ({ page }) => {
+  await placeAt(page, { node: 'forge', zone: 2, gold: 500, materials: {} });
+  await page.locator('#actions [data-action="smithy"]').click();
+  await expect(page.locator('[data-smithy-view="craft"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[data-smithy-view="buy"]').click();
+  await expect(page.locator('[data-smithy-view="buy"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-smithy-view="buy"]')).toBeFocused();
+  await expect(page.locator('#smithyNote')).toContainText('コモン・アンコモン');
+  await expect(page.locator('#smithyItems [data-recipe]')).toHaveCount(0);
+  await expect(page.locator('#smithyItems [data-smithy-buy]')).toHaveCount(6);
+  await expect(page.locator('#smithyItems [data-smithy-buy="moonsteel_blade"] .rarity')).toHaveText('アンコモン');
+  await expect(page.locator('#smithyItems [data-smithy-buy="star"] button')).toHaveText('220 G');
+  await expect(page.locator('#smithyItems [data-smithy-buy="moonsteel_blade"] button')).toBeEnabled();
+  // 押下中の見た目へ切り替わってから撮る（ボタンには短いtransitionがある）。
+  await page.mouse.move(0, 0);
+  await expect(page.locator('[data-smithy-view="buy"]')).toHaveCSS('background-color', 'rgb(37, 56, 47)');
+  await expect(page.locator('[data-smithy-view="craft"]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await page.screenshot({ path: test.info().outputPath('smithy-buy.png') });
+
+  await page.locator('#smithyItems [data-smithy-buy="moonsteel_blade"] button').click();
+  await expect(page.locator('#smithyGold')).toHaveText('80 G');
+  await expect(page.locator('#latestLog')).toContainText('月鋼の剣を購入した。');
+  await expect(page.locator('#smithyItems [data-smithy-buy="moonsteel_blade"]')).toContainText('所持1');
+  await expect(page.locator('#smithyItems [data-smithy-buy="moonsteel_blade"] button')).toBeDisabled();
+  await expect(page.locator('#smithyItems [data-smithy-buy="leather"] button')).toBeEnabled();
+  const bought = await page.evaluate(() => state.gear.at(-1));
+  expect(bought).toMatchObject({ baseId: 'moonsteel_blade', rarity: 'uncommon' });
+  expect(
+    await page.evaluate(() => SaveRules.validate(JSON.parse(localStorage.getItem('starlight-rpg-v1')), GameData))
+  ).toEqual([]);
+
+  // 作製へ戻すとレシピ一覧になる。
+  await page.locator('[data-smithy-view="craft"]').click();
+  await expect(page.locator('#smithyItems [data-recipe]')).toHaveCount(6);
+  await expect(page.locator('#smithyItems [data-smithy-buy]')).toHaveCount(0);
 });
